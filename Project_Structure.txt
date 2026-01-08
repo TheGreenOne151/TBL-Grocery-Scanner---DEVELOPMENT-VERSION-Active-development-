@@ -1,0 +1,9 @@
+your-project/
+├── app.py                    # Your existing backend
+├── requirements.txt          # NEW
+├── runtime.txt              # NEW
+├── Procfile                 # NEW
+├── .gitignore               # NEW
+├── create_excel.py          # Keep if exists
+├── certifications.xlsx      # Keep if exists
+└── index.html               # Your existing frontend

@@ -1,0 +1,29 @@
+
+### **File 2: `LICENSE`** (no file extension)
+```text
+Non-Commercial Evaluation License
+
+Copyright (c) 2024 [Your Name]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use
+the Software for evaluation and prototyping purposes only, subject to the
+following conditions:
+
+1. NON-COMMERCIAL USE ONLY: The Software may not be used for commercial
+   purposes, including selling, licensing, or monetizing any derivative works.
+
+2. EVALUATION PROTOTYPE: This Software is provided as a prototype for
+   evaluation by certification organizations (B-Corp, Fair Trade,
+   Rainforest Alliance, Leaping Bunny) to demonstrate API integration.
+
+3. NO PRODUCTION DEPLOYMENT: The Software may not be deployed in production
+   environments or made publicly available as a service.
+
+4. NO REDISTRIBUTION: The Software may not be redistributed, published, or
+   shared except with the aforementioned certification organizations.
+
+For commercial licensing or production use inquiries, contact:
+[antony.owens1001@gmail.com]
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

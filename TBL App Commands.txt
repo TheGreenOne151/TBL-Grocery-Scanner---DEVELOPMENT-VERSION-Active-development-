@@ -1,0 +1,73 @@
+http://192.168.0.230:8000/health
+
+http://192.168.0.230:8000
+
+***********************************
+
+First: cd C:\Users\StardogChampion\tbl-grocery-app
+
+Second: venv\Scripts\activate
+
+Third: python 
+
+-m uvicorn app:app --host 0.0.0.0 --port 8000
+
+python app.py
+
+******************************
+
+Replace: with open("index.html", "r") as f:
+
+With: with open("index.html", "r", encoding="utf-8") as f:
+
+******************************
+
+python -m venv venv\Scripts\activate
+   # On Windows:
+   venv\Scripts\activate
+   # On Mac/Linux:
+   source venv/bin/activate
+
+python -m uvicorn app:app --host 0.0.0.0 --port 8000
+
+*********************************
+
+Key Endpoints: 
+
+API Documentation: http://localhost:8000/docs
+
+Health Check: http://localhost:8000/health
+
+Scoring Methodology: http://localhost:8000/scoring-methodology
+
+Brands List: http://localhost:8000/brands
+
+**********************************
+
+Good change or addition ideas: 
+
+A button on the scan tab to add a result to the compare and purchase history/record purchases endpoints = convenient
+
+Make the brand a text box on all relevant enpoints, not just for scan which you already did.  
+
+Make the barcode work by itself like it does on the Open Food Facts app
+
+Let users add products to the database
+
+On the compare tab, allow comparison of all existing and added brands in the db bloc of the app.py
+
+On the compare tab, change the radio buttons for brand selections into a text search box to add up to X brands to compare at one time
+
+
+
+
+
+
+
+
+
+
+
+
+
+

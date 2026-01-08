@@ -1,0 +1,276 @@
+# Triple Bottom Line (TBL) Scoring Rubric
+## Comprehensive Guide for Rating Grocery Brands
+
+---
+
+## Overview
+
+This rubric converts multiple data sources into a unified 0-10 scoring system for Social, Environmental, and Economic dimensions of the Triple Bottom Line framework.
+
+---
+
+## Data Sources Available
+
+### 1. **B Corp Certification** (Primary Social & Environmental Indicator)
+- **Source**: https://www.bcorporation.net/en-us/find-a-b-corp
+- **Data**: B Impact Assessment scores (0-200 points, 80+ = certified)
+- **Coverage**: 9,576+ certified companies globally
+- **Categories Assessed**:
+  - Governance
+  - Workers
+  - Community
+  - Environment
+  - Customers
+
+### 2. **Open Food Facts Eco-Score** (Environmental Data)
+- **API**: https://world.openfoodfacts.org/api/v0/product/{barcode}.json
+- **Data Available**:
+  - `ecoscore_grade`: A to E (environmental impact)
+  - `nutriscore_grade`: A to E (nutritional quality)
+  - `nova_group`: 1-4 (food processing level)
+  - Product category, ingredients, packaging
+- **Coverage**: 3.5+ million products
+
+### 3. **ESG Ratings Providers** (Corporate-level ratings)
+- **MSCI ESG Ratings**: AAA to CCC (https://www.msci.com/esg-ratings)
+- **Sustainalytics ESG Risk**: 0-100 (lower = better)
+- **Note**: Most require paid subscriptions, limited free access
+
+### 4. **Specific Certifications** (Binary: Yes/No)
+- B Corp Certified
+- Fair Trade Certified
+- Carbon Neutral/Carbon Trust
+- Leaping Bunny (Cruelty-Free)
+- Cradle to Cradle
+- Green Seal
+- USDA Organic
+- Rainforest Alliance
+
+---
+
+## Scoring Formula
+
+### **SOCIAL SCORE (0-10)**
+
+#### Base Components:
+1. **Labor & Workers Rights** (0-4 points)
+   - B Corp Worker Score: Convert 0-200 → 0-4 (score ÷ 50)
+   - Fair Trade Certification: +1 point
+   - Living Wage Commitment: +1 point
+   - Worker Safety Record: +1 point
+   - Diversity & Inclusion Initiatives: +0.5 points
+
+2. **Community Impact** (0-3 points)
+   - B Corp Community Score: Convert 0-200 → 0-2 (score ÷ 100)
+   - Charitable Giving/1% Pledge: +0.5 points
+   - Local Sourcing: +0.5 points
+
+3. **Supply Chain Ethics** (0-3 points)
+   - Supply chain transparency: +1 point
+   - Anti-child labor policies: +1 point
+   - Ethical sourcing certifications: +1 point
+
+**Conversion Table for Non-B Corps:**
+- If no B Corp data, use manual research:
+  - Excellent labor practices = 8-10
+  - Good practices = 6-7.9
+  - Average/compliance only = 4-5.9
+  - Poor/controversy = 0-3.9
+
+---
+
+### **ENVIRONMENTAL SCORE (0-10)**
+
+#### Base Components:
+1. **Carbon & Climate** (0-4 points)
+   - Carbon Neutral Certified: +2 points
+   - Published carbon reduction targets: +1 point
+   - Renewable energy usage (>50%): +1 point
+   - Eco-Score A: +2, B: +1.5, C: +1, D: +0.5, E: 0
+
+2. **Packaging & Waste** (0-3 points)
+   - Recyclable/compostable packaging: +1 point
+   - Reduced plastic commitment: +1 point
+   - Cradle to Cradle Certified: +1 point
+
+3. **Sustainable Sourcing** (0-3 points)
+   - USDA Organic: +1 point
+   - Rainforest Alliance: +0.5 points
+   - Sustainable agriculture practices: +1 point
+   - Water conservation efforts: +0.5 points
+
+**Open Food Facts Integration:**
+- Eco-Score A = 9-10 environmental score
+- Eco-Score B = 7-8.9
+- Eco-Score C = 5-6.9
+- Eco-Score D = 3-4.9
+- Eco-Score E = 0-2.9
+
+---
+
+### **ECONOMIC SCORE (0-10)**
+
+#### Base Components:
+1. **Financial Stability & Growth** (0-4 points)
+   - Publicly traded/financial transparency: +2 points
+   - Sustainable revenue growth: +1 point
+   - Long-term viability (10+ years): +1 point
+
+2. **Fair Pricing & Value** (0-3 points)
+   - Competitive pricing: +1 point
+   - Value for quality: +1 point
+   - No price gouging history: +1 point
+
+3. **Economic Impact** (0-3 points)
+   - B Corp Economic Score: Convert 0-200 → 0-2
+   - Job creation/retention: +0.5 points
+   - Support for local economies: +0.5 points
+
+**Note**: Economic is often the hardest to assess without corporate financials. Default to 5.0 (neutral) unless clear positive/negative indicators exist.
+
+---
+
+## Certification-Based Quick Scoring
+
+### High-Impact Certifications:
+| Certification | Social Boost | Environmental Boost | Economic Boost |
+|--------------|--------------|---------------------|----------------|
+| B Corp (80-89) | +2.0 | +2.0 | +1.0 |
+| B Corp (90-99) | +2.5 | +2.5 | +1.5 |
+| B Corp (100+) | +3.0 | +3.0 | +2.0 |
+| Fair Trade | +1.5 | +0.5 | +0.5 |
+| Carbon Neutral | 0 | +2.0 | 0 |
+| Leaping Bunny | +1.0 | +1.0 | 0 |
+| USDA Organic | +0.5 | +1.5 | 0 |
+
+---
+
+## Grade Calculation
+
+**Overall TBL Score** = (Social + Environmental + Economic) ÷ 3
+
+**Grade Assignment:**
+- **EXCELLENT**: 8.5 - 10.0
+- **GREAT**: 7.0 - 8.4
+- **GOOD**: 5.0 - 6.9
+- **POOR**: 0 - 4.9
+
+---
+
+## Step-by-Step Scoring Process
+
+### For Each Brand:
+
+1. **Check B Corp Status**
+   - Search: https://www.bcorporation.net/en-us/find-a-b-corp
+   - If certified, extract Impact Assessment score
+   - Apply certification-based scoring
+
+2. **Check Product-Level Environmental Data**
+   - Use Open Food Facts API for brand's products
+   - Average Eco-Scores across products
+   - Apply environmental formula
+
+3. **Check Specific Certifications**
+   - Fair Trade: https://www.fairtrade.net
+   - Carbon Trust: https://www.carbontrust.com
+   - Leaping Bunny: https://www.leapingbunny.org
+   - Add certification bonuses
+
+4. **Research Controversies**
+   - Google: "[brand name] controversy labor environmental"
+   - Deduct points for major issues:
+     - Labor violations: -2 Social
+     - Environmental disasters: -2 Environmental
+     - Financial fraud: -2 Economic
+
+5. **Calculate Final Scores**
+   - Sum all components
+   - Cap at 10.0 per dimension
+   - Calculate overall average & grade
+
+---
+
+## Quick Reference Examples
+
+### **Patagonia** (B Corp, #92.5 Impact Score)
+- **Social**: 9.5 (B Corp worker score 45/50, Fair Trade +1.5, activism +1)
+- **Environmental**: 9.8 (B Corp env score 48/50, Carbon Neutral +2, Organic +0.5)
+- **Economic**: 8.5 (Stable growth, fair pricing, transparency)
+- **Overall**: 9.27 → **EXCELLENT**
+
+### **Coca-Cola** (No B Corp)
+- **Social**: 3.5 (controversies in water rights, labor issues in supply chain)
+- **Environmental**: 3.0 (plastic pollution, water depletion, no carbon neutral)
+- **Economic**: 6.0 (financially stable, but extractive practices)
+- **Overall**: 4.17 → **POOR**
+
+### **Brand with No Data**
+- **Default to 5.0, 5.0, 5.0** (neutral/unknown)
+- Indicate "UNKNOWN" grade
+- Update as research is completed
+
+---
+
+## Automation Opportunities
+
+### What Can Be Automated:
+1. ✅ Open Food Facts Eco-Score lookup (via API)
+2. ✅ B Corp certification check (web scraping or manual database)
+3. ✅ Product barcode → brand → scores pipeline
+
+### What Requires Manual Research:
+1. ❌ ESG ratings (mostly paywalled)
+2. ❌ Controversy assessment
+3. ❌ Supply chain practices
+4. ❌ Economic performance details
+
+---
+
+## Data Update Schedule
+
+- **B Corp certifications**: Update quarterly (companies recertify every 3 years)
+- **Open Food Facts**: Real-time API, updates continuously
+- **Specific certifications**: Annual verification recommended
+- **Controversies**: Monitor news monthly for major brands
+
+---
+
+## Resources for Manual Research
+
+### News & Investigations:
+- Corporate Accountability: https://www.corporateaccountability.org
+- Environmental Working Group: https://www.ewg.org
+- Green America: https://www.greenamerica.org
+
+### Certification Verifiers:
+- B Corp Directory: https://www.bcorporation.net/en-us/find-a-b-corp
+- Fair Trade Finder: https://www.fairtrade.net/product
+- Green Seal Directory: https://certified.greenseal.org/directory
+
+### ESG Data (If Available):
+- MSCI ESG Ratings (free search): https://www.msci.com/esg-ratings-climate-search-tool
+- CSRHub: https://www.csrhub.com
+- Corporate Knights: https://www.corporateknights.com
+
+---
+
+## Implementation Notes
+
+1. Start with brands you know well (Patagonia, Nestlé, etc.)
+2. Use B Corp scores as your "gold standard" calibration
+3. For non-B Corps, compare to similar B Corp scores
+4. Be consistent: document your research process
+5. Update scores annually or when major news breaks
+6. Consider adding a "Confidence" rating (High/Medium/Low)
+
+---
+
+## Next Steps
+
+1. ✅ Create initial database with placeholder scores (5.0 each)
+2. ✅ Prioritize brands by popularity/frequency in database
+3. ✅ Research top 20 brands first using this rubric
+4. ✅ Document sources for each score
+5. ✅ Create update schedule
+6. ✅ Consider crowdsourcing research from users

@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBL Grocery Scanner - Transparent Certification Scoring</title>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+            color: white;
+            padding: 30px 25px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            opacity: 0.1;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header .subtitle {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+            color: #c8e6c9;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: white;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .user-info a {
+            color: white;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+
+        .nav-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 16px 8px;
+            text-align: center;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            position: relative;
+            min-width: 80px;
+            white-space: nowrap;
+        }
+
+        .nav-tab.active {
+            color: #2e7d32;
+        }
+
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #2e7d32;
+            border-radius: 3px 3px 0 0;
+        }
+
+        .content {
+            padding: 25px;
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scanner Styling */
+        #interactive.viewport {
+            width: 100%;
+            height: 280px;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            background: #1a1a1a;
+            margin-bottom: 20px;
+            border: 3px solid #2e7d32;
+        }
+
+        #interactive.viewport canvas,
+        #interactive.viewport video {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            object-fit: cover;
+        }
+
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .scanner-line {
+            position: absolute;
+            top: 50%;
+            left: 10%;
+            width: 80%;
+            height: 3px;
+            background: #2e7d32;
+            animation: scan 2s infinite linear;
+            box-shadow: 0 0 10px #2e7d32;
+        }
+
+        @keyframes scan {
+            0%, 100% { top: 20%; }
+            50% { top: 80%; }
+        }
+
+        input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #2e7d32;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(46, 125, 50, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+
+        button.secondary:hover {
+            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
+        }
+
+        button.excel {
+            background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        }
+
+        button.excel:hover {
+            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        button.danger:hover {
+            box-shadow: 0 10px 20px rgba(220, 53, 69, 0.3);
+        }
+
+        button.info {
+            background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);
+        }
+
+        button.info:hover {
+            box-shadow: 0 10px 20px rgba(255, 152, 0, 0.3);
+        }
+
+        /* Result Visuals */
+        .result-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px;
+            border-radius: 20px;
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+            display: none;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto 30px auto;
+            border: 8px solid #a5d6a7;
+            box-shadow: 0 10px 30px rgba(46, 125, 50, 0.3);
+            position: relative;
+        }
+
+        .score-circle .val {
+            font-size: 42px;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .score-circle .label {
+            font-size: 12px;
+            letter-spacing: 1px;
+            opacity: 0.9;
+        }
+
+        .score-grade {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #ff6b6b;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .pillar {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 16px;
+        }
+
+        .pillar:last-child {
+            border-bottom: none;
+        }
+
+        .pillar span:first-child {
+            color: #495057;
+        }
+
+        .pillar span:last-child {
+            font-weight: bold;
+            color: #2e7d32;
+            font-size: 18px;
+        }
+
+        .cert-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 14px;
+            margin: 6px;
+            border: 2px solid #2e7d32;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(46, 125, 50, 0.1);
+        }
+
+        .cert-source {
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .excel-details {
+            background: #e7f5ff;
+            border: 1px solid #a5d8ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .excel-details h4 {
+            color: #0d6efd;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .no-certs {
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #2e7d32;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2e7d32;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-msg {
+            color: #dc3545;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            margin-bottom: 20px;
+            border: 2px solid #dc3545;
+            font-weight: 500;
+        }
+
+        .success-msg {
+            color: #2e7d32;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            margin-bottom: 20px;
+            border: 2px solid #2e7d32;
+            font-weight: 500;
+        }
+
+        .product-info {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        .product-info h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        hr {
+            margin: 25px 0;
+            border: none;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #dee2e6, transparent);
+        }
+
+        .test-button {
+            background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);
+            margin-top: 10px;
+        }
+
+        .debug-info {
+            font-size: 12px;
+            color: #666;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .cert-status {
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .excel-found {
+            color: #198754;
+            font-weight: bold;
+        }
+
+        .excel-not-found {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 10px;
+            border: 1px solid #dee2e6;
+        }
+
+        .history-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #e9ecef;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .search-guide {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .search-guide h4 {
+            color: #2e7d32;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .search-guide p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .search-guide .tip {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-top: 8px;
+        }
+
+        .extraction-confidence {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .confidence-high {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .confidence-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .confidence-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .brand-extraction-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #1565c0;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+            border: 1px solid #90caf9;
+        }
+
+        .transparency-link {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .transparency-link a {
+            color: #2e7d32;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .transparency-link a:hover {
+            text-decoration: underline;
+        }
+
+        .methodology-info {
+            background: #fff3e0;
+            border: 1px solid #ffcc80;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .methodology-info h4 {
+            color: #e65100;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .methodology-info p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #5a3e1b;
+        }
+
+        .consistency-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+            border: 1px solid #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌿 TBL Scanner</h1>
+            <p>Social • Environmental • Economic Impact</p>
+            <!-- UPDATE 1: Version number updated from 2.1 to 2.3.0 -->
+            <p class="subtitle">Consistent Certification Scoring v2.3.0</p>
+            <div id="userStatus" class="user-info">Not logged in</div>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('scan-sec')">📷 Scan</button>
+            <button class="nav-tab" onclick="switchTab('lookup-sec')">🔍 Search</button>
+            <button class="nav-tab" onclick="switchTab('excel-sec')">📊 Excel</button>
+            <button class="nav-tab" onclick="switchTab('register-sec')">📝 Register</button>
+            <button class="nav-tab" onclick="switchTab('login-sec')">🔐 Login</button>
+            <button class="nav-tab" onclick="switchTab('history-sec')">📋 History</button>
+        </div>
+
+        <div class="content">
+            <div id="errorBox" class="error-msg"></div>
+            <div id="successBox" class="success-msg"></div>
+            <div id="loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Scanning...</p>
+            </div>
+
+            <!-- Scanner Section -->
+            <div id="scan-sec" class="section active">
+                <div id="interactive" class="viewport">
+                    <div class="scanner-overlay">
+                        <div class="scanner-line"></div>
+                    </div>
+                </div>
+                <button onclick="startScanner()">🎥 Start Camera Scanner</button>
+                <button onclick="stopScanner()" class="secondary">🛑 Stop Scanner</button>
+
+                <div class="transparency-link">
+                    <a href="#" onclick="showMethodology()">📖 View Scoring Methodology</a>
+                </div>
+
+                <div class="debug-info" id="scannerDebug">
+                    Scanner status: Not started
+                </div>
+            </div>
+
+            <!-- Manual Lookup Section -->
+            <div id="lookup-sec" class="section">
+                <h3 style="color: #2e7d32; margin-bottom: 15px;">📦 Barcode Lookup</h3>
+                <input type="text" id="manualBarcode" placeholder="Enter Barcode (e.g., 7613036925575)">
+                <button onclick="manualScan()">🔍 Lookup by Barcode</button>
+
+                <hr>
+
+                <div class="search-guide">
+                    <!-- UPDATE 2: Updated subtitle to reflect consistent scoring -->
+                    <h4>🔍 Consistent Scoring Across All Search Methods:</h4>
+                    <p><strong>✅ Guaranteed:</strong> Same brand always gets same score</p>
+                    <p><strong>🔍 Barcode Scan:</strong> Full product info → Brand → Consistent score</p>
+                    <p><strong>🔤 Brand Search:</strong> Direct lookup → Hardcoded/Excel score</p>
+                    <p><strong>📝 Product Name:</strong> Brand extraction → Same score as brand search</p>
+                    <p class="tip">💡 System uses hardcoded scores first, then dynamic calculation</p>
+                </div>
+
+                <h3 style="color: #2e7d32; margin-bottom: 10px;">🔤 Search by Brand Name</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Direct certification lookup for known brands</p>
+                <input type="text" id="manualBrand" placeholder="Enter Brand Name (e.g., Hershey's, General Mills)">
+                <button onclick="brandSearch()" class="secondary">🔤 Search by Brand</button>
+
+                <div style="height: 20px;"></div>
+
+                <h3 style="color: #2e7d32; margin-bottom: 10px;">📝 Search by Product Name</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">We'll extract the brand from product name automatically</p>
+                <input type="text" id="manualProductName" placeholder="Enter Product Name (e.g., Oreo Chocolate Cookies)">
+                <button onclick="productNameSearch()" class="secondary">📝 Search by Product Name</button>
+
+                <div class="methodology-info">
+                    <!-- UPDATE 3: Updated methodology section -->
+                    <h4>📊 Consistent Scoring Methodology</h4>
+                    <p>• Base Score: 5.0 in each pillar</p>
+                    <p>• Hardcoded scores for consistency</p>
+                    <p>• Same brand → Same score always</p>
+                    <p>• Parent company mapping (Cheerios → General Mills)</p>
+                    <button onclick="showMethodology()" class="info" style="margin-top: 10px;">📖 View Full Methodology</button>
+                </div>
+
+                <hr>
+
+                <h3 style="color: #2e7d32; margin-bottom: 15px;">🧪 Consistency Tests</h3>
+                <!-- UPDATE 4: Added new test button for Dannon consistency -->
+                <button onclick="testDannonConsistency()" class="test-button">Test Dannon Consistency</button>
+                <button onclick="testBrandExtraction()" class="secondary">Test Brand Extraction</button>
+                <button onclick="testScoringMethodology()" class="info">Test Nespresso Multi-Cert</button>
+
+                <div class="debug-info" id="debugInfo">
+                    Debug info will appear here
+                </div>
+            </div>
+
+            <!-- Excel Status Section -->
+            <div id="excel-sec" class="section">
+                <h3 style="color: #2e7d32; margin-bottom: 15px;">📊 Excel Certification System</h3>
+
+                <div class="excel-details">
+                    <h4>📋 About Excel System</h4>
+                    <p>This app uses an Excel file as one source for certification data.</p>
+                    <p><strong>Scoring Priority:</strong> Hardcoded DB → Brand Synonyms → Parent Company → Excel DB</p>
+                    <p><strong>Consistency:</strong> Single scoring function ensures identical results</p>
+                </div>
+
+                <button onclick="checkExcelStatus()" class="excel">🔄 Check Excel Status</button>
+                <button onclick="showExcelUpload()" class="secondary">📤 Upload Excel File</button>
+                <button onclick="verifyExcelScript()" class="info">🔧 Verify Script</button>
+
+                <div id="excelStatus" style="margin-top: 20px;"></div>
+
+                <div id="excelUpload" style="display: none; margin-top: 20px;">
+                    <h4 style="color: #2e7d32; margin-bottom: 10px;">Upload New Excel File</h4>
+                    <input type="file" id="excelFile" accept=".xlsx,.xls">
+                    <button onclick="uploadExcelFile()" class="excel">📤 Upload File</button>
+                    <div id="uploadResult" style="margin-top: 10px;"></div>
+                </div>
+
+                <hr>
+
+                <div class="excel-details">
+                    <h4>📋 Excel Format Requirements</h4>
+                    <p><strong>Required columns:</strong></p>
+                    <ul style="font-size: 12px; padding-left: 20px;">
+                        <li><code>brand</code> - Brand name</li>
+                        <li><code>b_corp</code> - TRUE/FALSE</li>
+                        <li><code>fair_trade</code> - TRUE/FALSE</li>
+                        <li><code>rainforest_alliance</code> - TRUE/FALSE</li>
+                        <li><code>leaping_bunny</code> - TRUE/FALSE</li>
+                    </ul>
+                    <p><strong>Optional columns:</strong> certification_date, certification_id, notes</p>
+                </div>
+
+                <div class="transparency-link">
+                    <a href="#" onclick="showMethodology()">📊 View Complete Scoring Methodology</a>
+                </div>
+            </div>
+
+            <!-- Registration Section -->
+            <div id="register-sec" class="section">
+                <h3 style="color: #2e7d32; margin-bottom: 15px;">📝 Create New Account</h3>
+
+                <input type="text" id="regUsername" placeholder="Username (min 3 characters)">
+                <input type="email" id="regEmail" placeholder="Email address">
+                <input type="password" id="regPassword" placeholder="Password (min 6 characters)">
+                <input type="password" id="regConfirmPassword" placeholder="Confirm Password">
+
+                <button onclick="registerUser()">📝 Create Account</button>
+
+                <div id="registerResult" style="margin-top: 15px;"></div>
+
+                <hr>
+
+                <p style="text-align: center; color: #6c757d; font-size: 14px;">
+                    Already have an account? <a href="#" onclick="switchTab('login-sec')" style="color: #2e7d32; font-weight: bold;">Click here to login</a>
+                </p>
+            </div>
+
+            <!-- Login Section -->
+            <div id="login-sec" class="section">
+                <h3 style="color: #2e7d32; margin-bottom: 15px;">🔐 Login to Your Account</h3>
+
+                <input type="text" id="loginUsername" placeholder="Username">
+                <input type="password" id="loginPassword" placeholder="Password">
+
+                <button onclick="loginUser()">🔐 Login</button>
+
+                <div id="loginResult" style="margin-top: 15px;"></div>
+
+                <hr>
+
+                <div class="excel-details" style="margin-top: 15px;">
+                    <h4>Test Account</h4>
+                    <p><strong>Username:</strong> Test123</p>
+                    <p><strong>Password:</strong> Oranges</p>
+                    <button onclick="useTestAccount()" class="secondary" style="margin-top: 10px;">Use Test Account</button>
+                </div>
+            </div>
+
+            <!-- Purchase History Section -->
+            <div id="history-sec" class="section">
+                <h3 style="color: #2e7d32; margin-bottom: 15px;">📋 Purchase History</h3>
+
+                <div id="historyStatus" class="result-box">
+                    <p id="historyMessage">Login to view your purchase history</p>
+                </div>
+
+                <div id="historyContent" style="display: none;">
+                    <div id="historyStats" class="excel-details" style="margin-bottom: 20px;"></div>
+                    <div id="historyList"></div>
+                    <button onclick="refreshHistory()" class="secondary">🔄 Refresh History</button>
+                </div>
+
+                <hr>
+
+                <div class="excel-details">
+                    <h4>About Purchase History</h4>
+                    <p>Your scanned products are automatically saved when you're logged in.</p>
+                    <p>View your average TBL score and track your sustainable shopping habits.</p>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultCard" class="result-card">
+                <div class="product-info">
+                    <h3 id="brandName">Brand Name</h3>
+                    <p id="productName" style="color: #6c757d; margin-bottom: 10px;">Product Name</p>
+                    <p id="category" style="color: #6c757d; font-size: 14px;">Category</p>
+                    <div id="extractionBadge" style="display: none; margin-top: 5px;"></div>
+                </div>
+
+                <div class="score-circle">
+                    <span class="val" id="scoreVal">0.0</span>
+                    <span class="label">TBL SCORE</span>
+                    <div class="score-grade" id="gradeText">GRADE</div>
+                </div>
+
+                <div class="pillar">
+                    <span>👥 Social Impact</span>
+                    <span id="socScore">5.0</span>
+                </div>
+                <div class="pillar">
+                    <span>🌱 Environmental Impact</span>
+                    <span id="envScore">5.0</span>
+                </div>
+                <div class="pillar">
+                    <span>💰 Economic Impact</span>
+                    <span id="econScore">5.0</span>
+                </div>
+
+                <!-- UPDATE 5: Added consistency badge -->
+                <div style="text-align: center; margin: 10px 0;">
+                    <span class="consistency-badge">✅ Consistent Scoring Guaranteed</span>
+                </div>
+
+                <div class="transparency-link" style="margin-top: 15px;">
+                    <a href="#" onclick="showMethodologyForCurrentBrand()">📊 See how this score was calculated</a>
+                </div>
+
+                <div style="margin-top: 25px;">
+                    <h4 style="color: #2e7d32; text-align: center; margin-bottom: 15px; font-size: 16px;">
+                        ✅ VERIFIED CERTIFICATIONS
+                    </h4>
+                    <div id="certsList" style="text-align: center;"></div>
+                    <div id="noCerts" class="no-certs" style="display: none;">
+                        No active certifications found for this brand
+                    </div>
+
+                    <div class="cert-source" id="certSource">
+                        Source: Hardcoded Database + Excel Database • Base 5.0 + Certification Bonuses Only
+                    </div>
+
+                    <div class="cert-status" id="excelStatusInfo">
+                        <span id="excelFoundStatus" class="excel-found">✓ Found in Excel</span>
+                        <span id="excelNotFoundStatus" class="excel-not-found" style="display: none;">✗ Not in Excel</span>
+                    </div>
+
+                    <div id="excelDetails" class="excel-details" style="display: none;">
+                        <h4>📋 Excel Details</h4>
+                        <div id="excelDetailsContent"></div>
+                    </div>
+
+                    <div id="extractionInfo" class="excel-details" style="display: none; margin-top: 15px;">
+                        <h4>🔍 Brand Extraction Details</h4>
+                        <div id="extractionDetailsContent"></div>
+                    </div>
+                </div>
+
+                <div id="purchaseButtonContainer" style="margin-top: 15px;"></div>
+
+                <button onclick="clearResults()" class="secondary" style="margin-top: 15px;">
+                    🗑️ Clear Results
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.origin;
+        let scannerActive = false;
+        let currentUser = null;
+        let authToken = null;
+        let currentBrand = null;
+
+        // Debug logging
+        function debugLog(message) {
+            console.log(`[DEBUG] ${message}`);
+            const debugDiv = document.getElementById('debugInfo');
+            if (debugDiv) {
+                debugDiv.innerHTML = message;
+                debugDiv.style.display = 'block';
+            }
+        }
+
+        // Update user status display
+        function updateUserStatus() {
+            const userStatus = document.getElementById('userStatus');
+            if (currentUser) {
+                userStatus.innerHTML = `👤 ${currentUser} | <a href="#" onclick="logoutUser()">Logout</a>`;
+                userStatus.style.display = 'block';
+
+                // Update history tab message
+                document.getElementById('historyMessage').innerHTML =
+                    `Welcome ${currentUser}! Click refresh to load your purchase history.`;
+                document.getElementById('historyContent').style.display = 'block';
+            } else {
+                userStatus.innerHTML = 'Not logged in';
+                document.getElementById('historyMessage').innerHTML =
+                    'Please login to view your purchase history';
+                document.getElementById('historyContent').style.display = 'none';
+            }
+        }
+
+        // Tab switching
+        function switchTab(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('active');
+
+            if(id !== 'scan-sec' && scannerActive) {
+                stopScanner();
+            }
+
+            // Load history if switching to history tab
+            if (id === 'history-sec' && currentUser) {
+                loadPurchaseHistory();
+            }
+        }
+
+        // Show/hide loading
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        // Show/hide messages
+        function showMessage(type, text) {
+            const errorBox = document.getElementById('errorBox');
+            const successBox = document.getElementById('successBox');
+
+            if (type === 'error') {
+                errorBox.innerText = text;
+                errorBox.style.display = 'block';
+                successBox.style.display = 'none';
+            } else if (type === 'success') {
+                successBox.innerText = text;
+                successBox.style.display = 'block';
+                errorBox.style.display = 'none';
+            }
+
+            setTimeout(() => {
+                errorBox.style.display = 'none';
+                successBox.style.display = 'none';
+            }, 5000);
+        }
+
+        // Hide all messages
+        function hideMessages() {
+            document.getElementById('errorBox').style.display = 'none';
+            document.getElementById('successBox').style.display = 'none';
+        }
+
+        // Register user
+        async function registerUser() {
+            const username = document.getElementById('regUsername').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+            if (!username || !email || !password || !confirmPassword) {
+                showMessage('error', 'All fields are required');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showMessage('error', 'Passwords do not match');
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage('error', 'Password must be at least 6 characters');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+                showLoading(false);
+
+                if (response.ok) {
+                    document.getElementById('registerResult').innerHTML =
+                        `<div style="color: #198754; background: #d1e7dd; padding: 10px; border-radius: 8px;">
+                            ✅ Account created successfully!<br>
+                            Username: ${data.username}<br>
+                            <a href="#" onclick="switchTab('login-sec')" style="color: #2e7d32; font-weight: bold;">Click here to login</a>
+                        </div>`;
+
+                    // Clear form
+                    document.getElementById('regUsername').value = '';
+                    document.getElementById('regEmail').value = '';
+                    document.getElementById('regPassword').value = '';
+                    document.getElementById('regConfirmPassword').value = '';
+                } else {
+                    throw new Error(data.detail || 'Registration failed');
+                }
+            } catch (err) {
+                showLoading(false);
+                document.getElementById('registerResult').innerHTML =
+                    `<div style="color: #dc3545; background: #ffebee; padding: 10px; border-radius: 8px;">
+                        ❌ Error: ${err.message}
+                    </div>`;
+            }
+        }
+
+        // Login user
+        async function loginUser() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!username || !password) {
+                showMessage('error', 'Username and password required');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                showLoading(false);
+
+                if (response.ok) {
+                    currentUser = data.username;
+                    authToken = data.token;
+
+                    document.getElementById('loginResult').innerHTML =
+                        `<div style="color: #198754; background: #d1e7dd; padding: 10px; border-radius: 8px;">
+                            ✅ Login successful! Welcome ${data.username}
+                        </div>`;
+
+                    updateUserStatus();
+
+                    // Clear form and switch to scan tab
+                    document.getElementById('loginUsername').value = '';
+                    document.getElementById('loginPassword').value = '';
+                    setTimeout(() => switchTab('scan-sec'), 1500);
+                } else {
+                    throw new Error(data.detail || 'Login failed');
+                }
+            } catch (err) {
+                showLoading(false);
+                document.getElementById('loginResult').innerHTML =
+                    `<div style="color: #dc3545; background: #ffebee; padding: 10px; border-radius: 8px;">
+                        ❌ Error: ${err.message}
+                    </div>`;
+            }
+        }
+
+        // Use test account
+        function useTestAccount() {
+            document.getElementById('loginUsername').value = 'Test123';
+            document.getElementById('loginPassword').value = 'Oranges';
+            loginUser();
+        }
+
+        // Logout user
+        function logoutUser() {
+            currentUser = null;
+            authToken = null;
+            updateUserStatus();
+            showMessage('success', 'Logged out successfully');
+            switchTab('scan-sec');
+        }
+
+        // Process scan - Excel-based version
+        async function processScan(payload, searchType = 'barcode') {
+            showLoading(true);
+            hideMessages();
+
+            // Prepare headers with auth token if available
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
+
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            // Ensure all required fields have values
+            const safePayload = {
+                barcode: payload.barcode || "",
+                brand: payload.brand || "",
+                product_name: payload.product_name || "Scanned Product",
+                category: payload.category || "Unknown"
+            };
+
+            debugLog(`Sending ${searchType} payload: ${JSON.stringify(safePayload)}`);
+
+            try {
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(safePayload)
+                });
+
+                debugLog(`Response status: ${response.status}`);
+
+                if (!response.ok) {
+                    let errorText = `HTTP ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        debugLog(`Error details: ${JSON.stringify(errorData)}`);
+                        errorText = errorData.detail || JSON.stringify(errorData);
+                    } catch (e) {
+                        errorText = await response.text();
+                    }
+                    throw new Error(errorText);
+                }
+
+                const data = await response.json();
+                debugLog(`Success! Data received from Excel system`);
+                showLoading(false);
+
+                displayResults(data, searchType);
+
+                // Show appropriate success message
+                if (searchType === 'barcode') {
+                    showMessage('success', `Scanned barcode ${safePayload.barcode}`);
+                } else if (searchType === 'brand') {
+                    showMessage('success', `Found brand: ${data.brand}`);
+                } else if (searchType === 'product') {
+                    const confidence = data.brand_extraction_info?.confidence || 0;
+                    showMessage('success', `Extracted brand "${data.brand}" from product name (${confidence}% confidence)`);
+                }
+
+            } catch (err) {
+                showLoading(false);
+                console.error('Full scan error:', err);
+                debugLog(`Error: ${err.message}`);
+
+                if (err.message.includes('422')) {
+                    showMessage('error', 'Invalid data sent to server. Please check the format.');
+                } else if (err.message.includes('Failed to fetch')) {
+                    showMessage('error', 'Cannot connect to server. Make sure backend is running.');
+                } else {
+                    showMessage('error', 'Scan failed: ' + err.message);
+                }
+            }
+        }
+
+        // Display results with Excel info and extraction details
+        function displayResults(data, searchType = 'barcode') {
+            const resultCard = document.getElementById('resultCard');
+            resultCard.style.display = 'block';
+
+            // Store current brand for methodology link
+            currentBrand = data.brand;
+
+            // Brand and product info
+            document.getElementById('brandName').innerText = data.brand || 'Unknown Brand';
+            document.getElementById('productName').innerText = data.product_name || 'Unknown Product';
+            document.getElementById('category').innerText = `Category: ${data.category || 'Unknown'}`;
+
+            // Show extraction badge if brand was extracted from product name
+            const extractionBadge = document.getElementById('extractionBadge');
+            if (data.brand_extraction_info && data.brand_extraction_info.extracted_from_name) {
+                const confidence = data.brand_extraction_info.confidence || 0;
+                let confidenceClass = 'confidence-low';
+                if (confidence >= 80) confidenceClass = 'confidence-high';
+                else if (confidence >= 50) confidenceClass = 'confidence-medium';
+
+                extractionBadge.innerHTML = `
+                    <span class="brand-extraction-badge">Brand Extracted</span>
+                    <span class="extraction-confidence ${confidenceClass}">${confidence}% confidence</span>
+                `;
+                extractionBadge.style.display = 'block';
+            } else {
+                extractionBadge.style.display = 'none';
+            }
+
+            // Scores
+            document.getElementById('scoreVal').innerText = data.overall_tbl_score?.toFixed(1) || '0.0';
+            document.getElementById('gradeText').innerText = data.grade || 'UNKNOWN';
+
+            // Pillar scores
+            document.getElementById('socScore').innerText = data.social_score?.toFixed(1) || '5.0';
+            document.getElementById('envScore').innerText = data.environmental_score?.toFixed(1) || '5.0';
+            document.getElementById('econScore').innerText = data.economic_score?.toFixed(1) || '5.0';
+
+            // Certifications
+            const certsDiv = document.getElementById('certsList');
+            const noCertsDiv = document.getElementById('noCerts');
+            const excelDetailsDiv = document.getElementById('excelDetails');
+            const excelDetailsContent = document.getElementById('excelDetailsContent');
+            const excelFoundStatus = document.getElementById('excelFoundStatus');
+            const excelNotFoundStatus = document.getElementById('excelNotFoundStatus');
+            const purchaseButtonContainer = document.getElementById('purchaseButtonContainer');
+            const extractionInfoDiv = document.getElementById('extractionInfo');
+            const extractionDetailsContent = document.getElementById('extractionDetailsContent');
+
+            certsDiv.innerHTML = '';
+            excelDetailsDiv.style.display = 'none';
+            extractionInfoDiv.style.display = 'none';
+            purchaseButtonContainer.innerHTML = '';
+
+            let certifications = [];
+
+            // Handle certifications from response
+            if (Array.isArray(data.certifications)) {
+                certifications = data.certifications;
+            } else if (data.certifications_detailed && typeof data.certifications_detailed === 'object') {
+                certifications = Object.entries(data.certifications_detailed)
+                    .filter(([_, value]) => value)
+                    .map(([key, _]) => key.replace('_', ' ').toUpperCase());
+            }
+
+            if (certifications.length > 0) {
+                certifications.forEach(cert => {
+                    const certElement = document.createElement('span');
+                    certElement.className = 'cert-tag';
+                    certElement.innerText = `✓ ${cert}`;
+                    certsDiv.appendChild(certElement);
+                });
+                noCertsDiv.style.display = 'none';
+            } else {
+                noCertsDiv.style.display = 'block';
+            }
+
+            // Show Excel status
+            if (data.found_in_excel) {
+                excelFoundStatus.style.display = 'inline';
+                excelNotFoundStatus.style.display = 'none';
+
+                // Show Excel details if available
+                if (data.excel_details) {
+                    excelDetailsDiv.style.display = 'block';
+                    let detailsHtml = '';
+
+                    if (data.excel_details.original_brand) {
+                        detailsHtml += `<strong>Original Brand:</strong> ${data.excel_details.original_brand}<br>`;
+                    }
+                    if (data.excel_details.certification_date) {
+                        detailsHtml += `<strong>Certification Date:</strong> ${data.excel_details.certification_date}<br>`;
+                    }
+                    if (data.excel_details.certification_id) {
+                        detailsHtml += `<strong>Certification ID:</strong> ${data.excel_details.certification_id}<br>`;
+                    }
+                    if (data.excel_details.notes) {
+                        detailsHtml += `<strong>Notes:</strong> ${data.excel_details.notes}<br>`;
+                    }
+
+                    excelDetailsContent.innerHTML = detailsHtml || 'No additional details available.';
+                }
+            } else {
+                excelFoundStatus.style.display = 'none';
+                excelNotFoundStatus.style.display = 'inline';
+            }
+
+            // Set certification source - UPDATED to reflect hardcoded + Excel
+            document.getElementById('certSource').innerText = `Source: ${data.certification_source || 'Hardcoded Database + Excel Database'} • Base 5.0 + Certification Bonuses Only`;
+
+            // Show brand extraction info if available
+            if (data.brand_extraction_info && data.brand_extraction_info.extracted_from_name) {
+                extractionInfoDiv.style.display = 'block';
+                let extractionHtml = '';
+                const extractionInfo = data.brand_extraction_info;
+
+                extractionHtml += `<p><strong>Search Method:</strong> Product Name → Brand Extraction</p>`;
+                extractionHtml += `<p><strong>Confidence Level:</strong> ${extractionInfo.confidence || 0}%</p>`;
+
+                if (extractionInfo.warning) {
+                    extractionHtml += `<p><strong>⚠️ Note:</strong> ${extractionInfo.warning}</p>`;
+                }
+
+                if (extractionInfo.alternative_brands && extractionInfo.alternative_brands.length > 0) {
+                    extractionHtml += `<p><strong>Other possible brands:</strong> ${extractionInfo.alternative_brands.join(', ')}</p>`;
+                }
+
+                if (extractionInfo.search_results) {
+                    extractionHtml += `<p><strong>Search Results:</strong> ${extractionInfo.search_results.total_products || 0} products found</p>`;
+                }
+
+                extractionDetailsContent.innerHTML = extractionHtml;
+            }
+
+            // Add purchase button if user is logged in
+            if (currentUser) {
+                const purchaseButton = document.createElement('button');
+                purchaseButton.className = 'danger';
+                purchaseButton.innerHTML = '💰 Save to Purchase History';
+                purchaseButton.onclick = () => recordPurchase({
+                    barcode: data.barcode,
+                    brand: data.brand,
+                    product_name: data.product_name,
+                    category: data.category,
+                    price: null
+                });
+                purchaseButtonContainer.appendChild(purchaseButton);
+            }
+
+            // Scroll to results
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Show scoring methodology
+        function showMethodology() {
+            window.open(`${API_BASE}/scoring-methodology`, '_blank');
+        }
+
+        // Show methodology for current brand
+        function showMethodologyForCurrentBrand() {
+            if (currentBrand) {
+                window.open(`${API_BASE}/test/scoring/${encodeURIComponent(currentBrand)}`, '_blank');
+            } else {
+                showMethodology();
+            }
+        }
+
+        // Record purchase
+        async function recordPurchase(productData) {
+            if (!currentUser) {
+                showMessage('error', 'Please login to record purchases');
+                return;
+            }
+
+            try {
+                showLoading(true);
+                const response = await fetch(`/purchase?username=${currentUser}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(productData)
+                });
+
+                const result = await response.json();
+                showLoading(false);
+
+                if (response.ok) {
+                    showMessage('success', 'Purchase recorded to your history');
+                    // Update purchase button
+                    const purchaseButton = document.querySelector('#purchaseButtonContainer button');
+                    if (purchaseButton) {
+                        purchaseButton.innerHTML = '✅ Purchase Saved!';
+                        purchaseButton.disabled = true;
+                        purchaseButton.style.background = 'linear-gradient(135deg, #198754 0%, #157347 100%)';
+                    }
+                } else {
+                    throw new Error(result.detail || 'Failed to record purchase');
+                }
+            } catch (err) {
+                showLoading(false);
+                showMessage('error', 'Failed to save purchase: ' + err.message);
+            }
+        }
+
+        // Load purchase history
+        async function loadPurchaseHistory() {
+            if (!currentUser) {
+                document.getElementById('historyStatus').innerHTML =
+                    '<p style="color: #dc3545;">Please login to view your purchase history</p>';
+                return;
+            }
+
+            try {
+                showLoading(true);
+                const response = await fetch(`/history/${currentUser}?limit=20`);
+                const data = await response.json();
+                showLoading(false);
+
+                if (response.ok) {
+                    // Update stats
+                    const statsDiv = document.getElementById('historyStats');
+                    statsDiv.innerHTML = `
+                        <h4>📊 Your Shopping Stats</h4>
+                        <p><strong>Total Purchases:</strong> ${data.total_purchases}</p>
+                        <p><strong>Average TBL Score:</strong> ${data.average_tbl_score}</p>
+                    `;
+
+                    // Display purchase list
+                    const historyList = document.getElementById('historyList');
+                    if (data.purchases && data.purchases.length > 0) {
+                        let html = '<h4 style="color: #2e7d32; margin-bottom: 15px;">Recent Purchases:</h4>';
+                        data.purchases.forEach(purchase => {
+                            html += `
+                                <div class="history-item">
+                                    <div style="font-weight: bold; color: #2e7d32;">${purchase.brand}</div>
+                                    <div style="color: #6c757d; font-size: 14px;">${purchase.product_name}</div>
+                                    <div style="margin-top: 8px;">
+                                        <span style="color: #495057;">TBL Score:</span>
+                                        <span style="font-weight: bold; color: #2e7d32; margin-left: 10px;">${purchase.tbl_score}</span>
+                                        <span style="margin-left: 15px; color: #6c757d; font-size: 12px;">${purchase.timestamp ? new Date(purchase.timestamp).toLocaleDateString() : ''}</span>
+                                    </div>
+                                    ${purchase.certifications && purchase.certifications.length > 0 ?
+                                        `<div style="margin-top: 5px;">
+                                            ${purchase.certifications.map(cert =>
+                                                `<span style="background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 5px;">${cert}</span>`
+                                            ).join('')}
+                                        </div>` : ''
+                                    }
+                                </div>
+                            `;
+                        });
+                        historyList.innerHTML = html;
+                    } else {
+                        historyList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No purchase history yet. Start scanning!</p>';
+                    }
+                } else {
+                    throw new Error(data.detail || 'Failed to load history');
+                }
+            } catch (err) {
+                showLoading(false);
+                document.getElementById('historyStatus').innerHTML =
+                    `<div style="color: #dc3545; background: #ffebee; padding: 10px; border-radius: 8px;">
+                        ❌ Error loading history: ${err.message}
+                    </div>`;
+            }
+        }
+
+        // Refresh history
+        function refreshHistory() {
+            loadPurchaseHistory();
+            showMessage('success', 'History refreshed');
+        }
+
+        // Clear results
+        function clearResults() {
+            document.getElementById('resultCard').style.display = 'none';
+            hideMessages();
+            currentBrand = null;
+
+            // Clear input fields
+            document.getElementById('manualBarcode').value = '';
+            document.getElementById('manualBrand').value = '';
+            document.getElementById('manualProductName').value = '';
+
+            showMessage('success', 'Results cleared');
+        }
+
+        // Manual scan by barcode
+        function manualScan() {
+            const barcode = document.getElementById('manualBarcode').value.trim();
+
+            if (!barcode) {
+                showMessage('error', 'Please enter a barcode');
+                return;
+            }
+
+            const payload = {
+                barcode: barcode,
+                brand: "",
+                product_name: "Barcode Lookup",
+                category: "Unknown"
+            };
+
+            processScan(payload, 'barcode');
+        }
+
+        // Brand search
+        function brandSearch() {
+            const brand = document.getElementById('manualBrand').value.trim();
+
+            if (!brand) {
+                showMessage('error', 'Please enter a brand name');
+                return;
+            }
+
+            const payload = {
+                barcode: "",
+                brand: brand,
+                product_name: "Brand Search",
+                category: "General"
+            };
+
+            processScan(payload, 'brand');
+        }
+
+        // Product name search (extracts brand)
+        function productNameSearch() {
+            const productName = document.getElementById('manualProductName').value.trim();
+
+            if (!productName) {
+                showMessage('error', 'Please enter a product name');
+                return;
+            }
+
+            const payload = {
+                barcode: "",
+                brand: "",
+                product_name: productName,
+                category: "General"
+            };
+
+            processScan(payload, 'product');
+        }
+
+        // Test brand extraction
+        function testBrandExtraction() {
+            const testProducts = [
+                "Oreo Chocolate Sandwich Cookies",
+                "Coca-Cola Classic 12oz",
+                "Ben & Jerry's Chocolate Chip Cookie Dough Ice Cream",
+                "Great Value Chocolate Chip Cookies",
+                "Hershey's Milk Chocolate Bar",
+                "Cheerios Original Cereal",
+                "Tide Original Scent Laundry Detergent"
+            ];
+
+            const randomProduct = testProducts[Math.floor(Math.random() * testProducts.length)];
+
+            // Fill the product name field and trigger search
+            document.getElementById('manualProductName').value = randomProduct;
+            productNameSearch();
+        }
+
+        // NEW FUNCTION: Test Dannon consistency
+        function testDannonConsistency() {
+            window.open(`${API_BASE}/test/scoring/Dannon`, '_blank');
+        }
+
+        // Test scoring methodology
+        function testScoringMethodology() {
+            window.open(`${API_BASE}/test/scoring/Nespresso`, '_blank');
+        }
+
+        // Check Excel status
+        async function checkExcelStatus() {
+            try {
+                const response = await fetch('/certifications/status');
+                const data = await response.json();
+
+                const statusDiv = document.getElementById('excelStatus');
+                let html = `<div class="excel-details">
+                    <h4>📊 Excel Database Status</h4>
+                    <p><strong>File:</strong> ${data.excel_file}</p>
+                    <p><strong>Status:</strong> <span style="color: ${data.status === 'success' ? '#198754' : '#dc3545'}">${data.status}</span></p>
+                    <p><strong>Total Records:</strong> ${data.total_records || 0}</p>
+                    <p><strong>Last Loaded:</strong> ${data.last_loaded || 'Never'}</p>`;
+
+                if (data.sample_brands && data.sample_brands.length > 0) {
+                    html += `<p><strong>Sample Brands:</strong> ${data.sample_brands.map(b => b.original_brand).join(', ')}</p>`;
+                }
+
+                html += `</div>`;
+                statusDiv.innerHTML = html;
+
+            } catch (err) {
+                document.getElementById('excelStatus').innerHTML =
+                    `<div style="color: #dc3545; background: #ffebee; padding: 15px; border-radius: 8px;">Error: ${err.message}</div>`;
+            }
+        }
+
+        // Verify Excel script
+        async function verifyExcelScript() {
+            try {
+                const response = await fetch('/certifications/verify-script');
+                const data = await response.json();
+
+                const statusDiv = document.getElementById('excelStatus');
+                let html = `<div class="excel-details">
+                    <h4>🔧 Script Verification</h4>
+                    <p><strong>Script Status:</strong> ${data.script.exists ? 'Found' : 'Not Found'}</p>
+                    <p><strong>Excel File:</strong> ${data.excel_file.exists ? 'Found' : 'Not Found'}</p>`;
+
+                if (data.excel_file.data) {
+                    if (data.excel_file.data.error) {
+                        html += `<p><strong>Excel Data:</strong> Error: ${data.excel_file.data.error}</p>`;
+                    } else {
+                        html += `<p><strong>Rows/Columns:</strong> ${data.excel_file.data.rows} × ${data.excel_file.data.columns}</p>`;
+                        html += `<p><strong>Columns:</strong> ${data.excel_file.data.columns_list.join(', ')}</p>`;
+                    }
+                }
+
+                html += `</div>`;
+                statusDiv.innerHTML = html;
+
+            } catch (err) {
+                document.getElementById('excelStatus').innerHTML =
+                    `<div style="color: #dc3545; background: #ffebee; padding: 15px; border-radius: 8px;">Error: ${err.message}</div>`;
+            }
+        }
+
+        // Show Excel upload form
+        function showExcelUpload() {
+            document.getElementById('excelUpload').style.display = 'block';
+            document.getElementById('excelStatus').innerHTML = '';
+        }
+
+        // Upload Excel file
+        async function uploadExcelFile() {
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showMessage('error', 'Please select an Excel file to upload');
+                return;
+            }
+
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                showMessage('error', 'Please select an Excel file (.xlsx or .xls)');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showLoading(true);
+                const response = await fetch('/certifications/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                showLoading(false);
+
+                if (response.ok) {
+                    document.getElementById('uploadResult').innerHTML =
+                        `<div style="color: #198754; background: #d1e7dd; padding: 10px; border-radius: 8px;">
+                            ✅ ${result.message}<br>
+                            Total records: ${result.total_records}
+                        </div>`;
+
+                    // Refresh status
+                    checkExcelStatus();
+                } else {
+                    throw new Error(result.detail || 'Upload failed');
+                }
+            } catch (err) {
+                showLoading(false);
+                document.getElementById('uploadResult').innerHTML =
+                    `<div style="color: #dc3545; background: #ffebee; padding: 10px; border-radius: 8px;">
+                        ❌ Error: ${err.message}
+                    </div>`;
+            }
+        }
+
+        // Scanner functions
+        function startScanner() {
+            if (scannerActive) return;
+
+            debugLog("Initializing scanner...");
+
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#interactive'),
+                    constraints: {
+                        facingMode: "environment",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                },
+                decoder: {
+                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader"]
+                },
+                locate: true,
+                numOfWorkers: 4,
+                frequency: 10
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    showMessage('error', 'Camera error: ' + err.message);
+                    debugLog(`Scanner error: ${err.message}`);
+                    return;
+                }
+                Quagga.start();
+                scannerActive = true;
+                showMessage('success', 'Scanner started - point camera at barcode');
+                debugLog("Scanner started successfully");
+
+                // Update scanner debug info
+                document.getElementById('scannerDebug').innerText = 'Scanner status: Active';
+                document.getElementById('scannerDebug').style.display = 'block';
+            });
+
+            Quagga.onDetected((result) => {
+                const code = result.codeResult.code;
+                showMessage('success', `Barcode detected: ${code}`);
+                debugLog(`Barcode detected: ${code}`);
+
+                Quagga.stop();
+                scannerActive = false;
+
+                const payload = {
+                    barcode: code,
+                    brand: "",
+                    product_name: "Scanned Product",
+                    category: "Unknown"
+                };
+
+                processScan(payload, 'barcode');
+
+                // Update scanner debug info
+                document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped (scanning...)';
+            });
+        }
+
+        function stopScanner() {
+            if (scannerActive) {
+                Quagga.stop();
+                scannerActive = false;
+                showMessage('success', 'Scanner stopped');
+                debugLog("Scanner stopped");
+
+                // Update scanner debug info
+                document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped';
+            }
+        }
+
+        // Auto-start on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog("Page loaded. Testing API connection...");
+
+            // Test API connection
+            fetch('/health')
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                    throw new Error('Network response was not ok');
+                })
+                .then(data => {
+                    debugLog(`API connected: ${data.status} - ${data.message}`);
+                    showMessage('success', `Connected to consistent scoring system v2.3.0`);
+                })
+                .catch(() => {
+                    debugLog('Cannot connect to backend API');
+                    showMessage('error', 'Cannot connect to backend API. Make sure it is running on port 8000.');
+                });
+
+            // Initialize user status
+            updateUserStatus();
+        });
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && scannerActive) {
+                stopScanner();
+            }
+        });
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+Enter to submit barcode
+            if (e.ctrlKey && e.key === 'Enter') {
+                if (document.getElementById('manualBarcode').value) {
+                    manualScan();
+                } else if (document.getElementById('manualBrand').value) {
+                    brandSearch();
+                } else if (document.getElementById('manualProductName').value) {
+                    productNameSearch();
+                }
+            }
+            // Escape to clear results
+            if (e.key === 'Escape') {
+                clearResults();
+            }
+        });
+    </script>
+</body>
+</html>
