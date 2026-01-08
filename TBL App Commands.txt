@@ -60,14 +60,122 @@ On the compare tab, change the radio buttons for brand selections into a text se
 
 
 
+*******************************
+
+Git
+
+1. Local → GitHub (Upload)
+When you edit files locally and want them on GitHub:
+
+bash
+git add .
+git commit -m "My changes"
+git push  # ← This UPLOADS to GitHub
+2. GitHub → Local (Download)
+When there are changes on GitHub that you want locally:
+
+bash
+git pull  # ← This DOWNLOADS from GitHub
+
+Important Scenarios:
+If you edit directly on GitHub.com:
+Changes stay only on GitHub
+
+To get them locally: git pull
+
+If you edit locally:
+Changes stay only on your computer
+
+To send to GitHub: git add ., git commit -m "message", git push
+
+To avoid conflicts:
+Always do this before starting work:
+
+bash
+git pull
+This ensures you have the latest version from GitHub.
+
+Editing on GitHub.com directly:
+You can edit files directly on GitHub.com, but then you must remember to:
+
+On your local computer: git pull to get those changes
+
+Otherwise, you'll have different versions on GitHub vs. your computer
+
+Best practice:
+Pick one workflow:
+
+Either: Always edit locally, then push to GitHub
+
+Or: Edit on GitHub.com, then immediately pull to your computer
+
+Mixing both without pull/push will cause version conflicts.
+
+Remember:
+git push = Send my changes to GitHub
+
+git pull = Get changes from GitHub
+
+No automatic sync - you control when to sync
 
 
+********************************
 
+Workflow --
 
+I use Atom and Powershell for now. I would like to save changes locally using Atom app and then push them to Git in Powershell. Good, right?
+Perfect! Yes, that's an excellent workflow. You've chosen the most common and reliable approach used by developers:
 
+Your Ideal Workflow:
+text
+Atom (Edit files) → Save locally → PowerShell (Git commands) → GitHub
+Step-by-Step Process:
+1. Edit in Atom:
+Open your project folder in Atom
 
+Make changes to files
 
+Save (Ctrl+S) - files are saved to your computer
 
+2. Push via PowerShell:
+powershell
+cd C:\Users\StardogChampion\tbl-grocery-app
+git add .
+git commit -m "Describe your changes"
+git push
+Why this is GREAT:
+✅ No surprises - You see changes locally first
+✅ Easy to test - Run your app locally before pushing
+✅ Version control - Each commit is a save point you can revert to
+✅ Backup - GitHub becomes your backup in the cloud
 
+To delete files from local project folder and then commit and push to Github --
 
+Complete example:
+Let's say you deleted old_file.py and unused_data.txt:
 
+powershell
+# 1. See what changed
+git status
+
+# 2. Stage the deletions
+git add old_file.py unused_data.txt
+
+# 3. Or stage ALL deletions and changes
+git add -A
+
+# 4. Commit
+git commit -m "Cleaned up: removed old_file.py and unused_data.txt"
+
+# 5. Push
+git push
+
+Alternative - One-liner:
+powershell
+git add -A && git commit -m "Removed unused files" && git push
+Important: Use git add -A for deletions
+git add . - Adds new/modified files in current directory
+
+git add -A - Adds ALL changes (new, modified, AND deleted files)
+
+For deletions, git add -A is safest.
