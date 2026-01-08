@@ -181,3 +181,13 @@ git add . - Adds new/modified files in current directory
 git add -A - Adds ALL changes (new, modified, AND deleted files)
 
 For deletions, git add -A is safest.
+
+***************************
+
+Key commands you now know:
+Command	Purpose	Example
+git status	Check what changed	Always run first
+git add -A	Stage all changes (adds/deletes)	git add -A
+git commit -m "msg"	Save changes with message	git commit -m "Fixed bug"
+git push	Upload to GitHub	git push
+git pull	Download from GitHub	git pull
