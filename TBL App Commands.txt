@@ -12,9 +12,11 @@ Third: python
 
 -m uvicorn app:app --host 0.0.0.0 --port 8000
 
-gunicorn elegant.app:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
-
 python app.py
+
+Render: 
+
+gunicorn elegant.app:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
 
 ******************************
 
