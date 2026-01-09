@@ -4,15 +4,14 @@ PORT = int(os.getenv("PORT", 8000))
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Set, ClassVar
 from datetime import datetime, timedelta
-import bcrypt
+# REMOVED: import bcrypt           # Will load inside functions
 import httpx
 from difflib import SequenceMatcher
 import asyncio
 import logging
 import json
-import pandas as pd
+# REMOVED: import pandas as pd     # Will load inside functions
 from io import BytesIO
-import os
 import re
 from collections import Counter
 from contextlib import redirect_stdout, redirect_stderr
@@ -23,6 +22,51 @@ from fastapi import FastAPI, Query, Request, HTTPException, File, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
+
+# ADD THIS HELPER FUNCTION
+def lazy_import(module_name: str):
+    """Import modules only when needed to save memory"""
+    import importlib
+    return importlib.import_module(module_name)
+
+# Add these after the lazy_import function in your imports section
+_BCRYPT = None
+
+def get_bcrypt():
+    """Get bcrypt module with lazy loading and caching"""
+    global _BCRYPT
+    if _BCRYPT is None:
+        _BCRYPT = lazy_import("bcrypt")
+    return _BCRYPT
+
+# CACHED PANDAS IMPORT
+_PANDAS = None
+_OPENPYXL = None
+
+def get_pandas():
+    """Get pandas module with lazy loading and caching"""
+    global _PANDAS
+    if _PANDAS is None:
+        _PANDAS = lazy_import("pandas")
+    return _PANDAS
+
+def get_openpyxl():
+    """Get openpyxl module with lazy loading and caching"""
+    global _OPENPYXL
+    if _OPENPYXL is None:
+        _OPENPYXL = lazy_import("openpyxl")
+    return _OPENPYXL
+
+# Add Numpy caching to your imports section (after pandas caching)
+# NUMPY CACHING (not currently used, but available for future)
+_NUMPY = None
+
+def get_numpy():
+    """Get numpy module with lazy loading and caching"""
+    global _NUMPY
+    if _NUMPY is None:
+        _NUMPY = lazy_import("numpy")
+    return _NUMPY
 
 # ==================== CONFIGURATION DATACLASSES ====================
 
@@ -832,6 +876,8 @@ class CertificationManager:
             if os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE):
                 logger.info(f"Loading certification data from {FileConfig.CERTIFICATION_EXCEL_FILE}")
 
+                # First get pandas, then use it
+                pd = get_pandas()
                 df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
                 logger.info(f"Excel file loaded. Columns: {list(df.columns)}")
 
@@ -889,13 +935,16 @@ class CertificationManager:
             'leaping_bunny': ['Leaping Bunny', 'leaping_bunny', 'Cruelty Free', 'leapingbunny']
         }
 
+        # LAZY load pandas before using it
+        pd = get_pandas()
+
         certifications = {}
         for cert_type, possible_names in cert_mapping.items():
             value = False
             for col_name in possible_names:
                 if col_name in columns:
                     cell_value = row.get(col_name)
-                    if pd.isna(cell_value):
+                    if pd.isna(cell_value):  # Now uses lazy-loaded pd
                         value = False
                     elif isinstance(cell_value, bool):
                         value = cell_value
@@ -1636,10 +1685,12 @@ class BrandExtractionManager:
 
 def hash_password(password: str) -> str:
     """Hash password using bcrypt"""
+    bcrypt = get_bcrypt()  # Use your cached lazy import
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(password: str, hashed_password: str) -> bool:
     """Verify password against hash"""
+    bcrypt = get_bcrypt()  # Use your cached lazy import
     return bcrypt.checkpw(password.encode(), hashed_password.encode())
 
 # ==================== GLOBAL STATE ====================
@@ -1728,6 +1779,8 @@ def verify_excel_script() -> Dict[str, Any]:
         excel_data = None
         if excel_exists:
             try:
+                # LAZY load pandas before using it
+                pd = get_pandas()
                 df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
                 excel_data = {
                     "rows": len(df),
@@ -1737,7 +1790,6 @@ def verify_excel_script() -> Dict[str, Any]:
                 }
             except Exception as e:
                 excel_data = {"error": str(e)}
-
         return {
             "script": {
                 "exists": script_exists,
