@@ -86,7 +86,7 @@ git add .
 git commit -m "Initial commit: FastAPI app for Render"
 
 # Connect to GitHub (use your URL from Step 1)
-git remote add origin https://github.com/YOUR_USERNAME/elegant-app.git
+git remote add origin https://github.com/TheGreenOne151/TBL_Grocery_Scanner.git
 
 # Rename branch to main (if needed)
 git branch -M main
