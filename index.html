@@ -667,20 +667,38 @@
 
             <!-- Scanner Section -->
             <div id="scan-sec" class="section active">
-                <div id="interactive" class="viewport">
-                    <div class="scanner-overlay">
-                        <div class="scanner-line"></div>
+                <!-- Camera Permission Button (ADD THIS) -->
+                <div id="camera-permission" style="text-align: center; margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <p style="margin-bottom: 10px; font-weight: bold; color: #495057;">📷 Camera Access Required</p>
+                    <button id="enable-camera-btn" onclick="enableCamera()"
+                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold;">
+                        Enable Camera for Barcode Scanning
+                    </button>
+                    <p id="camera-message" style="margin-top: 10px; font-size: 14px; color: #6c757d;">
+                        Click to allow camera access for real-time scanning
+                    </p>
+                </div>
+
+                <!-- Scanner UI (hidden until permission granted) -->
+                <div id="scanner-ui" style="display: none;">
+                    <div id="interactive" class="viewport">
+                        <div class="scanner-overlay">
+                            <div class="scanner-line"></div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button onclick="startScanner()">🎬 Start Scanner</button>
+                        <button onclick="stopScanner()" class="secondary">⏹️ Stop Scanner</button>
                     </div>
                 </div>
-                <button onclick="startScanner()">🎥 Start Camera Scanner</button>
-                <button onclick="stopScanner()" class="secondary">🛑 Stop Scanner</button>
 
                 <div class="transparency-link">
                     <a href="#" onclick="showMethodology()">📖 View Scoring Methodology</a>
                 </div>
 
                 <div class="debug-info" id="scannerDebug">
-                    Scanner status: Not started
+                    Scanner status: Camera access required
                 </div>
             </div>
 
@@ -919,8 +937,162 @@
             </div>
         </div>
     </div>
-
     <script>
+        // NEW: Camera permission function
+        async function enableCamera() {
+            const btn = document.getElementById('enable-camera-btn');
+            const message = document.getElementById('camera-message');
+            const debug = document.getElementById('scannerDebug');
+            const permissionDiv = document.getElementById('camera-permission');
+            const scannerUI = document.getElementById('scanner-ui');
+
+            btn.disabled = true;
+            btn.textContent = 'Checking camera...';
+            message.textContent = 'Requesting camera permission...';
+
+            try {
+                // First check if we're on HTTPS
+                if (window.location.protocol !== 'https:') {
+                    throw new Error('Camera requires HTTPS. Please use: https://tbl-grocery-scanner.onrender.com');
+                }
+
+                // Test camera access
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment', // Prefer back camera on mobile
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+
+                // Success - stop test stream and show scanner
+                stream.getTracks().forEach(track => track.stop());
+
+                permissionDiv.style.display = 'none';
+                scannerUI.style.display = 'block';
+                debug.textContent = 'Scanner status: Ready to start scanning';
+                message.textContent = '✅ Camera access granted!';
+                message.style.color = '#198754';
+
+                // Set flag for your existing startScanner function
+                window.cameraEnabled = true;
+
+            } catch (error) {
+                btn.disabled = false;
+                btn.textContent = 'Enable Camera for Barcode Scanning';
+
+                let userMessage = '';
+                if (error.name === 'NotAllowedError') {
+                    userMessage = '❌ Camera permission denied. Please allow camera access in your browser settings.';
+                } else if (error.name === 'NotFoundError') {
+                    userMessage = '❌ No camera found on this device. Use manual barcode entry instead.';
+                } else if (error.message.includes('HTTPS')) {
+                    userMessage = '❌ Camera requires HTTPS. Please use: https://tbl-grocery-scanner.onrender.com';
+                } else if (error.name === 'NotReadableError') {
+                    userMessage = '❌ Camera is in use by another application. Close other camera apps.';
+                } else {
+                    userMessage = `❌ Error: ${error.message}`;
+                }
+
+                message.innerHTML = userMessage;
+                message.style.color = '#dc3545';
+                debug.textContent = `Scanner status: ${error.name || 'Camera error'}`;
+
+                // Show manual entry fallback hint
+                setTimeout(() => {
+                    if (!window.cameraEnabled) {
+                        message.innerHTML += '<br><br><small>Tip: Use the manual barcode entry below</small>';
+                    }
+                }, 1000);
+            }
+        }
+
+        // NEW: Update your existing startScanner function to check permission
+        function startScanner() {
+            if (!window.cameraEnabled) {
+                document.getElementById('scannerDebug').textContent =
+                    'Please enable camera access first';
+                enableCamera();
+                return;
+            }
+
+            // Your existing Quagga initialization code here
+            if (scannerActive) return;
+
+            debugLog("Initializing scanner...");
+
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#interactive'),
+                    constraints: {
+                        facingMode: "environment",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                },
+                decoder: {
+                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader"]
+                },
+                locate: true,
+                numOfWorkers: 4,
+                frequency: 10
+            }, function(err) {
+                if (err) {
+                    console.error(err);
+                    showMessage('error', 'Camera error: ' + err.message);
+                    debugLog(`Scanner error: ${err.message}`);
+                    return;
+                }
+                Quagga.start();
+                scannerActive = true;
+                showMessage('success', 'Scanner started - point camera at barcode');
+                debugLog("Scanner started successfully");
+
+                // Update scanner debug info
+                document.getElementById('scannerDebug').innerText = 'Scanner status: Active';
+                document.getElementById('scannerDebug').style.display = 'block';
+            });
+
+            Quagga.onDetected((result) => {
+                const code = result.codeResult.code;
+                showMessage('success', `Barcode detected: ${code}`);
+                debugLog(`Barcode detected: ${code}`);
+
+                Quagga.stop();
+                scannerActive = false;
+
+                const payload = {
+                    barcode: code,
+                    brand: "",
+                    product_name: "Scanned Product",
+                    category: "Unknown"
+                };
+
+                processScan(payload, 'barcode');
+
+                // Update scanner debug info
+                document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped (scanning...)';
+            });
+        }
+
+        // NEW: Reset camera function
+        function resetCamera() {
+            if (scannerActive) {
+                stopScanner();
+            }
+            document.getElementById('camera-permission').style.display = 'block';
+            document.getElementById('enable-camera-btn').style.display = 'inline-block';
+            document.getElementById('enable-camera-btn').disabled = false;
+            document.getElementById('enable-camera-btn').textContent = 'Enable Camera for Barcode Scanning';
+            document.getElementById('scanner-ui').style.display = 'none';
+            document.getElementById('camera-message').textContent = 'Camera access required';
+            document.getElementById('camera-message').style.color = '#6c757d';
+            document.getElementById('scannerDebug').textContent = 'Scanner status: Camera access required';
+            window.cameraEnabled = false;
+        }
+
         // Configuration
         const API_BASE = window.location.origin;
         let scannerActive = false;
@@ -1690,80 +1862,6 @@
             }
         }
 
-        // Scanner functions
-        function startScanner() {
-            if (scannerActive) return;
-
-            debugLog("Initializing scanner...");
-
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#interactive'),
-                    constraints: {
-                        facingMode: "environment",
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
-                },
-                decoder: {
-                    readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader"]
-                },
-                locate: true,
-                numOfWorkers: 4,
-                frequency: 10
-            }, function(err) {
-                if (err) {
-                    console.error(err);
-                    showMessage('error', 'Camera error: ' + err.message);
-                    debugLog(`Scanner error: ${err.message}`);
-                    return;
-                }
-                Quagga.start();
-                scannerActive = true;
-                showMessage('success', 'Scanner started - point camera at barcode');
-                debugLog("Scanner started successfully");
-
-                // Update scanner debug info
-                document.getElementById('scannerDebug').innerText = 'Scanner status: Active';
-                document.getElementById('scannerDebug').style.display = 'block';
-            });
-
-            Quagga.onDetected((result) => {
-                const code = result.codeResult.code;
-                showMessage('success', `Barcode detected: ${code}`);
-                debugLog(`Barcode detected: ${code}`);
-
-                Quagga.stop();
-                scannerActive = false;
-
-                const payload = {
-                    barcode: code,
-                    brand: "",
-                    product_name: "Scanned Product",
-                    category: "Unknown"
-                };
-
-                processScan(payload, 'barcode');
-
-                // Update scanner debug info
-                document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped (scanning...)';
-            });
-        }
-
-        function stopScanner() {
-            if (scannerActive) {
-                Quagga.stop();
-                scannerActive = false;
-                showMessage('success', 'Scanner stopped');
-                debugLog("Scanner stopped");
-
-                // Update scanner debug info
-                document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped';
-            }
-        }
-
         // Auto-start on page load
         document.addEventListener('DOMContentLoaded', function() {
             debugLog("Page loaded. Testing API connection...");
@@ -1787,6 +1885,14 @@
 
             // Initialize user status
             updateUserStatus();
+
+            // NEW: Check camera support
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                const message = document.getElementById('camera-message');
+                message.innerHTML = '❌ Camera API not supported in this browser.<br>Try Chrome, Firefox, or Edge.';
+                message.style.color = '#dc3545';
+                document.getElementById('enable-camera-btn').disabled = true;
+            }
         });
 
         // Handle page visibility changes
