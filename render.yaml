@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
-    startCommand: uvicorn elegant.app:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 300
+    startCommand: uvicorn elegant_app:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 300
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
