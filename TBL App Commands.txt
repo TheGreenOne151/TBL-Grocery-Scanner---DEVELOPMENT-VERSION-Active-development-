@@ -68,7 +68,35 @@ On the compare tab, change the radio buttons for brand selections into a text se
 
 Git
 
-git remote add origin https://github.com/TheGreenOne151/TBL_Grocery_Scanner.git
+For Github and Render sync: 
+
+# Navigate to your project
+cd C:\Users\StardogChampion\tbl-grocery-app
+
+# Initialize git (if not already)
+git init
+
+# Check what files will be added
+git status
+
+# Add all files
+git add .
+
+# Commit
+git commit -m "Initial commit: FastAPI app for Render"
+
+# Connect to GitHub (use your URL from Step 1)
+git remote add origin https://github.com/YOUR_USERNAME/elegant-app.git
+
+# Rename branch to main (if needed)
+git branch -M main
+
+# First push to GitHub
+git push -u origin main
+
+************************************
+
+Git
 
 1. Local → GitHub (Upload)
 When you edit files locally and want them on GitHub:
