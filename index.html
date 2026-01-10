@@ -6,12 +6,22 @@
     <title>TBL Grocery Scanner - Transparent Certification Scoring</title>
     <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <style>
+        /* ==================== */
+        /* RESET & BASE STYLES  */
+        /* ==================== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* ==================== */
+        /* TYPOGRAPHY & GLOBAL  */
+        /* ==================== */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -22,6 +32,9 @@
             align-items: center;
         }
 
+        /* ==================== */
+        /* LAYOUT COMPONENTS    */
+        /* ==================== */
         .container {
             max-width: 500px;
             width: 100%;
@@ -31,6 +44,22 @@
             overflow: hidden;
         }
 
+        .content {
+            padding: 25px;
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* ==================== */
+        /* HEADER & NAVIGATION  */
+        /* ==================== */
         .header {
             background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
             color: white;
@@ -124,6 +153,7 @@
             position: relative;
             min-width: 80px;
             white-space: nowrap;
+            user-select: none;
         }
 
         .nav-tab.active {
@@ -141,25 +171,103 @@
             border-radius: 3px 3px 0 0;
         }
 
-        .content {
-            padding: 25px;
+        .nav-tab:focus {
+            outline: 2px solid #2e7d32;
+            outline-offset: 2px;
         }
 
-        .section {
-            display: none;
-            animation: fadeIn 0.5s ease;
+        /* ==================== */
+        /* FORM ELEMENTS        */
+        /* ==================== */
+        input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
         }
 
-        .section.active {
-            display: block;
+        input:focus {
+            outline: none;
+            border-color: #2e7d32;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+            user-select: none;
         }
 
-        /* Scanner Styling */
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(46, 125, 50, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:focus {
+            outline: 2px solid #2e7d32;
+            outline-offset: 2px;
+        }
+
+        /* Button Variants */
+        button.secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+
+        button.secondary:hover {
+            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
+        }
+
+        button.excel {
+            background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        }
+
+        button.excel:hover {
+            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        button.danger:hover {
+            box-shadow: 0 10px 20px rgba(220, 53, 69, 0.3);
+        }
+
+        button.info {
+            background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);
+        }
+
+        button.info:hover {
+            box-shadow: 0 10px 20px rgba(255, 152, 0, 0.3);
+        }
+
+        button.test-button {
+            background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);
+            margin-top: 10px;
+        }
+
+        /* ==================== */
+        /* SCANNER COMPONENTS   */
+        /* ==================== */
         #interactive.viewport {
             width: 100%;
             height: 280px;
@@ -202,86 +310,9 @@
             box-shadow: 0 0 10px #2e7d32;
         }
 
-        @keyframes scan {
-            0%, 100% { top: 20%; }
-            50% { top: 80%; }
-        }
-
-        input {
-            width: 100%;
-            padding: 16px;
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            background: #f8f9fa;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #2e7d32;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
-        }
-
-        button {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 17px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 15px;
-            transition: all 0.3s ease;
-            letter-spacing: 0.5px;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(46, 125, 50, 0.3);
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
-        button.secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-        }
-
-        button.secondary:hover {
-            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
-        }
-
-        button.excel {
-            background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-        }
-
-        button.excel:hover {
-            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
-        }
-
-        button.danger {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        }
-
-        button.danger:hover {
-            box-shadow: 0 10px 20px rgba(220, 53, 69, 0.3);
-        }
-
-        button.info {
-            background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);
-        }
-
-        button.info:hover {
-            box-shadow: 0 10px 20px rgba(255, 152, 0, 0.3);
-        }
-
-        /* Result Visuals */
+        /* ==================== */
+        /* RESULTS DISPLAY      */
+        /* ==================== */
         .result-card {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             padding: 25px;
@@ -292,9 +323,22 @@
             animation: slideUp 0.5s ease;
         }
 
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .result-card.showing {
+            animation: slideInUp 0.5s ease-out;
+        }
+
+        .product-info {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        .product-info h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+            font-size: 20px;
         }
 
         .score-circle {
@@ -360,6 +404,9 @@
             font-size: 18px;
         }
 
+        /* ==================== */
+        /* CERTIFICATION BADGES */
+        /* ==================== */
         .cert-tag {
             display: inline-block;
             background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
@@ -381,113 +428,6 @@
             font-style: italic;
         }
 
-        .excel-details {
-            background: #e7f5ff;
-            border: 1px solid #a5d8ff;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 15px;
-            font-size: 14px;
-        }
-
-        .excel-details h4 {
-            color: #0d6efd;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .no-certs {
-            color: #6c757d;
-            font-style: italic;
-            text-align: center;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            margin-top: 15px;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-            color: #2e7d32;
-        }
-
-        .loading-spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #2e7d32;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error-msg {
-            color: #dc3545;
-            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            display: none;
-            margin-bottom: 20px;
-            border: 2px solid #dc3545;
-            font-weight: 500;
-        }
-
-        .success-msg {
-            color: #2e7d32;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            display: none;
-            margin-bottom: 20px;
-            border: 2px solid #2e7d32;
-            font-weight: 500;
-        }
-
-        .product-info {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            border: 1px solid #dee2e6;
-        }
-
-        .product-info h3 {
-            color: #2e7d32;
-            margin-bottom: 10px;
-            font-size: 20px;
-        }
-
-        hr {
-            margin: 25px 0;
-            border: none;
-            height: 1px;
-            background: linear-gradient(to right, transparent, #dee2e6, transparent);
-        }
-
-        .test-button {
-            background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);
-            margin-top: 10px;
-        }
-
-        .debug-info {
-            font-size: 12px;
-            color: #666;
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-            display: none;
-        }
-
         .cert-status {
             text-align: center;
             font-size: 12px;
@@ -505,21 +445,32 @@
             font-weight: bold;
         }
 
-        .result-box {
-            background: #f8f9fa;
+        .no-certs {
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
             padding: 15px;
+            background: #f8f9fa;
             border-radius: 12px;
-            margin-top: 10px;
-            border: 1px solid #dee2e6;
+            margin-top: 15px;
         }
 
-        .history-item {
-            background: white;
-            padding: 15px;
+        /* ==================== */
+        /* INFORMATION BOXES    */
+        /* ==================== */
+        .excel-details {
+            background: #e7f5ff;
+            border: 1px solid #a5d8ff;
             border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .excel-details h4 {
+            color: #0d6efd;
             margin-bottom: 10px;
-            border: 1px solid #e9ecef;
-            border-left: 4px solid #2e7d32;
+            font-size: 14px;
         }
 
         .search-guide {
@@ -550,6 +501,50 @@
             margin-top: 8px;
         }
 
+        .methodology-info {
+            background: #fff3e0;
+            border: 1px solid #ffcc80;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .methodology-info h4 {
+            color: #e65100;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .methodology-info p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #5a3e1b;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 10px;
+            border: 1px solid #dee2e6;
+        }
+
+        /* ==================== */
+        /* HISTORY & DATA       */
+        /* ==================== */
+        .history-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #e9ecef;
+            border-left: 4px solid #2e7d32;
+        }
+
+        /* ==================== */
+        /* STATUS & BADGES      */
+        /* ==================== */
         .extraction-confidence {
             display: inline-block;
             padding: 3px 8px;
@@ -586,6 +581,75 @@
             border: 1px solid #90caf9;
         }
 
+        .consistency-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            color: #2e7d32;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+            border: 1px solid #2e7d32;
+        }
+
+        /* ==================== */
+        /* FEEDBACK & MESSAGES  */
+        /* ==================== */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #2e7d32;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2e7d32;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px auto;
+        }
+
+        .error-msg {
+            color: #dc3545;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            margin-bottom: 20px;
+            border: 2px solid #dc3545;
+            font-weight: 500;
+        }
+
+        .success-msg {
+            color: #2e7d32;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            margin-bottom: 20px;
+            border: 2px solid #2e7d32;
+            font-weight: 500;
+        }
+
+        .debug-info {
+            font-size: 12px;
+            color: #666;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        /* ==================== */
+        /* UTILITY & MISC       */
+        /* ==================== */
         .transparency-link {
             text-align: center;
             margin: 15px 0;
@@ -604,37 +668,168 @@
             text-decoration: underline;
         }
 
-        .methodology-info {
-            background: #fff3e0;
-            border: 1px solid #ffcc80;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 15px 0;
+        hr {
+            margin: 25px 0;
+            border: none;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #dee2e6, transparent);
         }
 
-        .methodology-info h4 {
-            color: #e65100;
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-size: 14px;
+        /* ==================== */
+        /* ANIMATIONS           */
+        /* ==================== */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .methodology-info p {
-            margin: 5px 0;
-            font-size: 13px;
-            color: #5a3e1b;
+        @keyframes scan {
+            0%, 100% { top: 20%; }
+            50% { top: 80%; }
         }
 
-        .consistency-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            color: #2e7d32;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 8px;
-            border: 1px solid #2e7d32;
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes scanSuccess {
+            0% { background-color: #1a1a1a; }
+            50% { background-color: #4caf50; }
+            100% { background-color: #1a1a1a; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Animation Classes */
+        .scan-success {
+            animation: scanSuccess 0.5s ease-in-out;
+        }
+
+        .scan-again {
+            animation: pulse 2s infinite;
+            background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%) !important;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        /* ==================== */
+        /* RESPONSIVE DESIGN    */
+        /* ==================== */
+        /* Better tap targets for mobile */
+        @media (max-width: 480px) {
+            button, .nav-tab {
+                min-height: 44px; /* Apple's recommended minimum tap target */
+            }
+
+            input {
+                font-size: 16px; /* Prevents iOS zoom on focus */
+                min-height: 44px;
+            }
+
+            .container {
+                margin: 10px;
+                border-radius: 20px;
+            }
+        }
+
+        /* ==================== */
+        /* ACCESSIBILITY FEATURES */
+        /* ==================== */
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%);
+            }
+
+            .container {
+                background: #2d2d2d;
+                color: #e2e8f0;
+            }
+
+            input {
+                background: #3a3a3a;
+                border-color: #4a5568;
+                color: #e2e8f0;
+            }
+
+            input:focus {
+                background: #2d2d2d;
+            }
+        }
+
+        /* Reduced motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* ==================== */
+        /* PRINT STYLES         */
+        /* ==================== */
+        @media print {
+            .nav-tabs, button, .camera-permission {
+                display: none !important;
+            }
+
+            .result-card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+            }
+        }
+
+        /* ==================== */
+        /* BROWSER ENHANCEMENTS */
+        /* ==================== */
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2e7d32;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1b5e20;
         }
     </style>
 </head>
@@ -938,7 +1133,7 @@
         </div>
     </div>
     <script>
-        // NEW: Camera permission function
+        // ENHANCED: Camera permission function
         async function enableCamera() {
             const btn = document.getElementById('enable-camera-btn');
             const message = document.getElementById('camera-message');
@@ -952,16 +1147,16 @@
 
             try {
                 // First check if we're on HTTPS
-                if (window.location.protocol !== 'https:') {
+                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
                     throw new Error('Camera requires HTTPS. Please use: https://tbl-grocery-scanner.onrender.com');
                 }
 
                 // Test camera access
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                        facingMode: { ideal: 'environment' },
+                        width: { min: 640, ideal: 1280, max: 1920 },
+                        height: { min: 480, ideal: 720, max: 1080 }
                     }
                 });
 
@@ -977,6 +1172,13 @@
                 // Set flag for your existing startScanner function
                 window.cameraEnabled = true;
 
+                // Auto-start scanner after short delay
+                setTimeout(() => {
+                    if (!scannerActive) {
+                        startScanner();
+                    }
+                }, 300);
+
             } catch (error) {
                 btn.disabled = false;
                 btn.textContent = 'Enable Camera for Barcode Scanning';
@@ -990,6 +1192,8 @@
                     userMessage = '❌ Camera requires HTTPS. Please use: https://tbl-grocery-scanner.onrender.com';
                 } else if (error.name === 'NotReadableError') {
                     userMessage = '❌ Camera is in use by another application. Close other camera apps.';
+                } else if (error.name === 'OverconstrainedError') {
+                    userMessage = '❌ Camera does not support required features. Try a different browser.';
                 } else {
                     userMessage = `❌ Error: ${error.message}`;
                 }
@@ -1007,7 +1211,7 @@
             }
         }
 
-        // FIXED: Complete stopScanner function
+        // UPDATED: stopScanner function
         function stopScanner() {
             if (scannerActive) {
                 Quagga.stop();
@@ -1018,7 +1222,10 @@
 
             // Also stop camera stream when stopping scanner
             if (window.cameraStream) {
-                window.cameraStream.getTracks().forEach(track => track.stop());
+                window.cameraStream.getTracks().forEach(track => {
+                    track.stop();
+                    track.enabled = false;
+                });
                 window.cameraStream = null;
             }
 
@@ -1031,12 +1238,12 @@
             if (scannerUI) {
                 const startBtn = scannerUI.querySelector('button[onclick="startScanner()"]');
                 if (startBtn) {
-                    startBtn.textContent = '🎬 Restart Scanner';
+                    startBtn.textContent = '🎬 Start Scanner';
                 }
             }
         }
 
-        // UPDATED: startScanner function with fixed Open Food Facts integration
+        // UPDATED: startScanner function with proper auto-stop and view switching
         function startScanner() {
             if (!window.cameraEnabled) {
                 document.getElementById('scannerDebug').textContent =
@@ -1055,54 +1262,86 @@
                     type: "LiveStream",
                     target: document.querySelector('#interactive'),
                     constraints: {
-                        facingMode: "environment",
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
+                        facingMode: { ideal: "environment" },
+                        width: { min: 640, ideal: 1280 },
+                        height: { min: 480, ideal: 720 }
                     }
                 },
                 decoder: {
                     readers: ["ean_reader", "upc_reader", "code_128_reader", "code_39_reader"]
                 },
                 locate: true,
-                numOfWorkers: 4,
-                frequency: 10
+                numOfWorkers: 2,
+                frequency: 10,
+                debug: {
+                    drawBoundingBox: false,
+                    showFrequency: false,
+                    drawScanline: false,
+                    showPattern: false
+                }
             }, function(err) {
                 if (err) {
-                    console.error(err);
-                    showMessage('error', 'Scanner error: ' + err.message);
+                    console.error('Scanner init error:', err);
+                    if (err.message.includes('could not start video source')) {
+                        showMessage('error', 'Camera error: Could not start video. Try closing other camera apps.');
+                        resetCamera();
+                    } else {
+                        showMessage('error', 'Scanner error: ' + err.message);
+                    }
                     debugLog(`Scanner error: ${err.message}`);
                     return;
                 }
                 Quagga.start();
                 scannerActive = true;
-                showMessage('success', 'Scanner started - point camera at barcode');
+                showMessage('success', 'Scanner ready - point camera at barcode');
                 debugLog("Scanner started successfully");
 
-                document.getElementById('scannerDebug').innerText = 'Scanner status: Active';
+                document.getElementById('scannerDebug').innerText = 'Scanner status: Active - Scanning...';
                 document.getElementById('scannerDebug').style.display = 'block';
+
+                // Update start button text
+                const startBtn = document.querySelector('#scanner-ui button[onclick="startScanner()"]');
+                if (startBtn) {
+                    startBtn.textContent = '🔄 Restart Scanner';
+                }
             });
 
-            // FIXED: Open Food Facts integration in the onDetected callback
+            // FIXED: Proper barcode detection with auto-stop and view switching
             Quagga.onDetected(async (result) => {
-                const code = result.codeResult.code;
-                debugLog(`Barcode detected: ${code}`);
+                if (!result || !result.codeResult || !result.codeResult.code) {
+                    debugLog("Invalid scan result");
+                    return;
+                }
 
+                const code = result.codeResult.code;
+                debugLog(`✅ Barcode detected: ${code}`);
+
+                // 1. STOP SCANNER IMMEDIATELY
                 Quagga.stop();
                 scannerActive = false;
+                document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped (processing...)';
 
-                showMessage('success', `Barcode detected: ${code}`);
+                // 2. Provide visual feedback
+                showMessage('success', `✅ Scanned barcode: ${code}`);
 
-                debugLog(`Fetching product data for barcode: ${code} from Open Food Facts...`);
+                // 3. Add visual feedback to scanner
+                const scannerDiv = document.getElementById('interactive');
+                scannerDiv.classList.add('scan-success');
+                setTimeout(() => scannerDiv.classList.remove('scan-success'), 500);
+
+                // 4. Show loading
+                showLoading(true);
 
                 try {
-                    // Fetch from Open Food Facts
+                    // 5. Fetch from Open Food Facts
+                    debugLog(`Fetching product data for ${code}...`);
                     const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
                     const offData = await response.json();
 
                     let productPayload = {
                         barcode: code,
                         brand: "",
-                        product_name: `Scanned Product (${code})`,
+                        product_name: "",
                         category: "Unknown"
                     };
 
@@ -1118,7 +1357,8 @@
                         }
 
                         // Extract product name
-                        let productName = product.product_name || product.product_name_en || "Unknown Product";
+                        let productName = product.product_name || product.product_name_en ||
+                                         product.generic_name || `Product ${code}`;
 
                         // Extract category
                         let category = "Unknown";
@@ -1130,43 +1370,49 @@
 
                         productPayload = {
                             barcode: code,
-                            brand: brand,
+                            brand: brand || "Unknown Brand",
                             product_name: productName,
                             category: category
                         };
 
-                        debugLog(`Open Food Facts data found: Brand="${brand}", Name="${productName}", Category="${category}"`);
-                        showMessage('success', `Found: ${productName} by ${brand || 'Unknown Brand'}`);
+                        debugLog(`Found: ${productName} by ${brand || 'Unknown Brand'}`);
+                        showMessage('success', `Found: ${productName.substring(0, 30)}${productName.length > 30 ? '...' : ''}`);
                     } else {
-                        debugLog("Product not found in Open Food Facts, using default data");
+                        // Product not in Open Food Facts
+                        productPayload = {
+                            barcode: code,
+                            brand: "Unknown Brand",
+                            product_name: `Product ${code}`,
+                            category: "Unknown"
+                        };
                         showMessage('info', 'Product not found in database. Using generic info.');
                     }
 
-                    // Send to backend for scoring
-                    processScan(productPayload, 'barcode');
+                    // 6. Process with backend
+                    await processScan(productPayload, 'barcode');
+
+                    // 7. Update scanner button for "Scan Another"
+                    const startBtn = document.querySelector('#scanner-ui button[onclick="startScanner()"]');
+                    if (startBtn) {
+                        startBtn.textContent = '🔁 Scan Another Product';
+                        startBtn.classList.add('scan-again');
+                    }
 
                 } catch (error) {
-                    debugLog(`Error fetching from Open Food Facts: ${error.message}`);
+                    debugLog(`Error: ${error.message}`);
+                    showMessage('error', 'Scan failed. Try manual entry.');
 
-                    // Fallback to generic info
+                    // Still show something
                     const payload = {
                         barcode: code,
-                        brand: "",
-                        product_name: "Scanned Product",
-                        category: "Unknown"
+                        brand: "Scan Error",
+                        product_name: `Barcode: ${code}`,
+                        category: "Error"
                     };
-
-                    processScan(payload, 'barcode');
+                    await processScan(payload, 'barcode');
+                } finally {
+                    showLoading(false);
                 }
-
-                // Restart scanner after a delay
-                setTimeout(() => {
-                    if (!scannerActive) {
-                        Quagga.start();
-                        scannerActive = true;
-                        debugLog("Scanner restarted after scan");
-                    }
-                }, 2000);
             });
         }
 
@@ -1474,6 +1720,7 @@
         function displayResults(data, searchType = 'barcode') {
             const resultCard = document.getElementById('resultCard');
             resultCard.style.display = 'block';
+            resultCard.classList.add('showing');
 
             currentBrand = data.brand;
 
@@ -1608,7 +1855,13 @@
                 purchaseButtonContainer.appendChild(purchaseButton);
             }
 
-            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // Auto-scroll to results
+            setTimeout(() => {
+                resultCard.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }, 100);
         }
 
         // Show scoring methodology
