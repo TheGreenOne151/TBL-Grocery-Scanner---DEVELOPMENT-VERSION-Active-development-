@@ -1025,6 +1025,37 @@ class CertificationManager:
         if len(meaningful_common) >= 2:
             return True
 
+        # ==================== NEW RULE 3A: Fuzzy word matching ====================
+
+        # For cases like "ben jerry" vs "ben and jerrys" where we have 1 exact match
+        # and the other words are similar
+        if len(meaningful_common) == 1:
+            # Get the remaining meaningful words (excluding generic words)
+            search_remaining = [w for w in search_words if w not in GENERIC_WORDS and w not in meaningful_common]
+            stored_remaining = [w for w in stored_words if w not in GENERIC_WORDS and w not in meaningful_common]
+
+            # If we have one word remaining in each, check similarity
+            if len(search_remaining) == 1 and len(stored_remaining) == 1:
+                from difflib import SequenceMatcher
+                word1 = search_remaining[0]
+                word2 = stored_remaining[0]
+
+                # Check if words are similar (allowing for small differences)
+                similarity = SequenceMatcher(None, word1, word2).ratio()
+                if similarity >= 0.7:  # 70% similarity for word variations
+                    return True
+
+            # Also check if one contains the other (e.g., "jerry" in "jerrys")
+            if search_remaining and stored_remaining:
+                for s_word in search_remaining:
+                    for t_word in stored_remaining:
+                        if s_word in t_word or t_word in s_word:
+                            # Only allow if the contained part is significant
+                            if len(s_word) >= 3 or len(t_word) >= 3:
+                                return True
+
+        # ==================== END OF NEW RULE ====================
+
         # Rule 4: Check if it's a known single-word brand with high similarity
         if len(search_words) == 1 and len(stored_words) == 1:
             from difflib import SequenceMatcher
