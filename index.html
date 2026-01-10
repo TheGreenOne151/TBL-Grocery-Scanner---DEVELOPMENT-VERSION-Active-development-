@@ -959,14 +959,14 @@
                 // Test camera access
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: 'environment', // Prefer back camera on mobile
+                        facingMode: 'environment',
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     }
                 });
 
-                // Success - stop test stream and show scanner
-                stream.getTracks().forEach(track => track.stop());
+                // Store the stream for later cleanup
+                window.cameraStream = stream;
 
                 permissionDiv.style.display = 'none';
                 scannerUI.style.display = 'block';
@@ -1007,7 +1007,36 @@
             }
         }
 
-        // NEW: Update your existing startScanner function to check permission
+        // FIXED: Complete stopScanner function
+        function stopScanner() {
+            if (scannerActive) {
+                Quagga.stop();
+                scannerActive = false;
+                debugLog("Scanner stopped");
+                showMessage('success', 'Scanner stopped');
+            }
+
+            // Also stop camera stream when stopping scanner
+            if (window.cameraStream) {
+                window.cameraStream.getTracks().forEach(track => track.stop());
+                window.cameraStream = null;
+            }
+
+            // Update UI
+            document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped';
+            document.getElementById('scannerDebug').style.display = 'block';
+
+            // Show restart button
+            const scannerUI = document.getElementById('scanner-ui');
+            if (scannerUI) {
+                const startBtn = scannerUI.querySelector('button[onclick="startScanner()"]');
+                if (startBtn) {
+                    startBtn.textContent = '🎬 Restart Scanner';
+                }
+            }
+        }
+
+        // UPDATED: startScanner function with Open Food Facts integration
         function startScanner() {
             if (!window.cameraEnabled) {
                 document.getElementById('scannerDebug').textContent =
@@ -1016,7 +1045,6 @@
                 return;
             }
 
-            // Your existing Quagga initialization code here
             if (scannerActive) return;
 
             debugLog("Initializing scanner...");
@@ -1041,7 +1069,7 @@
             }, function(err) {
                 if (err) {
                     console.error(err);
-                    showMessage('error', 'Camera error: ' + err.message);
+                    showMessage('error', 'Scanner error: ' + err.message);
                     debugLog(`Scanner error: ${err.message}`);
                     return;
                 }
@@ -1050,30 +1078,84 @@
                 showMessage('success', 'Scanner started - point camera at barcode');
                 debugLog("Scanner started successfully");
 
-                // Update scanner debug info
                 document.getElementById('scannerDebug').innerText = 'Scanner status: Active';
                 document.getElementById('scannerDebug').style.display = 'block';
             });
 
-            Quagga.onDetected((result) => {
+            Quagga.onDetected(async (result) => {
                 const code = result.codeResult.code;
-                showMessage('success', `Barcode detected: ${code}`);
                 debugLog(`Barcode detected: ${code}`);
 
                 Quagga.stop();
                 scannerActive = false;
 
-                const payload = {
-                    barcode: code,
-                    brand: "",
-                    product_name: "Scanned Product",
-                    category: "Unknown"
-                };
+                showMessage('success', `Barcode detected: ${code}`);
 
-                processScan(payload, 'barcode');
+                debugLog(`Fetching product data for barcode: ${code} from Open Food Facts...`);
 
-                // Update scanner debug info
-                document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped (scanning...)';
+                try {
+                    const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+                    const offData = await offResponse.json();
+
+                    let productPayload = {
+                        barcode: code,
+                        brand: "",
+                        product_name: "Scanned Product",
+                        category: "Unknown"
+                    };
+
+                    if (offData.status === 1 && offData.product) {
+                        const product = offData.product;
+
+                        let brand = "";
+                        if (product.brands && product.brands.trim()) {
+                            brand = product.brands.split(',')[0].trim();
+                        } else if (product.brand_owner && product.brand_owner.trim()) {
+                            brand = product.brand_owner;
+                        }
+
+                        productPayload = {
+                            barcode: code,
+                            brand: brand || "",
+                            product_name: product.product_name || product.product_name_en || "Scanned Product",
+                            category: product.categories || product.categories_tags?.[0] || "Unknown"
+                        };
+
+                        debugLog(`Open Food Facts data: Brand="${brand}", Name="${productPayload.product_name}", Category="${productPayload.category}"`);
+                    } else {
+                        debugLog("Product not found in Open Food Facts, using default data");
+                    }
+
+                    processScan(productPayload, 'barcode');
+
+                    setTimeout(() => {
+                        if (!scannerActive) {
+                            Quagga.start();
+                            scannerActive = true;
+                            debugLog("Scanner restarted after scan");
+                        }
+                    }, 2000);
+
+                } catch (error) {
+                    debugLog(`Error fetching from Open Food Facts: ${error.message}`);
+
+                    const payload = {
+                        barcode: code,
+                        brand: "",
+                        product_name: "Scanned Product",
+                        category: "Unknown"
+                    };
+
+                    processScan(payload, 'barcode');
+
+                    setTimeout(() => {
+                        if (!scannerActive) {
+                            Quagga.start();
+                            scannerActive = true;
+                            debugLog("Scanner restarted after error");
+                        }
+                    }, 2000);
+                }
             });
         }
 
@@ -1082,6 +1164,12 @@
             if (scannerActive) {
                 stopScanner();
             }
+
+            if (window.cameraStream) {
+                window.cameraStream.getTracks().forEach(track => track.stop());
+                window.cameraStream = null;
+            }
+
             document.getElementById('camera-permission').style.display = 'block';
             document.getElementById('enable-camera-btn').style.display = 'inline-block';
             document.getElementById('enable-camera-btn').disabled = false;
@@ -1099,6 +1187,7 @@
         let currentUser = null;
         let authToken = null;
         let currentBrand = null;
+        let cameraStream = null;
 
         // Debug logging
         function debugLog(message) {
@@ -1117,7 +1206,6 @@
                 userStatus.innerHTML = `👤 ${currentUser} | <a href="#" onclick="logoutUser()">Logout</a>`;
                 userStatus.style.display = 'block';
 
-                // Update history tab message
                 document.getElementById('historyMessage').innerHTML =
                     `Welcome ${currentUser}! Click refresh to load your purchase history.`;
                 document.getElementById('historyContent').style.display = 'block';
@@ -1140,7 +1228,6 @@
                 stopScanner();
             }
 
-            // Load history if switching to history tab
             if (id === 'history-sec' && currentUser) {
                 loadPurchaseHistory();
             }
@@ -1219,7 +1306,6 @@
                             <a href="#" onclick="switchTab('login-sec')" style="color: #2e7d32; font-weight: bold;">Click here to login</a>
                         </div>`;
 
-                    // Clear form
                     document.getElementById('regUsername').value = '';
                     document.getElementById('regEmail').value = '';
                     document.getElementById('regPassword').value = '';
@@ -1268,7 +1354,6 @@
 
                     updateUserStatus();
 
-                    // Clear form and switch to scan tab
                     document.getElementById('loginUsername').value = '';
                     document.getElementById('loginPassword').value = '';
                     setTimeout(() => switchTab('scan-sec'), 1500);
@@ -1305,7 +1390,6 @@
             showLoading(true);
             hideMessages();
 
-            // Prepare headers with auth token if available
             const headers = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
@@ -1315,7 +1399,6 @@
                 headers['Authorization'] = `Bearer ${authToken}`;
             }
 
-            // Ensure all required fields have values
             const safePayload = {
                 barcode: payload.barcode || "",
                 brand: payload.brand || "",
@@ -1352,7 +1435,6 @@
 
                 displayResults(data, searchType);
 
-                // Show appropriate success message
                 if (searchType === 'barcode') {
                     showMessage('success', `Scanned barcode ${safePayload.barcode}`);
                 } else if (searchType === 'brand') {
@@ -1382,15 +1464,12 @@
             const resultCard = document.getElementById('resultCard');
             resultCard.style.display = 'block';
 
-            // Store current brand for methodology link
             currentBrand = data.brand;
 
-            // Brand and product info
             document.getElementById('brandName').innerText = data.brand || 'Unknown Brand';
             document.getElementById('productName').innerText = data.product_name || 'Unknown Product';
             document.getElementById('category').innerText = `Category: ${data.category || 'Unknown'}`;
 
-            // Show extraction badge if brand was extracted from product name
             const extractionBadge = document.getElementById('extractionBadge');
             if (data.brand_extraction_info && data.brand_extraction_info.extracted_from_name) {
                 const confidence = data.brand_extraction_info.confidence || 0;
@@ -1407,16 +1486,13 @@
                 extractionBadge.style.display = 'none';
             }
 
-            // Scores
             document.getElementById('scoreVal').innerText = data.overall_tbl_score?.toFixed(1) || '0.0';
             document.getElementById('gradeText').innerText = data.grade || 'UNKNOWN';
 
-            // Pillar scores
             document.getElementById('socScore').innerText = data.social_score?.toFixed(1) || '5.0';
             document.getElementById('envScore').innerText = data.environmental_score?.toFixed(1) || '5.0';
             document.getElementById('econScore').innerText = data.economic_score?.toFixed(1) || '5.0';
 
-            // Certifications
             const certsDiv = document.getElementById('certsList');
             const noCertsDiv = document.getElementById('noCerts');
             const excelDetailsDiv = document.getElementById('excelDetails');
@@ -1434,7 +1510,6 @@
 
             let certifications = [];
 
-            // Handle certifications from response
             if (Array.isArray(data.certifications)) {
                 certifications = data.certifications;
             } else if (data.certifications_detailed && typeof data.certifications_detailed === 'object') {
@@ -1455,12 +1530,10 @@
                 noCertsDiv.style.display = 'block';
             }
 
-            // Show Excel status
             if (data.found_in_excel) {
                 excelFoundStatus.style.display = 'inline';
                 excelNotFoundStatus.style.display = 'none';
 
-                // Show Excel details if available
                 if (data.excel_details) {
                     excelDetailsDiv.style.display = 'block';
                     let detailsHtml = '';
@@ -1485,10 +1558,8 @@
                 excelNotFoundStatus.style.display = 'inline';
             }
 
-            // Set certification source - UPDATED to reflect hardcoded + Excel
             document.getElementById('certSource').innerText = `Source: ${data.certification_source || 'Hardcoded Database + Excel Database'} • Base 5.0 + Certification Bonuses Only`;
 
-            // Show brand extraction info if available
             if (data.brand_extraction_info && data.brand_extraction_info.extracted_from_name) {
                 extractionInfoDiv.style.display = 'block';
                 let extractionHtml = '';
@@ -1512,7 +1583,6 @@
                 extractionDetailsContent.innerHTML = extractionHtml;
             }
 
-            // Add purchase button if user is logged in
             if (currentUser) {
                 const purchaseButton = document.createElement('button');
                 purchaseButton.className = 'danger';
@@ -1527,7 +1597,6 @@
                 purchaseButtonContainer.appendChild(purchaseButton);
             }
 
-            // Scroll to results
             resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
@@ -1565,7 +1634,6 @@
 
                 if (response.ok) {
                     showMessage('success', 'Purchase recorded to your history');
-                    // Update purchase button
                     const purchaseButton = document.querySelector('#purchaseButtonContainer button');
                     if (purchaseButton) {
                         purchaseButton.innerHTML = '✅ Purchase Saved!';
@@ -1596,7 +1664,6 @@
                 showLoading(false);
 
                 if (response.ok) {
-                    // Update stats
                     const statsDiv = document.getElementById('historyStats');
                     statsDiv.innerHTML = `
                         <h4>📊 Your Shopping Stats</h4>
@@ -1604,7 +1671,6 @@
                         <p><strong>Average TBL Score:</strong> ${data.average_tbl_score}</p>
                     `;
 
-                    // Display purchase list
                     const historyList = document.getElementById('historyList');
                     if (data.purchases && data.purchases.length > 0) {
                         let html = '<h4 style="color: #2e7d32; margin-bottom: 15px;">Recent Purchases:</h4>';
@@ -1656,7 +1722,6 @@
             hideMessages();
             currentBrand = null;
 
-            // Clear input fields
             document.getElementById('manualBarcode').value = '';
             document.getElementById('manualBrand').value = '';
             document.getElementById('manualProductName').value = '';
@@ -1735,7 +1800,6 @@
 
             const randomProduct = testProducts[Math.floor(Math.random() * testProducts.length)];
 
-            // Fill the product name field and trigger search
             document.getElementById('manualProductName').value = randomProduct;
             productNameSearch();
         }
@@ -1848,7 +1912,6 @@
                             Total records: ${result.total_records}
                         </div>`;
 
-                    // Refresh status
                     checkExcelStatus();
                 } else {
                     throw new Error(result.detail || 'Upload failed');
@@ -1866,7 +1929,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             debugLog("Page loaded. Testing API connection...");
 
-            // Test API connection
             fetch('/health')
                 .then(response => {
                     if (response.ok) {
@@ -1883,10 +1945,8 @@
                     showMessage('error', 'Cannot connect to backend API. Make sure it is running on port 8000.');
                 });
 
-            // Initialize user status
             updateUserStatus();
 
-            // NEW: Check camera support
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 const message = document.getElementById('camera-message');
                 message.innerHTML = '❌ Camera API not supported in this browser.<br>Try Chrome, Firefox, or Edge.';
@@ -1904,7 +1964,6 @@
 
         // Add keyboard shortcuts
         document.addEventListener('keydown', function(e) {
-            // Ctrl+Enter to submit barcode
             if (e.ctrlKey && e.key === 'Enter') {
                 if (document.getElementById('manualBarcode').value) {
                     manualScan();
@@ -1914,7 +1973,6 @@
                     productNameSearch();
                 }
             }
-            // Escape to clear results
             if (e.key === 'Escape') {
                 clearResults();
             }
