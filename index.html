@@ -911,7 +911,8 @@
                 </div>
 
                 <div class="debug-info" id="scannerDebug">
-                    Scanner status: Click "Start Scanner" to begin
+                    Scanner status: Click "Start Scanner" to begin •
+                    <a href="#" onclick="checkScannerHealth()" style="color: #2e7d32; text-decoration: underline;">Check Scanner Health</a>
                 </div>
 
                 <!-- Test barcode images -->
@@ -946,11 +947,11 @@
                 <div class="search-guide">
                     <!-- UPDATE 2: Updated subtitle to reflect consistent scoring -->
                     <h4>🔍 Consistent Scoring Across All Search Methods:</h4>
-                    <p><strong>✅ Guaranteed:</strong> Same brand always gets same score</p>
+                    <p><strong>✅ Single Scoring Function:</strong> Same brand always gets same score</p>
                     <p><strong>🔍 Barcode Scan:</strong> Full product info → Brand → Consistent score</p>
                     <p><strong>🔤 Brand Search:</strong> Direct lookup → Hardcoded/Excel score</p>
                     <p><strong>📝 Product Name:</strong> Brand extraction → Same score as brand search</p>
-                    <p class="tip">💡 System uses hardcoded scores first, then dynamic calculation</p>
+                    <p class="tip">💡 Single scoring function ensures consistency across all search methods</p>
                 </div>
 
                 <h3 style="color: #2e7d32; margin-bottom: 10px;">🔤 Search by Brand Name</h3>
@@ -967,11 +968,12 @@
 
                 <div class="methodology-info">
                     <!-- UPDATE 3: Updated methodology section -->
-                    <h4>📊 Consistent Scoring Methodology</h4>
+                    <h4>📊 Consistent Scoring Methodology v2.3.0</h4>
                     <p>• Base Score: 5.0 in each pillar</p>
-                    <p>• Hardcoded scores for consistency</p>
-                    <p>• Same brand → Same score always</p>
+                    <p>• Hardcoded scores prioritized for consistency</p>
+                    <p>• Same brand → Same score always (single scoring function)</p>
                     <p>• Parent company mapping (Cheerios → General Mills)</p>
+                    <p>• Multi-certification bonus automatically applied</p>
                     <button onclick="showMethodology()" class="info" style="margin-top: 10px;">📖 View Full Methodology</button>
                 </div>
 
@@ -1126,7 +1128,7 @@
 
                 <!-- UPDATE 5: Added consistency badge -->
                 <div style="text-align: center; margin: 10px 0;">
-                    <span class="consistency-badge">✅ Consistent Scoring Guaranteed</span>
+                    <span class="consistency-badge">✅ Single Scoring Function Guarantees Consistency</span>
                 </div>
 
                 <div class="transparency-link" style="margin-top: 15px;">
@@ -2204,7 +2206,14 @@
 
         // NEW FUNCTION: Test Dannon consistency
         function testDannonConsistency() {
+            // Use the existing test scoring endpoint
             window.open(`${API_BASE}/test/scoring/Dannon`, '_blank');
+
+            // Also show a message about consistency
+            showMessage('info', 'Testing Dannon consistency using scoring endpoint');
+
+            // Log to debug
+            debugLog('Testing Dannon consistency with existing backend endpoint');
         }
 
         // Test scoring methodology
@@ -2335,8 +2344,12 @@
                     throw new Error('Network response was not ok');
                 })
                 .then(data => {
-                    debugLog(`API connected: ${data.status} - ${data.message}`);
-                    showMessage('success', `Connected to consistent scoring system v2.3.0`);
+                    // UPDATE: Use the actual version from backend response
+                    debugLog(`API connected: ${data.status} - v${data.version}`);
+                    showMessage('success', `Connected to consistent scoring system v${data.version}`);
+
+                    // Log key backend info
+                    debugLog(`Backend: ${data.total_brands} brands, ${data.hardcoded_scores} hardcoded scores`);
                 })
                 .catch(() => {
                     debugLog('Cannot connect to backend API');
@@ -2368,6 +2381,20 @@
                 clearResults();
             }
         });
+
+        // NEW FUNCTION: Check scanner health
+        function checkScannerHealth() {
+            fetch('/scanner/health')
+                .then(response => response.json())
+                .then(data => {
+                    debugLog(`Scanner Health: ${data.scanner_system}`);
+                    showMessage('success', `Scanner system: ${data.scanner_system}`);
+                })
+                .catch(err => {
+                    debugLog('Scanner health check failed');
+                    showMessage('info', 'Scanner health endpoint not available');
+                });
+        }
     </script>
 </body>
 </html>

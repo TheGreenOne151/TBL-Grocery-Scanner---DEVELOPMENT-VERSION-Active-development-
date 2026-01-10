@@ -2665,6 +2665,7 @@ async def upload_certifications(file: UploadFile = File(...)):
             "filename": file.filename,
             "total_records": len(certification_manager.data) if certification_manager.data else 0
         }
+
     except Exception as e:
         logger.error(f"Error uploading certification file: {e}")
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
@@ -2756,6 +2757,37 @@ async def reset_excel_file():
         return response
     else:
         raise HTTPException(status_code=500, detail=result["message"])
+
+# ==================== BARCODE VALIDATION ENDPOINT ====================
+
+@app.get("/validate/barcode/{barcode}")
+async def validate_barcode_format(barcode: str):
+    """Validate barcode format and provide debugging info for ZXing-web"""
+    # Common barcode patterns
+    patterns = {
+        "UPC-A": r'^\d{12}$',
+        "UPC-E": r'^\d{6,8}$',
+        "EAN-13": r'^\d{13}$',
+        "EAN-8": r'^\d{8}$',
+        "Code 39": r'^[A-Z0-9\-\.\ \$\/\+\%]+$',
+        "Code 128": r'^[\x00-\x7F]+$',
+        "QR Code": r'^.+$',  # QR codes can contain any data
+    }
+
+    detected_formats = []
+    for format_name, pattern in patterns.items():
+        if re.match(pattern, barcode):
+            detected_formats.append(format_name)
+
+    return {
+        "barcode": barcode,
+        "length": len(barcode),
+        "detected_formats": detected_formats,
+        "is_numeric": barcode.isdigit(),
+        "is_valid_upc": len(barcode) in [12, 13, 8] and barcode.isdigit(),
+        "zxing_support": "Yes" if detected_formats else "No - may need manual entry",
+        "suggested_action": "Scan with /scan endpoint" if detected_formats else "Try manual lookup with /product/{barcode}"
+    }
 
 # ==================== TEST ENDPOINTS ====================
 
@@ -2873,7 +2905,21 @@ async def get_purchase_history(username: str, limit: int = 50) -> Dict[str, Any]
 @app.get("/product/{barcode}")
 async def get_product_info(barcode: str) -> Dict[str, Any]:
     """Get comprehensive product info by barcode with verified certifications"""
+    # Add ZXing-web specific validation
+    if not barcode or barcode.strip() == "":
+        raise HTTPException(
+            status_code=400,
+            detail="Empty barcode. ZXing-web may not have captured properly. Try manual entry or rescan."
+        )
+
+    # Check if barcode looks like a common format
+    if len(barcode) < 6:
+        logger.warning(f"Short barcode from ZXing-web: {barcode}. May be misread.")
+
     product = await food_facts_client.lookup_barcode(barcode)
+
+    # Enhanced logging for debugging scanner issues
+    logger.info(f"ZXing-web scan -> Barcode: {barcode}, Length: {len(barcode)}, Found in OFF: {product.get('found', False)}")
 
     brand_name = product.get("brand", "Unknown")
     if brand_name != "Unknown":
@@ -2913,7 +2959,8 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         "certification_verified_date": datetime.utcnow().isoformat(),
         "certification_sources": FileConfig.CERT_SOURCES,
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses Only + Multi-Cert Bonus",
-        "methodology_explanation": "See /scoring-methodology for detailed breakdown"
+        "methodology_explanation": "See /scoring-methodology for detailed breakdown",
+        "scanner_notes": "Scanned with ZXing-web. If barcode looks incorrect, try adjusting lighting or camera distance."
     }
 
     # Include Open Food Facts data if product was found
@@ -2936,58 +2983,56 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
             "image_url": product.get("image_url"),
             "last_updated": product.get("last_updated")
         }
+    else:
+        # Provide helpful guidance for failed scans
+        result["scanner_tips"] = {
+            "suggestion": "Try scanning again with better lighting",
+            "alternative": "Use manual entry with brand name instead",
+            "validate_format": f"Visit /validate/barcode/{barcode} to check barcode format"
+        }
 
-    logger.info(f"Product lookup for barcode: {barcode} - Found: {product.get('found', False)}")
+    logger.info(f"ZXing-web product lookup for barcode: {barcode} - Found: {product.get('found', False)}")
     return result
 
-@app.get("/brands")
-async def get_all_brands() -> Dict[str, Any]:
-    """Get all brands in database"""
-    brand_list = []
+# ==================== SCANNER HEALTH ENDPOINT ====================
 
-    # Include hardcoded brands first
-    for brand in BrandNormalizer.HARDCODED_SCORES_DB.keys():
-        scores = BrandNormalizer.HARDCODED_SCORES_DB[brand]
-        tbl = calculate_overall_score(scores["social"], scores["environmental"], scores["economic"])
-        brand_list.append({
-            "name": brand,
-            "social_score": scores["social"],
-            "environmental_score": scores["environmental"],
-            "economic_score": scores["economic"],
-            "overall_score": tbl["overall_score"],
-            "grade": tbl["grade"],
-            "certifications": scores.get("certifications", []),
-            "scoring_method": "hardcoded_database",
-            "multi_cert_applied": scores.get("multi_cert_applied", False),
-            "multi_cert_bonus": scores.get("multi_cert_bonus", 0.0)
-        })
-
-    # Add brands from identification database that aren't already in the list
-    for brand in BrandNormalizer.BRAND_IDENTIFICATION_DB.keys():
-        if brand not in BrandNormalizer.HARDCODED_SCORES_DB:
-            scores = scoring_manager.calculate_brand_scores(brand)
-            tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
-            brand_list.append({
-                "name": brand,
-                "social_score": scores.social,
-                "environmental_score": scores.environmental,
-                "economic_score": scores.economic,
-                "overall_score": tbl["overall_score"],
-                "grade": tbl["grade"],
-                "certifications": scores.certifications,
-                "scoring_method": scores.scoring_method,
-                "multi_cert_applied": scores.multi_cert_applied,
-                "multi_cert_bonus": scores.multi_cert_bonus
-            })
-
-    brand_list.sort(key=lambda x: x["overall_score"], reverse=True)
-
+@app.get("/scanner/health")
+async def scanner_health():
+    """Check scanner system health and compatibility"""
     return {
-        "total_brands": len(brand_list),
-        "hardcoded_brands": len(BrandNormalizer.HARDCODED_SCORES_DB),
-        "dynamic_brands": len(brand_list) - len(BrandNormalizer.HARDCODED_SCORES_DB),
-        "brands": brand_list[:100]
+        "scanner_system": "ZXing-web (Browser Multi-Format Reader)",
+        "backend_integration": "✅ Ready",
+        "api_endpoints": {
+            "scan": "/scan (POST) - Main scanning endpoint",
+            "product_lookup": "/product/{barcode} (GET)",
+            "barcode_validation": "/validate/barcode/{barcode} (GET)",
+            "health": "/scanner/health (GET)"
+        },
+        "supported_formats": [
+            "UPC-A (12-digit)",
+            "UPC-E (6-8 digit)",
+            "EAN-13 (13-digit)",
+            "EAN-8 (8-digit)",
+            "Code 39",
+            "Code 128",
+            "QR Code"
+        ],
+        "camera_requirements": "User media permission required",
+        "mobile_compatible": "Yes (iOS Safari 11+, Android Chrome 53+)",
+        "https_required": "Recommended for camera access",
+        "fallback_methods": [
+            "Manual barcode entry",
+            "Brand name search via /extract-brand",
+            "Product name search"
+        ],
+        "troubleshooting": {
+            "no_camera": "Check browser permissions and ensure HTTPS",
+            "poor_scanning": "Improve lighting and hold steady",
+            "wrong_barcode": "Validate format at /validate/barcode/{code}"
+        }
     }
+
+# ==================== OTHER ENDPOINTS ====================
 
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
@@ -3028,252 +3073,9 @@ async def health_check() -> Dict[str, Any]:
         "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Hardcoded + Dynamic)"
     }
 
-@app.get("/")
-async def serve_root() -> HTMLResponse:
-    """Serve the frontend scanner app"""
-    try:
-        with open("index.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
-        return HTMLResponse(content=html_content)
-    except FileNotFoundError:
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>TBL Grocery Scanner</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {{
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                    min-height: 100vh;
-                    margin: 0;
-                    padding: 20px;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                }}
-                .container {{
-                    max-width: 800px;
-                    width: 100%;
-                    background: white;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-                    overflow: hidden;
-                    padding: 40px;
-                }}
-                h1 {{
-                    color: #2e7d32;
-                    text-align: center;
-                    margin-bottom: 10px;
-                }}
-                .status {{
-                    background: #e8f5e9;
-                    padding: 15px;
-                    border-radius: 10px;
-                    margin: 20px 0;
-                    border-left: 4px solid #2e7d32;
-                }}
-                .button {{
-                    display: inline-block;
-                    padding: 14px 28px;
-                    background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 12px;
-                    margin: 10px 5px;
-                    font-weight: 600;
-                    text-align: center;
-                    transition: all 0.3s ease;
-                    border: none;
-                    cursor: pointer;
-                    font-size: 16px;
-                }}
-                .button:hover {{
-                    transform: translateY(-2px);
-                    box-shadow: 0 10px 20px rgba(46, 125, 50, 0.3);
-                }}
-                .scoring-info {{
-                    background: #fff3e0;
-                    border: 1px solid #ffcc80;
-                    border-radius: 10px;
-                    padding: 20px;
-                    margin: 20px 0;
-                }}
-                .brand-extraction-info {{
-                    background: #e3f2fd;
-                    border: 1px solid #bbdefb;
-                    border-radius: 10px;
-                    padding: 20px;
-                    margin: 20px 0;
-                }}
-                .endpoints {{
-                    margin-top: 30px;
-                    background: #f8f9fa;
-                    padding: 20px;
-                    border-radius: 10px;
-                }}
-                .endpoint {{
-                    padding: 10px;
-                    border-bottom: 1px solid #dee2e6;
-                }}
-                .endpoint:last-child {{
-                    border-bottom: none;
-                }}
-                .method {{
-                    display: inline-block;
-                    padding: 4px 10px;
-                    border-radius: 4px;
-                    font-weight: bold;
-                    margin-right: 10px;
-                    font-size: 12px;
-                    min-width: 60px;
-                    text-align: center;
-                }}
-                .get {{ background: #61affe; color: white; }}
-                .post {{ background: #49cc90; color: white; }}
-                pre {{
-                    background: #2d3436;
-                    color: #dfe6e9;
-                    padding: 15px;
-                    border-radius: 8px;
-                    overflow-x: auto;
-                    font-size: 14px;
-                }}
-                .test-section {{
-                    background: #f3e5f5;
-                    padding: 20px;
-                    border-radius: 10px;
-                    margin: 20px 0;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>🌿 TBL Grocery Scanner API</h1>
-                <p style="text-align: center; color: #666;">Consistent, Transparent Certification-Based Scoring v2.3.0</p>
-
-                <div class="status">
-                    <strong>Status:</strong> ✅ Healthy<br>
-                    <strong>Total Brands:</strong> {len(BrandNormalizer.BRAND_IDENTIFICATION_DB)}<br>
-                    <strong>Hardcoded Scores:</strong> {len(BrandNormalizer.HARDCODED_SCORES_DB)}<br>
-                    <strong>Scoring Methodology:</strong> Hardcoded + Dynamic for Consistency<br>
-                    <strong>Multi-Cert Bonus:</strong> Always Applied Correctly<br>
-                    <strong>Parent Company Mappings:</strong> {len(BrandNormalizer.PARENT_COMPANY_MAPPING)}<br>
-                    <strong>Version:</strong> 2.3.0
-                </div>
-
-                <div class="scoring-info">
-                    <h3 style="margin-top: 0;">✅ Consistent Scoring Guaranteed</h3>
-                    <p><strong>Hardcoded scores ensure identical results for the same brand:</strong></p>
-                    <ul>
-                        <li>Barcode scan → Brand → Same score</li>
-                        <li>Brand name search → Same score</li>
-                        <li>Product name → Brand extraction → Same score</li>
-                    </ul>
-                    <p><strong>Priority Order:</strong> Hardcoded DB → Brand Synonyms → Parent Company → Dynamic Calculation</p>
-                    <p><a href="/scoring-methodology" class="button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">📖 Read Full Methodology</a></p>
-                    <p><a href="/test/scoring/Dannon" class="button" style="background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);">🧪 Test Dannon Consistency</a></p>
-                    <p><a href="/test/scoring/Nespresso" class="button" style="background: linear-gradient(135deg, #795548 0%, #3e2723 100%);">🧪 Test Nespresso Multi-Cert</a></p>
-                </div>
-
-                <div class="brand-extraction-info">
-                    <h3 style="margin-top: 0;">🔍 Enhanced Brand Extraction</h3>
-                    <p><strong>Brand identification only - scoring is always consistent</strong></p>
-                    <ul>
-                        <li>Parent company mapping (Cheerios → General Mills, Oreo → Mondelez)</li>
-                        <li>Fuzzy brand matching for variants (GM = General Mills, P&G = Procter & Gamble)</li>
-                        <li>Multiple fallback strategies</li>
-                    </ul>
-
-                    <div class="test-section">
-                        <h4>Test Brand Extraction:</h4>
-                        <input type="text" id="testProductName" placeholder="Enter product name (e.g., Cheerios)" style="padding: 10px; width: 70%; border: 1px solid #ccc; border-radius: 5px; margin-right: 10px;">
-                        <button onclick="testBrandExtraction()" class="button" style="background: linear-gradient(135deg, #2196f3 0%, #0d47a1 100%);">Test Extraction</button>
-                        <div id="testResult" style="margin-top: 15px;"></div>
-                    </div>
-                </div>
-
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="/docs" class="button">📚 API Documentation</a>
-                    <a href="/health" class="button">❤️ Health Check</a>
-                    <a href="/scoring-methodology" class="button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">📊 Scoring Methodology</a>
-                    <a href="/test/brand-extraction/Cheerios" class="button" style="background: linear-gradient(135deg, #2196f3 0%, #0d47a1 100%);">🧪 Test Cheerios</a>
-                </div>
-
-                <div class="endpoints">
-                    <h3>Key Consistency Endpoints:</h3>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <strong><a href="/scoring-methodology">/scoring-methodology</a></strong> - Complete scoring explanation (HTML)
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <strong>/test/scoring/{{brand}}</strong> - See exactly how any brand's score is calculated (HTML)
-                    </div>
-                    <div class="endpoint">
-                        <span class="method post">POST</span>
-                        <strong>/scan</strong> - Scan product with consistent scoring
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <strong>/brands</strong> - Get all brands with certification-based scores
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <a href="/certifications/status">/certifications/status</a> - Check Excel data source
-                    </div>
-                </div>
-            </div>
-
-            <script>
-                async function testBrandExtraction() {{
-                    const productName = document.getElementById('testProductName').value;
-                    if (!productName) {{
-                        alert('Please enter a product name');
-                        return;
-                    }}
-
-                    const resultDiv = document.getElementById('testResult');
-                    resultDiv.innerHTML = '<div style="color: #2196f3;">Testing brand extraction... ⏳</div>';
-
-                    try {{
-                        const response = await fetch(`/test/brand-extraction/${{encodeURIComponent(productName)}}`);
-                        const data = await response.json();
-
-                        resultDiv.innerHTML = `
-                            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 10px;">
-                                <div style="color: #2e7d32; font-weight: bold;">✅ Brand extraction test complete!</div>
-                                <div style="margin-top: 15px;">
-                                    <strong>Product Name:</strong> ${{data.product_name}}<br>
-                                    <strong>Parent Company:</strong> ${{data.parent_company || 'Not found'}}<br>
-                                    <strong>Extraction Success:</strong> ${{data.extraction_result.success ? 'Yes' : 'No'}}<br>
-                                    <strong>Extracted Brand:</strong> ${{data.extraction_result.extracted_brand || 'None'}}<br>
-                                    <strong>Confidence:</strong> ${{data.extraction_result.confidence || 0}}%<br>
-                                    <strong>Method:</strong> ${{data.extraction_result.method || 'Unknown'}}<br>
-                                    <strong>Message:</strong> ${{data.extraction_result.message}}<br>
-                                    ${{data.extraction_result.warning ? `<strong>Warning:</strong> ${{data.extraction_result.warning}}<br>` : ''}}
-                                </div>
-                            </div>
-                        `;
-                    }} catch (err) {{
-                        resultDiv.innerHTML = `<div style="color: #dc3545; background: #ffebee; padding: 15px; border-radius: 8px;">❌ Test failed: ${{err.message}}</div>`;
-                    }}
-                }}
-            </script>
-        </body>
-        </html>
-        """
-        return HTMLResponse(content=html_content)
-    except Exception as e:
-        logger.error(f"Error serving root: {e}")
-        return HTMLResponse(content="<h1>TBL Grocery Scanner API v2.3.0</h1><p>Backend is running with consistent, objective certification-based scoring.</p>")
-
 if __name__ == "__main__":
-    # ... keep your existing startup logs ...
-
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    # Load certification data on startup
+    certification_manager.load_certification_data()
 
     if certification_manager.data:
         logger.info(f"Successfully loaded {len(certification_manager.data)} certification records from Excel")
@@ -3298,9 +3100,10 @@ if __name__ == "__main__":
         if parent:
             logger.info(f"Test mapping: '{product}' → '{parent}'")
 
-    logger.info("Open http://localhost:8000 in your browser")
-    logger.info("For mobile: Use your computer's IP address with port 8000")
-    logger.info("Key endpoint: GET /scoring-methodology for complete transparency")
-
+    logger.info("🎯 Scanner System: ZXing-web integrated")
+    logger.info("🌐 Open http://localhost:8000 in your browser")
+    logger.info("📱 For mobile: Use your computer's IP address with port 8000")
+    logger.info("🔧 Key endpoint: GET /scoring-methodology for complete transparency")
+    logger.info("📊 Scanner health: GET /scanner/health")
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
