@@ -962,6 +962,79 @@ class CertificationManager:
 
         return certifications
 
+    # ==================== ADD THIS NEW METHOD HERE ====================
+
+    @staticmethod
+    def _improved_partial_match(search_brand: str, stored_brand: str) -> bool:
+        """Improved brand matching with hybrid approach to prevent generic word mismatches"""
+        # Generic words that shouldn't trigger matches alone
+        GENERIC_WORDS = {
+            "value", "brand", "store", "market", "everyday", "organic",
+            "natural", "premium", "select", "choice", "essential", "basic",
+            "original", "classic", "traditional", "regular", "quality",
+            "fresh", "pure", "simple", "smart", "total", "complete"
+        }
+
+        # If one is substring of another (current behavior)
+        if stored_brand in search_brand or search_brand in stored_brand:
+            # Split into words
+            search_words = set(search_brand.split())
+            stored_words = set(stored_brand.split())
+            common_words = search_words & stored_words
+
+            # Remove generic words from consideration
+            meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
+
+            # Rule 1: At least 2 meaningful words match
+            if len(meaningful_common) >= 2:
+                return True
+
+            # Rule 2: For single meaningful word match, require it to be significant
+            if len(meaningful_common) == 1:
+                word = next(iter(meaningful_common))
+                # Word must be at least 4 chars and not too common
+                if len(word) >= 4:
+                    # Check if this is a known brand word from our databases
+                    known_brand_words = {
+                        "nespresso", "dannon", "activia", "oikos", "evian", "volvic",
+                        "starbucks", "cadbury", "dunkin", "hershey", "coca", "cola",
+                        "pepsi", "kraft", "heinz", "general", "mills", "kellogg",
+                        "mondelez", "unilever", "procter", "gamble", "johnson",
+                        "campbell", "tyson", "hormel", "danone", "nestle", "mars"
+                    }
+                    if word in known_brand_words:
+                        return True
+
+                    # For single-word brands, use similarity
+                    if len(search_words) == 1 and len(stored_words) == 1:
+                        from difflib import SequenceMatcher
+                        similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
+                        return similarity >= 0.8  # 80% similarity threshold
+
+            # If we get here but had substring match, it was based on generic words only
+            # Don't match based solely on generic words like "value"
+            return False
+
+        # Also check for word overlap (for cases like "ben jerry" vs "ben and jerry")
+        search_words = set(search_brand.split())
+        stored_words = set(stored_brand.split())
+        common_words = search_words & stored_words
+        meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
+
+        # Rule 3: At least 2 meaningful words overlap
+        if len(meaningful_common) >= 2:
+            return True
+
+        # Rule 4: Check if it's a known single-word brand with high similarity
+        if len(search_words) == 1 and len(stored_words) == 1:
+            from difflib import SequenceMatcher
+            similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
+            return similarity >= 0.8
+
+        return False
+
+    # ==================== END OF NEW METHOD ====================
+
     def get_certifications(self, brand: str) -> Dict[str, Any]:
         """Get certifications for a brand from Excel data"""
         # Reload data if never loaded or if more than 5 minutes old
@@ -983,19 +1056,15 @@ class CertificationManager:
             logger.info(f"Found exact match for '{brand}': {data['certifications']}")
             return self._format_response(True, data)
 
-        # Check for partial matches
+        # Check for partial matches with improved logic
         for stored_brand, data in self.data.items():
-            if stored_brand in brand_normalized or brand_normalized in stored_brand:
-                logger.info(f"Found partial match for '{brand}': stored as '{stored_brand}'")
+            if self._improved_partial_match(brand_normalized, stored_brand):
+                logger.info(f"Found improved partial match for '{brand}': stored as '{stored_brand}'")
                 return self._format_response(True, data)
 
-        # Check for brand variations
+        # Check for brand variations with improved logic
         for stored_brand, data in self.data.items():
-            stored_parts = set(stored_brand.split())
-            brand_parts = set(brand_normalized.split())
-
-            # Check if any part matches
-            if stored_parts & brand_parts:
+            if self._improved_partial_match(brand_normalized, stored_brand):
                 logger.info(f"Found brand variation match for '{brand}': stored as '{stored_brand}'")
                 return self._format_response(True, data)
 
