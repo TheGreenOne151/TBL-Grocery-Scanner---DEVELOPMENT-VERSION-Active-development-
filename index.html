@@ -1411,46 +1411,12 @@
                     };
 
                     if (offData.status === 1 && offData.product) {
-                        const product = offData.product;
-
-                        // Extract brand
-                        let brand = "";
-                        if (product.brands && product.brands.trim()) {
-                            brand = product.brands.split(',')[0].trim();
-                        } else if (product.brand_owner && product.brand_owner.trim()) {
-                            brand = product.brand_owner;
-                        } else if (product.brand && product.brand.trim()) {
-                            brand = product.brand;
-                        }
-
-                        // Extract product name
-                        let productName = product.product_name || product.product_name_en ||
-                                         product.generic_name || `Product ${code}`;
-
-                        // Extract category
-                        let category = "Unknown";
-                        if (product.categories) {
-                            category = product.categories.split(',')[0].trim();
-                        } else if (product.categories_tags && product.categories_tags.length > 0) {
-                            category = product.categories_tags[0].replace('en:', '').replaceAll('-', ' ');
-                        } else if (product.category && product.category.trim()) {
-                            category = product.category;
-                        }
-
-                        productPayload = {
-                            barcode: code,
-                            brand: brand || "Unknown Brand",
-                            product_name: productName,
-                            category: category
-                        };
-
-                        debugLog(`Found: ${productName} by ${brand || 'Unknown Brand'}`);
-                        showMessage('success', `Found: ${productName.substring(0, 30)}${productName.length > 30 ? '...' : ''}`);
+                        // ... existing code ...
                     } else {
                         // Product not in Open Food Facts
                         productPayload = {
                             barcode: code,
-                            brand: "Unknown Brand",
+                            brand: "",  // CHANGE TO EMPTY STRING
                             product_name: `Product ${code}`,
                             category: "Unknown"
                         };
