@@ -1036,7 +1036,7 @@
             }
         }
 
-        // UPDATED: startScanner function with Open Food Facts integration
+        // UPDATED: startScanner function with fixed Open Food Facts integration
         function startScanner() {
             if (!window.cameraEnabled) {
                 document.getElementById('scannerDebug').textContent =
@@ -1082,6 +1082,7 @@
                 document.getElementById('scannerDebug').style.display = 'block';
             });
 
+            // FIXED: Open Food Facts integration in the onDetected callback
             Quagga.onDetected(async (result) => {
                 const code = result.codeResult.code;
                 debugLog(`Barcode detected: ${code}`);
@@ -1094,19 +1095,21 @@
                 debugLog(`Fetching product data for barcode: ${code} from Open Food Facts...`);
 
                 try {
-                    const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-                    const offData = await offResponse.json();
+                    // Fetch from Open Food Facts
+                    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+                    const offData = await response.json();
 
                     let productPayload = {
                         barcode: code,
                         brand: "",
-                        product_name: "Scanned Product",
+                        product_name: `Scanned Product (${code})`,
                         category: "Unknown"
                     };
 
                     if (offData.status === 1 && offData.product) {
                         const product = offData.product;
 
+                        // Extract brand
                         let brand = "";
                         if (product.brands && product.brands.trim()) {
                             brand = product.brands.split(',')[0].trim();
@@ -1114,31 +1117,38 @@
                             brand = product.brand_owner;
                         }
 
+                        // Extract product name
+                        let productName = product.product_name || product.product_name_en || "Unknown Product";
+
+                        // Extract category
+                        let category = "Unknown";
+                        if (product.categories) {
+                            category = product.categories.split(',')[0].trim();
+                        } else if (product.categories_tags && product.categories_tags.length > 0) {
+                            category = product.categories_tags[0].replace('en:', '').replaceAll('-', ' ');
+                        }
+
                         productPayload = {
                             barcode: code,
-                            brand: brand || "",
-                            product_name: product.product_name || product.product_name_en || "Scanned Product",
-                            category: product.categories || product.categories_tags?.[0] || "Unknown"
+                            brand: brand,
+                            product_name: productName,
+                            category: category
                         };
 
-                        debugLog(`Open Food Facts data: Brand="${brand}", Name="${productPayload.product_name}", Category="${productPayload.category}"`);
+                        debugLog(`Open Food Facts data found: Brand="${brand}", Name="${productName}", Category="${category}"`);
+                        showMessage('success', `Found: ${productName} by ${brand || 'Unknown Brand'}`);
                     } else {
                         debugLog("Product not found in Open Food Facts, using default data");
+                        showMessage('info', 'Product not found in database. Using generic info.');
                     }
 
+                    // Send to backend for scoring
                     processScan(productPayload, 'barcode');
-
-                    setTimeout(() => {
-                        if (!scannerActive) {
-                            Quagga.start();
-                            scannerActive = true;
-                            debugLog("Scanner restarted after scan");
-                        }
-                    }, 2000);
 
                 } catch (error) {
                     debugLog(`Error fetching from Open Food Facts: ${error.message}`);
 
+                    // Fallback to generic info
                     const payload = {
                         barcode: code,
                         brand: "",
@@ -1147,15 +1157,16 @@
                     };
 
                     processScan(payload, 'barcode');
-
-                    setTimeout(() => {
-                        if (!scannerActive) {
-                            Quagga.start();
-                            scannerActive = true;
-                            debugLog("Scanner restarted after error");
-                        }
-                    }, 2000);
                 }
+
+                // Restart scanner after a delay
+                setTimeout(() => {
+                    if (!scannerActive) {
+                        Quagga.start();
+                        scannerActive = true;
+                        debugLog("Scanner restarted after scan");
+                    }
+                }, 2000);
             });
         }
 
