@@ -1085,19 +1085,19 @@ class CertificationManager:
         if brand_normalized in self.data:
             data = self.data[brand_normalized]
             logger.info(f"Found exact match for '{brand}': {data['certifications']}")
-            return self._format_response(True, data)
+            return self._format_response(True, data, brand)  # Add brand parameter
 
         # Check for partial matches with improved logic
         for stored_brand, data in self.data.items():
             if self._improved_partial_match(brand_normalized, stored_brand):
-                logger.info(f"Found improved partial match for '{brand}': stored as '{stored_brand}'")
-                return self._format_response(True, data)
+            logger.info(f"Found improved partial match for '{brand}': stored as '{stored_brand}'")
+            return self._format_response(True, data, brand)  # Add brand parameter
 
         # Check for brand variations with improved logic
         for stored_brand, data in self.data.items():
             if self._improved_partial_match(brand_normalized, stored_brand):
-                logger.info(f"Found brand variation match for '{brand}': stored as '{stored_brand}'")
-                return self._format_response(True, data)
+            logger.info(f"Found brand variation match for '{brand}': stored as '{stored_brand}'")
+            return self._format_response(True, data, brand)  # Add brand parameter
 
         # No match found
         logger.info(f"No match found for brand: '{brand}'")
@@ -1116,9 +1116,9 @@ class CertificationManager:
             "details": None
         }
 
-    def _format_response(self, found: bool, data: Dict) -> Dict[str, Any]:
-        """Format certification response"""
-        return {
+    def _format_response(self, found: bool, data: Dict, search_brand: str = None) -> Dict[str, Any]:
+        """Format certification response - returns canonical brand name when matched"""
+        response = {
             "found": found,
             "certifications": data['certifications'],
             "details": {
@@ -1126,6 +1126,13 @@ class CertificationManager:
                 "row_data": data.get('row_data', {})
             }
         }
+
+        # If we found a match and the original brand differs from search, include canonical
+        if found and search_brand and data['original_brand'].lower() != search_brand.lower():
+            response["canonical_brand"] = data['original_brand']
+            response["search_brand_used"] = search_brand
+
+        return response
 
 # ==================== SCORING MANAGER ====================
 
@@ -2653,11 +2660,19 @@ async def scan_product(product: Product) -> Dict[str, Any]:
     # Get certifications from Excel for display purposes
     cert_result = certification_manager.get_certifications(product.brand)
 
-    logger.info(f"Scan result for {product.brand}: score={tbl['overall_score']}, certs={scores.certifications}")
+    # Use canonical brand name if available (e.g., "Ben Jerry" → "Ben & Jerry's")
+    original_brand_for_logging = product.brand  # Keep original for logging
+    if cert_result.get("canonical_brand"):
+        original_brand = product.brand
+        product.brand = cert_result["canonical_brand"]
+        logger.info(f"Using canonical brand: '{original_brand}' → '{product.brand}'")
+        original_brand_for_logging = original_brand  # Keep original for the log message
+
+    logger.info(f"Scan result for {product.brand} (searched as: {original_brand_for_logging}): score={tbl['overall_score']}, certs={scores.certifications}")
 
     response_data = {
         "barcode": product.barcode,
-        "brand": product.brand,
+        "brand": product.brand,  # This is now the canonical brand (if corrected)
         "product_name": product.product_name,
         "category": product.category,
         "social_score": scores.social,
@@ -2682,10 +2697,17 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         "certification_sources": FileConfig.CERT_SOURCES,
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses Only + Multi-Cert Bonus",
         "methodology_explanation": "See /scoring-methodology for detailed breakdown",
-        "brand_extraction_info": brand_extraction_info
-    }
+        "brand_extraction_info": brand_extraction_info,
 
-    return response_data
+        # ============ ADD THESE NEW FIELDS ============
+        # Brand correction information
+        "original_search_brand": cert_result.get("search_brand_used", product.brand),  # What user actually searched
+        "brand_was_corrected": cert_result.get("canonical_brand") is not None,  # True if we corrected the brand
+        "brand_correction_note": f"Corrected to canonical brand: '{cert_result.get('canonical_brand')}'"
+                                 if cert_result.get("canonical_brand") else "No brand correction needed",
+
+        # ============ END OF NEW FIELDS ============
+    }
 
 @app.post("/extract-brand")
 async def extract_brand_endpoint(search: ProductSearch) -> Dict[str, Any]:
