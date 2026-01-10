@@ -1412,16 +1412,16 @@
 
                     if (offData.status === 1 && offData.product) {
                         // ... existing code ...
-                    } else {
-                        // Product not in Open Food Facts
-                        productPayload = {
-                            barcode: code,
-                            brand: "",  // CHANGE TO EMPTY STRING
-                            product_name: `Product ${code}`,
-                            category: "Unknown"
-                        };
-                        showMessage('info', 'Product not found in database. Using generic info.');
-                    }
+                      } else {
+                          // Product not in Open Food Facts
+                          productPayload = {
+                              barcode: code,
+                              brand: "",  // Good - empty string
+                              product_name: `Scanned Item`,  // Generic name that won't trigger extraction
+                              category: "Unknown"
+                          };
+                          showMessage('info', 'Product not found in database. Using generic info.');
+                      }
 
                     // 6. Process with backend
                     await processScan(productPayload, 'barcode');

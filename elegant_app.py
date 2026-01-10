@@ -1,6 +1,7 @@
 import os
 PORT = int(os.getenv("PORT", 8000))
 
+from urllib.parse import quote
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Set, ClassVar
 from datetime import datetime, timedelta
@@ -1189,7 +1190,7 @@ class OpenFoodFactsClient:
         """Enhanced search Open Food Facts by product name with better brand extraction"""
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
-                encoded_name = httpx.quote(product_name)
+                encoded_name = quote(product_name)
                 url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={encoded_name}&search_simple=1&action=process&json=1&page_size={max_results}"
 
                 response = await client.get(
