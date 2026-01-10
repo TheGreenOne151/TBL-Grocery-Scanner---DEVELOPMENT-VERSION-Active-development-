@@ -3073,6 +3073,61 @@ async def health_check() -> Dict[str, Any]:
         "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Hardcoded + Dynamic)"
     }
 
+# ==================== ADD THIS: Root endpoint to serve frontend ====================
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_frontend():
+    """Serve the frontend HTML file"""
+    try:
+        # Read the index.html file
+        with open("index.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content, status_code=200)
+    except FileNotFoundError:
+        # If index.html doesn't exist, serve a basic page with instructions
+        basic_html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>TBL Grocery Scanner</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+                h1 { color: #2e7d32; }
+                .container { max-width: 600px; margin: 0 auto; }
+                .card { background: #f8f9fa; padding: 30px; border-radius: 10px; border: 1px solid #dee2e6; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🌿 TBL Grocery Scanner Backend</h1>
+                <div class="card">
+                    <p>✅ Backend is running!</p>
+                    <p>To use the scanner, place <code>index.html</code> in the same directory as this Python file.</p>
+                    <p>📊 <a href="/health">Health Check</a></p>
+                    <p>📖 <a href="/scoring-methodology">Scoring Methodology</a></p>
+                    <p>🛠️ <a href="/scanner/health">Scanner Health</a></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=basic_html, status_code=200)
+
+# ==================== ALSO ADD THIS: Favicon endpoint ====================
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Serve favicon (return empty to avoid 404 errors)"""
+    # Return a minimal transparent PNG to avoid 404 errors
+    from fastapi.responses import Response
+    import base64
+
+    # A 1x1 transparent PNG
+    transparent_png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+
+    return Response(content=transparent_png, media_type="image/png")
+
 if __name__ == "__main__":
     # Load certification data on startup
     certification_manager.load_certification_data()
