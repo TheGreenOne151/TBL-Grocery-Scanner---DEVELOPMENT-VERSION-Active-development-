@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TBL Grocery Scanner - Transparent Certification Scoring</title>
-    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         /* ==================== */
         /* RESET & BASE STYLES  */
@@ -279,13 +279,9 @@
             border: 3px solid #2e7d32;
         }
 
-        #interactive.viewport canvas,
         #interactive.viewport video {
             width: 100%;
             height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
             object-fit: cover;
         }
 
@@ -893,6 +889,7 @@
                 <!-- Simplified scanner interface -->
                 <div id="scanner-ui">
                     <div id="interactive" class="viewport">
+                        <video id="scanner-video"></video>
                         <div class="scanner-overlay">
                             <div class="scanner-line"></div>
                             <div id="detectionIndicator" class="detection-indicator">🔍 Detecting...</div>
@@ -902,7 +899,7 @@
                     <div style="text-align: center; margin-top: 15px;">
                         <button onclick="startScanner()" id="startScannerBtn">🎬 Start Scanner</button>
                         <button onclick="stopScanner()" class="secondary">⏹️ Stop Scanner</button>
-                        <button onclick="testBarcodeScanner()" class="info" style="margin-top: 10px;">🧪 Test Scanner with Sample Barcode</button>
+                        <button onclick="testBarcodeScanner()" class="info" style="margin-top: 10px;">🧪 Test ZXing Scanner</button>
                     </div>
                 </div>
 
@@ -911,8 +908,8 @@
                 </div>
 
                 <div class="debug-info" id="scannerDebug">
-                    Scanner status: Click "Start Scanner" to begin •
-                    <a href="#" onclick="checkScannerHealth()" style="color: #2e7d32; text-decoration: underline;">Check Scanner Health</a>
+                    ZXing scanner status: Click "Start Scanner" to begin •
+                    <a href="#" onclick="checkScannerHealth()" style="color: #2e7d32; text-decoration: underline;">Check ZXing Scanner Health</a>
                 </div>
 
                 <!-- Test barcode images -->
@@ -1174,162 +1171,87 @@
     </div>
     <script>
         // ==================== //
-        // CRITICAL FIXES START //
+        // GLOBAL VARIABLES     //
         // ==================== //
-
-        // FIX 1: Declare scannerActive globally (was missing)
         let scannerActive = false;
-
-        // FIX 2: Remove all camera stream management - let Quagga handle it
-        // No more window.cameraStream or window.cameraEnabled variables
-
-        // FIX 3: Enhanced switchTab function to handle events properly
-        function switchTab(id) {
-            // Get event from window or arguments
-            const event = window.event || arguments[0];
-
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-
-            document.getElementById(id).classList.add('active');
-
-            // Set active tab with fallback if event not available
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            } else {
-                // Fallback: find the button that was clicked by checking onclick attribute
-                const tabs = document.querySelectorAll('.nav-tab');
-                tabs.forEach(tab => {
-                    if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes(id)) {
-                        tab.classList.add('active');
-                    }
-                });
-            }
-
-            if(id !== 'scan-sec' && scannerActive) {
-                stopScanner();
-            }
-
-            if (id === 'history-sec' && currentUser) {
-                loadPurchaseHistory();
-            }
-        }
-
-        // FIX 4: Remove resetCamera function - not needed anymore
+        let codeReader = null;
+        let currentStream = null;
 
         // ==================== //
-        // SIMPLIFIED SCANNER   //
+        // ZXING SCANNER SETUP  //
         // ==================== //
 
-        // FIX 5: Simplified startScanner function - Quagga handles camera permission
-        function startScanner() {
+        async function startScanner() {
             if (scannerActive) {
-                // If already active, restart it
-                Quagga.stop();
-                scannerActive = false;
-                setTimeout(initializeQuaggaScanner, 100);
+                stopScanner();
                 return;
             }
 
-            initializeQuaggaScanner();
-        }
-
-        // FIX 6: Enhanced Quagga configuration - let it handle camera access
-        function initializeQuaggaScanner() {
-            debugLog("Initializing Quagga scanner...");
-
-            // Check if Quagga is available
-            if (typeof Quagga === 'undefined') {
-                showMessage('error', 'Scanner library not loaded. Please refresh the page.');
+            const videoElement = document.getElementById('scanner-video');
+            if (!videoElement) {
+                showMessage('error', 'Scanner video element not found');
                 return;
             }
 
-            // IMPROVED Quagga configuration - simpler, no custom camera handling
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#interactive'),
-                    constraints: {
-                        facingMode: { ideal: "environment" },
-                        width: { min: 640, ideal: 1280 },
-                        height: { min: 480, ideal: 720 },
-                        aspectRatio: { ideal: 1.3333333333 }
-                    },
-                    area: {
-                        top: "25%",
-                        right: "15%",
-                        left: "15%",
-                        bottom: "25%"
-                    }
-                },
-                decoder: {
-                    readers: [
-                        "ean_reader",
-                        "ean_8_reader",
-                        "upc_reader",
-                        "upc_e_reader",
-                        "code_128_reader",
-                        "code_39_reader",
-                        "code_39_vin_reader",
-                        "codabar_reader",
-                        "i2of5_reader"
-                    ],
-                    debug: {
-                        drawBoundingBox: true,
-                        showFrequency: false,
-                        drawScanline: true,
-                        showPattern: false
-                    }
-                },
-                locate: true,
-                numOfWorkers: 2,
-                frequency: 30,
-                debug: {
-                    drawBoundingBox: false,
-                    showFrequency: false,
-                    drawScanline: false,
-                    showPattern: false
+            debugLog("Initializing ZXing scanner...");
+
+            try {
+                // Check if ZXing is available
+                if (typeof ZXing === 'undefined') {
+                    throw new Error('ZXing library not loaded');
                 }
-            }, function(err) {
-                if (err) {
-                    console.error('Scanner init error:', err);
 
-                    let errorMessage = 'Scanner error: ';
-                    if (err.name === 'NotAllowedError') {
-                        errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
-                    } else if (err.name === 'NotFoundError') {
-                        errorMessage = 'No camera found on this device. Use manual barcode entry instead.';
-                    } else if (err.name === 'NotReadableError') {
-                        errorMessage = 'Camera is in use by another application. Close other camera apps.';
-                    } else if (err.message.includes('could not start video source')) {
-                        errorMessage = 'Camera error: Could not start video. Try closing other camera apps.';
+                // Create ZXing reader
+                codeReader = new ZXing.BrowserMultiFormatReader();
+
+                // Get available video inputs
+                const videoInputDevices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+                debugLog(`Found ${videoInputDevices.length} video devices`);
+
+                // Get the rear-facing camera if available
+                let selectedDeviceId = null;
+                if (videoInputDevices.length > 0) {
+                    // Try to find a rear-facing camera
+                    const rearCamera = videoInputDevices.find(device =>
+                        device.label.toLowerCase().includes('back') ||
+                        device.label.toLowerCase().includes('rear') ||
+                        device.label.toLowerCase().includes('environment')
+                    );
+
+                    if (rearCamera) {
+                        selectedDeviceId = rearCamera.deviceId;
+                        debugLog(`Selected rear camera: ${rearCamera.label}`);
                     } else {
-                        errorMessage = 'Scanner error: ' + err.message;
+                        selectedDeviceId = videoInputDevices[0].deviceId;
+                        debugLog(`Selected first camera: ${videoInputDevices[0].label}`);
                     }
-
-                    showMessage('error', errorMessage);
-                    debugLog(`Scanner error: ${err.message}`);
-
-                    // Update UI to show error state
-                    const startBtn = document.getElementById('startScannerBtn');
-                    if (startBtn) {
-                        startBtn.textContent = '🎬 Start Scanner';
-                        startBtn.disabled = false;
-                    }
-
-                    return;
                 }
 
-                Quagga.start();
+                // Start decoding
+                await codeReader.decodeFromVideoDevice(
+                    selectedDeviceId,
+                    'scanner-video',
+                    async (result, error) => {
+                        if (result) {
+                            await handleBarcodeDetection(result.text, result.format);
+                        }
+                        if (error) {
+                            // Don't show errors for NotFoundException (normal scanning)
+                            if (!(error instanceof ZXing.NotFoundException)) {
+                                debugLog(`Scanner error: ${error.message}`);
+                            }
+                        }
+                    }
+                );
+
                 scannerActive = true;
                 showMessage('success', 'Scanner ready - point camera at barcode');
                 debugLog("Scanner started successfully");
 
-                document.getElementById('scannerDebug').innerText = 'Scanner status: Active - Scanning...';
+                document.getElementById('scannerDebug').innerText = 'ZXing scanner status: Active - Scanning...';
                 document.getElementById('scannerDebug').style.display = 'block';
 
-                // Update start button text
+                // Update UI
                 const startBtn = document.getElementById('startScannerBtn');
                 if (startBtn) {
                     startBtn.textContent = '🔄 Restart Scanner';
@@ -1345,163 +1267,145 @@
 
                 // Show test barcodes
                 document.getElementById('testBarcodes').style.display = 'block';
-            });
 
-            // Remove any existing listeners
-            Quagga.offDetected();
-            Quagga.offProcessed();
+              } catch (error) {
+                  console.error('ZXing scanner init error:', error);
 
-            // Add processed event for debugging
-            Quagga.onProcessed(function(result) {
-                const detectionIndicator = document.getElementById('detectionIndicator');
-                if (detectionIndicator && result && result.boxes) {
-                    detectionIndicator.classList.add('detection-pulse');
-                    setTimeout(() => {
-                        detectionIndicator.classList.remove('detection-pulse');
-                    }, 300);
+                  let errorMessage = 'ZXing Scanner error: ';
+                  if (error.name === 'NotAllowedError') {
+                      errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
+                  } else if (error.name === 'NotFoundError') {
+                      errorMessage = 'No camera found on this device. Use manual barcode entry instead.';
+                  } else if (error.name === 'NotReadableError') {
+                      errorMessage = 'Camera is in use by another application. Close other camera apps.';
+                  } else if (error.message.includes('could not start video source')) {
+                      errorMessage = 'ZXing camera error: Could not start video. Try closing other camera apps.';
+                  } else if (error.message.includes('ZXing')) {
+                      errorMessage = 'ZXing library error: ' + error.message;
+                  } else if (error.message.includes('decode')) {
+                      errorMessage = 'ZXing decoding error: ' + error.message;
+                  } else {
+                      errorMessage = 'ZXing scanner error: ' + error.message;
+                  }
+
+                  showMessage('error', errorMessage);
+                  debugLog(`ZXing scanner error: ${error.message}`);
+
+                // Update UI
+                const startBtn = document.getElementById('startScannerBtn');
+                if (startBtn) {
+                    startBtn.textContent = '🎬 Start Scanner';
+                    startBtn.disabled = false;
                 }
-            });
-
-            // FIXED: Proper barcode detection with auto-stop
-            Quagga.onDetected(async (result) => {
-                if (!result || !result.codeResult || !result.codeResult.code) {
-                    debugLog("Invalid scan result - no code detected");
-                    return;
-                }
-
-                const code = result.codeResult.code;
-                const format = result.codeResult.format || 'unknown';
-
-                debugLog(`✅ Barcode detected: ${code} (${format})`);
-
-                // Show visual feedback immediately
-                const detectionIndicator = document.getElementById('detectionIndicator');
-                if (detectionIndicator) {
-                    detectionIndicator.innerHTML = `✅ Detected: ${code}`;
-                    detectionIndicator.style.background = 'rgba(46, 125, 50, 0.9)';
-                }
-
-                // 1. STOP SCANNER IMMEDIATELY
-                Quagga.stop();
-                scannerActive = false;
-                document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped (processing...)';
-
-                // 2. Provide visual feedback
-                showMessage('success', `✅ Scanned ${format}: ${code}`);
-
-                // 3. Add visual feedback to scanner
-                const scannerDiv = document.getElementById('interactive');
-                scannerDiv.classList.add('scan-success');
-                setTimeout(() => scannerDiv.classList.remove('scan-success'), 500);
-
-                // 4. Show loading
-                showLoading(true);
-
-                try {
-                    // 5. Fetch from Open Food Facts
-                    debugLog(`Fetching product data for ${code}...`);
-                    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
-                    const offData = await response.json();
-
-                    let productPayload = {
-                        barcode: code,
-                        brand: "",
-                        product_name: "",
-                        category: "Unknown"
-                    };
-
-                    if (offData.status === 1 && offData.product) {
-                        // ... existing code ...
-                      } else {
-                          // Product not in Open Food Facts
-                          productPayload = {
-                              barcode: code,
-                              brand: "",  // Good - empty string
-                              product_name: `Scanned Item`,  // Generic name that won't trigger extraction
-                              category: "Unknown"
-                          };
-                          showMessage('info', 'Product not found in database. Using generic info.');
-                      }
-
-                    // 6. Process with backend
-                    await processScan(productPayload, 'barcode');
-
-                    // 7. Update scanner button for "Scan Another"
-                    const startBtn = document.getElementById('startScannerBtn');
-                    if (startBtn) {
-                        startBtn.textContent = '🔁 Scan Another Product';
-                        startBtn.classList.add('scan-again');
-                    }
-
-                } catch (error) {
-                    debugLog(`Error: ${error.message}`);
-                    showMessage('error', 'Scan failed. Try manual entry.');
-
-                    // Still show something
-                    const payload = {
-                        barcode: code,
-                        brand: "Scan Error",
-                        product_name: `Barcode: ${code}`,
-                        category: "Error"
-                    };
-                    await processScan(payload, 'barcode');
-                } finally {
-                    showLoading(false);
-                    // Reset detection indicator
-                    if (detectionIndicator) {
-                        detectionIndicator.innerHTML = '🔍 Detecting...';
-                        detectionIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
-                    }
-                }
-            });
+            }
         }
 
-        // NEW: Test barcode scanner function
+        async function handleBarcodeDetection(code, format) {
+            debugLog(`✅ ZXing detected: ${code} (${format})`);
+
+            // Show visual feedback immediately
+            const detectionIndicator = document.getElementById('detectionIndicator');
+            if (detectionIndicator) {
+                detectionIndicator.innerHTML = `✅ ZXing: ${format} - ${code}`;
+                detectionIndicator.style.background = 'rgba(46, 125, 50, 0.9)';
+            }
+
+            // 1. STOP SCANNER IMMEDIATELY
+            stopScanner();
+            document.getElementById('scannerDebug').innerText = 'ZXing scanner status: Stopped (processing...)';
+
+            // 2. Provide visual feedback
+            showMessage('success', `✅ ZXing scanned ${format}: ${code}`);
+
+            // 3. Add visual feedback to scanner
+            const scannerDiv = document.getElementById('interactive');
+            scannerDiv.classList.add('scan-success');
+            setTimeout(() => scannerDiv.classList.remove('scan-success'), 500);
+
+            // 4. Show loading
+            showLoading(true);
+
+            try {
+                // 5. Use backend API directly (backend will handle Open Food Facts if needed)
+                debugLog(`Sending barcode ${code} to backend for processing...`);
+
+                // Minimal payload - backend will do the extraction
+                const productPayload = {
+                    barcode: code,
+                    brand: "",  // Let backend extract brand
+                    product_name: `Scanned Barcode ${code}`,  // Generic name
+                    category: "Unknown"
+                };
+
+                showMessage('info', `Processing barcode ${code} with backend...`);
+
+                // 6. Process with backend
+                await processScan(productPayload, 'barcode');
+
+                // 7. Update scanner button for "Scan Another"
+                const startBtn = document.getElementById('startScannerBtn');
+                if (startBtn) {
+                    startBtn.textContent = '🔁 Scan Another Product';
+                    startBtn.classList.add('scan-again');
+                }
+
+            } catch (error) {
+                debugLog(`Error: ${error.message}`);
+                showMessage('error', 'Scan failed. Try manual entry or check backend connection.');
+
+                // Fallback to simple payload
+                const payload = {
+                    barcode: code,
+                    brand: "Scan Error",
+                    product_name: `Barcode: ${code}`,
+                    category: "Error"
+                };
+                await processScan(payload, 'barcode');
+            } finally {
+                showLoading(false);
+                // Reset detection indicator
+                if (detectionIndicator) {
+                    detectionIndicator.innerHTML = '🔍 Detecting...';
+                    detectionIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
+                }
+            }
+        }
+
         function testBarcodeScanner() {
-            // Simulate scanning a test barcode
+            // Test barcodes with ZXing format info
             const testBarcodes = [
-                '7613036925575', // EAN-13 test
-                '9780140157376', // Book EAN-13 test
-                '1234567890128', // Valid EAN-13 checksum
-                '4006381333931'  // Another valid EAN-13
+                {code: '7613036925575', format: 'EAN_13'}, // EAN-13 test
+                {code: '9780140157376', format: 'EAN_13'}, // Book EAN-13 test
+                {code: '1234567890128', format: 'EAN_13'}, // Valid EAN-13 checksum
+                {code: '4006381333931', format: 'EAN_13'}  // Another valid EAN-13
             ];
 
             const randomBarcode = testBarcodes[Math.floor(Math.random() * testBarcodes.length)];
 
-            // Simulate the scanning process
-            showMessage('info', `Testing scanner with barcode: ${randomBarcode}`);
-
-            // Create a mock detection result
-            const mockResult = {
-                codeResult: {
-                    code: randomBarcode,
-                    format: 'ean_13',
-                    decodedCodes: [{code: randomBarcode}]
-                }
-            };
+            // Simulate ZXing scanning process
+            showMessage('info', `Testing ZXing scanner with ${randomBarcode.format}: ${randomBarcode.code}`);
 
             // If scanner is active, stop it first
             if (scannerActive) {
-                Quagga.stop();
-                scannerActive = false;
+                stopScanner();
             }
 
             // Manually trigger the detection flow
             const detectionIndicator = document.getElementById('detectionIndicator');
             if (detectionIndicator) {
-                detectionIndicator.innerHTML = `✅ Detected: ${randomBarcode}`;
+                detectionIndicator.innerHTML = `✅ ZXing: ${randomBarcode.format} - ${randomBarcode.code}`;
                 detectionIndicator.style.background = 'rgba(46, 125, 50, 0.9)';
             }
 
-            showMessage('success', `✅ Test scan: ${randomBarcode}`);
+            showMessage('success', `✅ ZXing test scan (${randomBarcode.format}): ${randomBarcode.code}`);
             showLoading(true);
 
             // Simulate the process
             setTimeout(async () => {
                 const payload = {
-                    barcode: randomBarcode,
+                    barcode: randomBarcode.code,
                     brand: "Test Brand",
-                    product_name: "Test Product for Scanner",
+                    product_name: "Test Product for ZXing Scanner",
                     category: "Test"
                 };
 
@@ -1522,29 +1426,28 @@
             }, 1000);
         }
 
-        // ==================== //
-        // ORIGINAL CODE FOLLOWS //
-        // ==================== //
-
-        // Configuration
-        const API_BASE = window.location.origin;
-        let currentUser = null;
-        let authToken = null;
-        let currentBrand = null;
-
-        // FIX 7: Simplified stopScanner function - no camera stream management
         function stopScanner() {
-            if (scannerActive) {
-                if (typeof Quagga !== 'undefined') {
-                    Quagga.stop();
+            if (codeReader && scannerActive) {
+                try {
+                    codeReader.reset();
+                    codeReader = null;
+                } catch (error) {
+                    debugLog(`Error stopping scanner: ${error.message}`);
                 }
-                scannerActive = false;
-                debugLog("Scanner stopped");
-                showMessage('success', 'Scanner stopped');
             }
 
+            // Stop any active media stream
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+
+            scannerActive = false;
+            debugLog("ZXing scanner stopped");
+            showMessage('success', 'ZXing scanner stopped');
+
             // Update UI
-            document.getElementById('scannerDebug').innerText = 'Scanner status: Stopped';
+            document.getElementById('scannerDebug').innerText = 'ZXing scanner status: Stopped';
             document.getElementById('scannerDebug').style.display = 'block';
 
             // Show restart button
@@ -1564,6 +1467,16 @@
             document.getElementById('testBarcodes').style.display = 'none';
         }
 
+        // ==================== //
+        // ORIGINAL APP LOGIC   //
+        // ==================== //
+
+        // Configuration
+        const API_BASE = window.location.origin;
+        let currentUser = null;
+        let authToken = null;
+        let currentBrand = null;
+
         // Debug logging
         function debugLog(message) {
             console.log(`[DEBUG] ${message}`);
@@ -1571,6 +1484,35 @@
             if (debugDiv) {
                 debugDiv.innerHTML = message;
                 debugDiv.style.display = 'block';
+            }
+        }
+
+        // Tab switching
+        function switchTab(id) {
+            const event = window.event || arguments[0];
+
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+            document.getElementById(id).classList.add('active');
+
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            } else {
+                const tabs = document.querySelectorAll('.nav-tab');
+                tabs.forEach(tab => {
+                    if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes(id)) {
+                        tab.classList.add('active');
+                    }
+                });
+            }
+
+            if(id !== 'scan-sec' && scannerActive) {
+                stopScanner();
+            }
+
+            if (id === 'history-sec' && currentUser) {
+                loadPurchaseHistory();
             }
         }
 
@@ -2172,13 +2114,8 @@
 
         // NEW FUNCTION: Test Dannon consistency
         function testDannonConsistency() {
-            // Use the existing test scoring endpoint
             window.open(`${API_BASE}/test/scoring/Dannon`, '_blank');
-
-            // Also show a message about consistency
             showMessage('info', 'Testing Dannon consistency using scoring endpoint');
-
-            // Log to debug
             debugLog('Testing Dannon consistency with existing backend endpoint');
         }
 
@@ -2298,6 +2235,20 @@
             }
         }
 
+        // Check scanner health
+        function checkScannerHealth() {
+            fetch('/scanner/health')
+                .then(response => response.json())
+                .then(data => {
+                    debugLog(`Scanner Health: ${data.scanner_system}`);
+                    showMessage('success', `Scanner system: ${data.scanner_system}`);
+                })
+                .catch(err => {
+                    debugLog('Scanner health check failed');
+                    showMessage('info', 'Scanner health endpoint not available');
+                });
+        }
+
         // Auto-start on page load
         document.addEventListener('DOMContentLoaded', function() {
             debugLog("Page loaded. Testing API connection...");
@@ -2310,7 +2261,6 @@
                     throw new Error('Network response was not ok');
                 })
                 .then(data => {
-                    // UPDATE: Use the actual version from backend response
                     debugLog(`API connected: ${data.status} - v${data.version}`);
                     showMessage('success', `Connected to consistent scoring system v${data.version}`);
 
@@ -2347,20 +2297,6 @@
                 clearResults();
             }
         });
-
-        // NEW FUNCTION: Check scanner health
-        function checkScannerHealth() {
-            fetch('/scanner/health')
-                .then(response => response.json())
-                .then(data => {
-                    debugLog(`Scanner Health: ${data.scanner_system}`);
-                    showMessage('success', `Scanner system: ${data.scanner_system}`);
-                })
-                .catch(err => {
-                    debugLog('Scanner health check failed');
-                    showMessage('info', 'Scanner health endpoint not available');
-                });
-        }
     </script>
 </body>
 </html>
