@@ -7,7 +7,6 @@ import io
 from contextlib import redirect_stdout, redirect_stderr
 from collections import Counter
 import re
-from io import BytesIO
 import json
 import logging
 import asyncio
@@ -122,6 +121,7 @@ class FileConfig:
 class BrandData:
     """Brand scoring data container"""
 
+    brand: str  # ADD THIS FIELD
     social: float
     environmental: float
     economic: float
@@ -133,6 +133,7 @@ class BrandData:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "brand": self.brand,  # ADD THIS TO THE DICTIONARY
             "social": round(self.social, 2),
             "environmental": round(self.environmental, 2),
             "economic": round(self.economic, 2),
@@ -228,7 +229,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==================== PYDANTIC MODELS ====================
-
 
 class UserRegistration(BaseModel):
     username: str
@@ -1395,8 +1395,6 @@ class CertificationManager:
 
         return certifications
 
-    # ==================== ADD THIS NEW METHOD HERE ====================
-
     @staticmethod
     def _improved_partial_match(search_brand: str, stored_brand: str) -> bool:
         """Improved brand matching with hybrid approach to prevent generic word mismatches"""
@@ -1441,8 +1439,7 @@ class CertificationManager:
             if len(meaningful_common) >= 2:
                 return True
 
-            # Rule 2: For single meaningful word match, require it to be
-            # significant
+            # Rule 2: For single meaningful word match, require it to be significant
             if len(meaningful_common) == 1:
                 word = next(iter(meaningful_common))
                 # Word must be at least 4 chars and not too common
@@ -1484,8 +1481,6 @@ class CertificationManager:
 
                     # For single-word brands, use similarity
                     if len(search_words) == 1 and len(stored_words) == 1:
-                        from difflib import SequenceMatcher
-
                         similarity = SequenceMatcher(
                             None, search_brand, stored_brand
                         ).ratio()
@@ -1495,8 +1490,7 @@ class CertificationManager:
             # Don't match based solely on generic words like "value"
             return False
 
-        # Also check for word overlap (for cases like "ben jerry" vs "ben and
-        # jerry")
+        # Also check for word overlap (for cases like "ben jerry" vs "ben and jerry")
         search_words = set(search_brand.split())
         stored_words = set(stored_brand.split())
         common_words = search_words & stored_words
@@ -1506,10 +1500,7 @@ class CertificationManager:
         if len(meaningful_common) >= 2:
             return True
 
-        # ==================== NEW RULE 3A: Fuzzy word matching ===============
-
-        # For cases like "ben jerry" vs "ben and jerrys" where we have 1 exact match
-        # and the other words are similar
+        # Rule 4: Fuzzy word matching for cases like "ben jerry" vs "ben and jerrys"
         if len(meaningful_common) == 1:
             # Get the remaining meaningful words (excluding generic words)
             search_remaining = [
@@ -1525,8 +1516,6 @@ class CertificationManager:
 
             # If we have one word remaining in each, check similarity
             if len(search_remaining) == 1 and len(stored_remaining) == 1:
-                from difflib import SequenceMatcher
-
                 word1 = search_remaining[0]
                 word2 = stored_remaining[0]
 
@@ -1544,18 +1533,12 @@ class CertificationManager:
                             if len(s_word) >= 3 or len(t_word) >= 3:
                                 return True
 
-        # ==================== END OF NEW RULE ====================
-
-        # Rule 4: Check if it's a known single-word brand with high similarity
+        # Rule 5: Check if it's a known single-word brand with high similarity
         if len(search_words) == 1 and len(stored_words) == 1:
-            from difflib import SequenceMatcher
-
             similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
             return similarity >= 0.8
 
         return False
-
-    # ==================== END OF NEW METHOD ====================
 
     def get_certifications(self, brand: str) -> Dict[str, Any]:
         """Get certifications for a brand from Excel data"""
@@ -1570,9 +1553,7 @@ class CertificationManager:
 
         if not brand or brand.lower() in ["unknown", "n/a", ""]:
             logger.info("Empty brand requested, returning default certifications")
-            return (
-                self._get_default_response()
-            )  # FIXED: Same indentation as logger.info
+            return self._get_default_response()
 
         brand_normalized = BrandNormalizer.normalize(brand)
         logger.info(
@@ -1582,37 +1563,16 @@ class CertificationManager:
         # Check for exact match
         if brand_normalized in self.data:
             data = self.data[brand_normalized]
-            # FIXED: Same indentation
             logger.info(f"Found exact match for '{brand}': {data['certifications']}")
-            return self._format_response(True, data, brand)  # FIXED: Same indentation
+            return self._format_response(True, data, brand)
 
         # Check for partial matches with improved logic
         for stored_brand, data in self.data.items():
             if self._improved_partial_match(brand_normalized, stored_brand):
                 logger.info(
-                    f"Found improved partial match for '{brand}': stored as '{stored_brand}'"
+                    f"Found partial match for '{brand}': stored as '{stored_brand}'"
                 )
-                return self._format_response(True, data, brand)  # Add brand parameter
-
-        # Check for brand variations with improved logic
-        for stored_brand, data in self.data.items():
-            if self._improved_partial_match(brand_normalized, stored_brand):
-                logger.info(
-                    f"Found brand variation match for '{brand}': stored as '{stored_brand}'"
-                )
-                return self._format_response(True, data, brand)  # Add brand parameter
-
-        # No match found
-        logger.info(f"No match found for brand: '{brand}'")
-        return self._get_default_response()
-
-        # Check for brand variations with improved logic
-        for stored_brand, data in self.data.items():
-            if self._improved_partial_match(brand_normalized, stored_brand):
-                logger.info(
-                    f"Found brand variation match for '{brand}': stored as '{stored_brand}'"
-                )
-                return self._format_response(True, data, brand)  # Add brand parameter
+                return self._format_response(True, data, brand)
 
         # No match found
         logger.info(f"No match found for brand: '{brand}'")
@@ -1659,7 +1619,6 @@ class CertificationManager:
 
 # ==================== SCORING MANAGER ====================
 
-
 class ScoringManager:
     """Manage all scoring-related operations"""
 
@@ -1675,6 +1634,7 @@ class ScoringManager:
         # Handle empty/unknown brand
         if not brand or brand == "Unknown":
             return BrandData(
+                brand=brand,  # Add this line
                 social=ScoringConfig.BASE_SCORE,
                 environmental=ScoringConfig.BASE_SCORE,
                 economic=ScoringConfig.BASE_SCORE,
@@ -1690,7 +1650,8 @@ class ScoringManager:
             scores = BrandNormalizer.HARDCODED_SCORES_DB[brand_normalized]
             logger.info(f"Using hardcoded scores for '{brand_normalized}'")
             return BrandData(
-                social=scores["social"],
+                brand=brand,  # ADD THIS LINE
+                social=scores["social"],  # KEEP THIS ONE (remove the duplicate)
                 environmental=scores["environmental"],
                 economic=scores["economic"],
                 certifications=scores.get("certifications", []),
@@ -1709,6 +1670,7 @@ class ScoringManager:
                     f"Using hardcoded scores via synonym for '{brand_normalized}' → '{synonym_brand}'"
                 )
                 return BrandData(
+                    brand=brand,  # Add this line
                     social=scores["social"],
                     environmental=scores["environmental"],
                     economic=scores["economic"],
@@ -1730,6 +1692,7 @@ class ScoringManager:
                     f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'"
                 )
                 return BrandData(
+                    brand=brand,  # Add this line
                     social=scores["social"],
                     environmental=scores["environmental"],
                     economic=scores["economic"],
@@ -1781,6 +1744,7 @@ class ScoringManager:
         economic_score = min(10.0, economic_score)
 
         return BrandData(
+            brand=brand,  # Add this line
             social=social_score,
             environmental=environmental_score,
             economic=economic_score,
