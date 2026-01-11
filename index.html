@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TBL Grocery Scanner - Transparent Certification Scoring</title>
     <!-- OLD: -->
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
     <style>
         /* ==================== */
@@ -1198,39 +1198,61 @@
             debugLog("Initializing ZXing scanner...");
 
             try {
-                // Check if ZXing is available - NEW WAY
-                if (typeof window.ZXingBrowser === 'undefined') {
-                    // Try loading from global ZXing object
-                    if (typeof ZXing === 'undefined') {
-                        throw new Error('ZXing library not loaded. Try refreshing the page.');
+                // Check if ZXing is available
+                if (typeof window.ZXing === 'undefined') {
+                    throw new Error('ZXing library not loaded. Please refresh the page.');
+                }
+
+                // Log ZXing structure for debugging
+                console.log('ZXing object:', window.ZXing);
+
+                // Try different ways to find BrowserMultiFormatReader
+                let BrowserMultiFormatReader;
+                if (window.ZXing.BrowserMultiFormatReader) {
+                    BrowserMultiFormatReader = window.ZXing.BrowserMultiFormatReader;
+                    debugLog("Found BrowserMultiFormatReader in ZXing root");
+                } else if (window.ZXing.browser && window.ZXing.browser.BrowserMultiFormatReader) {
+                    BrowserMultiFormatReader = window.ZXing.browser.BrowserMultiFormatReader;
+                    debugLog("Found BrowserMultiFormatReader in ZXing.browser");
+                } else {
+                    // Try to find it in the global scope
+                    for (let key in window) {
+                        if (key.includes('BrowserMultiFormatReader')) {
+                            BrowserMultiFormatReader = window[key];
+                            debugLog(`Found BrowserMultiFormatReader as ${key}`);
+                            break;
+                        }
                     }
-                    // Check for BrowserMultiFormatReader in different locations
-                    if (!ZXing.BrowserMultiFormatReader && ZXing.browser && ZXing.browser.BrowserMultiFormatReader) {
-                        window.ZXingBrowser = ZXing.browser;
-                    } else if (ZXing.BrowserMultiFormatReader) {
-                        window.ZXingBrowser = ZXing;
-                    } else {
-                        throw new Error('ZXing library loaded but BrowserMultiFormatReader not found.');
+
+                    if (!BrowserMultiFormatReader) {
+                        throw new Error('BrowserMultiFormatReader not found in ZXing library');
                     }
                 }
 
-                // Create ZXing reader - NEW WAY
-                codeReader = new window.ZXingBrowser.BrowserMultiFormatReader();
-
+                // Create ZXing reader
+                codeReader = new BrowserMultiFormatReader();
                 debugLog("ZXing reader created successfully");
 
                 // Get available video inputs
-                const videoInputDevices = await window.ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
-                debugLog(`Found ${videoInputDevices.length} video devices`);
+                let videoInputDevices = [];
+                try {
+                    videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+                    debugLog(`Found ${videoInputDevices.length} video devices`);
+                } catch (deviceError) {
+                    debugLog(`Warning: Could not list video devices: ${deviceError.message}`);
+                    // Continue without device selection
+                }
 
-                // Get the rear-facing camera if available
+                // Get camera ID (use first available if we can't list devices)
                 let selectedDeviceId = null;
                 if (videoInputDevices.length > 0) {
                     // Try to find a rear-facing camera
                     const rearCamera = videoInputDevices.find(device =>
-                        device.label.toLowerCase().includes('back') ||
-                        device.label.toLowerCase().includes('rear') ||
-                        device.label.toLowerCase().includes('environment')
+                        device.label && (
+                            device.label.toLowerCase().includes('back') ||
+                            device.label.toLowerCase().includes('rear') ||
+                            device.label.toLowerCase().includes('environment')
+                        )
                     );
 
                     if (rearCamera) {
@@ -1242,6 +1264,9 @@
                     }
                 }
 
+                // Clear any previous video
+                videoElement.srcObject = null;
+
                 // Start decoding
                 await codeReader.decodeFromVideoDevice(
                     selectedDeviceId,
@@ -1252,8 +1277,8 @@
                         }
                         if (error) {
                             // Don't show errors for NotFoundException (normal scanning)
-                            if (!(error.name && error.name === 'NotFoundException')) {
-                                debugLog(`Scanner error: ${error.message || error}`);
+                            if (!error || !error.message || !error.message.includes('NotFoundException')) {
+                                debugLog(`Scanner error: ${error ? error.message : 'Unknown error'}`);
                             }
                         }
                     }
@@ -1285,6 +1310,7 @@
 
             } catch (error) {
                 console.error('ZXing scanner init error:', error);
+                console.error('Error stack:', error.stack);
 
                 let errorMessage = 'ZXing Scanner error: ';
                 if (error.name === 'NotAllowedError') {
@@ -1296,7 +1322,7 @@
                 } else if (error.message.includes('could not start video source')) {
                     errorMessage = 'ZXing camera error: Could not start video. Try closing other camera apps.';
                 } else if (error.message.includes('BrowserMultiFormatReader') || error.message.includes('ZXing')) {
-                    errorMessage = 'ZXing library error: ' + error.message + ' - Try using a different ZXing version.';
+                    errorMessage = 'ZXing library error: ' + error.message + '\nTry refreshing the page or using a different browser.';
                 } else if (error.message.includes('decode')) {
                     errorMessage = 'ZXing decoding error: ' + error.message;
                 } else {
@@ -1314,7 +1340,7 @@
                 }
             }
         }
-        
+
         async function handleBarcodeDetection(code, format) {
             debugLog(`✅ ZXing detected: ${code} (${format})`);
 
