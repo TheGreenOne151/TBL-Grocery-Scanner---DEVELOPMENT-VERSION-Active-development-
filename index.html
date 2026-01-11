@@ -857,6 +857,61 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #1b5e20;
         }
+
+        /* ==================== */
+        /* ENHANCED READABILITY */
+        /* ==================== */
+        /* Fix ALL light text on light backgrounds */
+        .excel-details,
+        .search-guide,
+        .methodology-info,
+        .result-box,
+        .history-item,
+        .product-info,
+        .no-certs,
+        .debug-info {
+            color: #000000 !important;
+        }
+
+        /* Make all headings bold and properly colored */
+        .excel-details h4,
+        .search-guide h4,
+        .methodology-info h4,
+        .result-box h4,
+        .history-item h4,
+        .product-info h3,
+        .product-info h4 {
+            font-weight: bold !important;
+            color: inherit !important;
+        }
+
+        /* Ensure paragraph text has good contrast */
+        .excel-details p,
+        .search-guide p,
+        .methodology-info p,
+        .result-box p,
+        .history-item p,
+        .product-info p,
+        .debug-info p,
+        .no-certs p {
+            color: #000000 !important;
+            font-weight: 500;
+        }
+
+        /* Fix specific colored text that should stay colored */
+        .excel-details h4 { color: #0d6efd !important; }
+        .search-guide h4 { color: #2e7d32 !important; }
+        .methodology-info h4 { color: #e65100 !important; }
+
+        /* Fix the tip text in search guide */
+        .search-guide .tip {
+            color: #333333 !important;
+        }
+
+        /* Fix extraction confidence badges */
+        .extraction-confidence {
+            color: #ffffff !important;
+        }
     </style>
 </head>
 <body>
