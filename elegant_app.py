@@ -3254,148 +3254,162 @@ async def login_user(login_data: LoginRequest) -> Dict[str, Any]:
 @app.post("/scan")
 async def scan_product(product: Product) -> Dict[str, Any]:
     """Scan product and return TBL scores with verified certifications"""
-    logger.info(
-        f"Scan request: barcode={product.barcode}, brand={product.brand}, name={product.product_name}"
-    )
-
-    brand_extraction_info = {
-        "extracted_from_name": False,
-        "reason": "Brand provided or insufficient product name",
-    }
-
-    # If barcode provided, try to get product info from Open Food Facts
-    if product.barcode and product.barcode.strip() != "":
-        product_info = await food_facts_client.lookup_barcode(product.barcode)
-        if product_info.get("found"):
-            # Use data from Open Food Facts
-            product.brand = product_info.get("brand", product.brand)
-            product.product_name = product_info.get("name", product.product_name)
-            product.category = product_info.get("category", product.category)
-
-    # If brand is empty/Unknown but product_name is provided, try to extract
-    # brand
-    if (
-        (not product.brand or product.brand == "Unknown")
-        and product.product_name
-        and product.product_name != "Generic Product"
-    ):
+    try:
         logger.info(
-            f"Attempting to extract brand from product name: {product.product_name}"
-        )
-        brand_extraction = (
-            await brand_extraction_manager.extract_brand_from_product_name(
-                product.product_name
-            )
+            f"Scan request: barcode={product.barcode}, brand={product.brand}, name={product.product_name}"
         )
 
-        if brand_extraction["success"]:
-            extracted_brand = brand_extraction["extracted_brand"]
-            logger.info(
-                f"Successfully extracted brand '{extracted_brand}' from product name '{product.product_name}'"
+        # Initialize with default values
+        brand_extraction_info = {
+            "extracted_from_name": False,
+            "reason": "Brand provided or insufficient product name",
+        }
+
+        product_name = product.product_name or "Unknown Product"
+        brand = product.brand or "Unknown"
+        barcode = product.barcode or ""
+        category = product.category or ""
+
+        # If barcode provided, try to get product info from Open Food Facts
+        if barcode and barcode.strip() != "":
+            try:
+                product_info = await food_facts_client.lookup_barcode(barcode)
+                if product_info.get("found"):
+                    # Use data from Open Food Facts
+                    brand = product_info.get("brand", brand)
+                    product_name = product_info.get("name", product_name)
+                    category = product_info.get("category", category)
+            except Exception as e:
+                logger.error(f"Barcode lookup error: {e}")
+                # Continue with original values
+
+        # If brand is empty/Unknown but product_name is provided, try to extract brand
+        if (not brand or brand == "Unknown") and product_name and product_name != "Generic Product":
+            logger.info(f"Attempting to extract brand from product name: {product_name}")
+            try:
+                brand_extraction = await brand_extraction_manager.extract_brand_from_product_name(product_name)
+
+                if brand_extraction["success"]:
+                    extracted_brand = brand_extraction["extracted_brand"]
+                    logger.info(f"Successfully extracted brand '{extracted_brand}' from product name '{product_name}'")
+
+                    brand = extracted_brand
+
+                    # Update extraction info
+                    brand_extraction_info = {
+                        "extracted_from_name": True,
+                        "confidence": brand_extraction.get("confidence", 0.5),
+                        "method": brand_extraction.get("method", "unknown"),
+                        "parent_company": brand_extraction.get("parent_company"),
+                        "warning": brand_extraction.get("warning"),
+                        "alternative_brands": brand_extraction.get("alternative_brands", []),
+                        "search_results": brand_extraction.get("search_results", {}),
+                    }
+                else:
+                    logger.warning(f"Failed to extract brand from product name: {brand_extraction.get('message', 'Unknown error')}")
+                    # Fallback: use product name as brand
+                    brand = product_name
+                    brand_extraction_info = {
+                        "extracted_from_name": False,
+                        "error": brand_extraction.get("message", "Brand extraction failed"),
+                    }
+            except Exception as e:
+                logger.error(f"Brand extraction error: {e}")
+                brand = product_name if product_name != "Generic Product" else "Unknown"
+
+        # Get scores - ensure this doesn't fail
+        try:
+            scores = scoring_manager.calculate_brand_scores(brand)
+        except Exception as e:
+            logger.error(f"Score calculation error for brand '{brand}': {e}")
+            # Return default scores
+            scores = BrandData(
+                brand=brand,
+                social=ScoringConfig.BASE_SCORE,
+                environmental=ScoringConfig.BASE_SCORE,
+                economic=ScoringConfig.BASE_SCORE,
+                certifications=[],
+                scoring_method="error_fallback",
+                notes=f"Error calculating scores: {str(e)}"
             )
 
-            # Update the product with extracted brand
-            product.brand = extracted_brand
+        # Calculate overall score
+        tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
 
-            # Also update product name if it was just a brand name
-            if brand_extraction["method"] in [
-                "direct_brand_recognition",
-                "brand_synonym_match",
-                "brand_alias_match",
-                "brand_in_input",
-                "fuzzy_match",
-            ]:
-                product.product_name = f"{extracted_brand} Product"
-                logger.info(
-                    f"Updated product name to '{product.product_name}' since input was a brand name"
-                )
-
-            # Add extraction info to response
-            brand_extraction_info = {
-                "extracted_from_name": True,
-                "confidence": brand_extraction["confidence"],
-                "method": brand_extraction.get("method", "unknown"),
-                "parent_company": brand_extraction.get("parent_company"),
-                "warning": brand_extraction.get("warning"),
-                "alternative_brands": brand_extraction.get("alternative_brands", []),
-                "search_results": brand_extraction.get("search_results", {}),
+        # Get certifications
+        try:
+            cert_result = certification_manager.get_certifications(brand)
+        except Exception as e:
+            logger.error(f"Certification lookup error: {e}")
+            cert_result = {
+                "found": False,
+                "details": {},
+                "search_brand_used": brand
             }
-        else:
-            logger.warning(
-                f"Failed to extract brand from product name: {brand_extraction['message']}"
-            )
-            brand_extraction_info = {
-                "extracted_from_name": False,
-                "error": brand_extraction["message"],
-                "method": brand_extraction.get("method", "none"),
-            }
-            # If we couldn't extract a brand, use the input as the brand name
-            # (fallback)
-            product.brand = product.product_name
 
-    # Get scores using the scoring manager
-    scores = scoring_manager.calculate_brand_scores(product.brand)
-    tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+        # Use canonical brand if available
+        original_brand = brand
+        canonical_brand = cert_result.get("canonical_brand")
+        if canonical_brand:
+            brand = canonical_brand
+            logger.info(f"Using canonical brand: '{original_brand}' → '{brand}'")
 
-    # Get certifications from Excel for display purposes
-    cert_result = certification_manager.get_certifications(product.brand)
+        logger.info(f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
 
-    # Use canonical brand name if available (e.g., "Ben Jerry" → "Ben &
-    # Jerry's")
-    original_brand_for_logging = product.brand  # Keep original for logging
-    if cert_result.get("canonical_brand"):
-        original_brand = product.brand
-        product.brand = cert_result["canonical_brand"]
-        logger.info(f"Using canonical brand: '{original_brand}' → '{product.brand}'")
-        original_brand_for_logging = original_brand  # Keep original for the log message
+        # Build response - ensure all values are not None
+        response_data = {
+            "barcode": barcode or "",
+            "brand": brand or "Unknown",
+            "product_name": product_name or "Unknown Product",
+            "category": category or "",
+            "social_score": float(scores.social) if hasattr(scores, 'social') else 0.0,
+            "environmental_score": float(scores.environmental) if hasattr(scores, 'environmental') else 0.0,
+            "economic_score": float(scores.economic) if hasattr(scores, 'economic') else 0.0,
+            "overall_tbl_score": float(tbl.get("overall_score", 0.0)),
+            "grade": tbl.get("grade", "UNKNOWN"),
+            "rating": tbl.get("grade", "UNKNOWN"),
+            "certifications": list(scores.certifications) if hasattr(scores, 'certifications') else [],
+            "certifications_detailed": {
+                "b_corp": "B Corp" in (scores.certifications if hasattr(scores, 'certifications') else []),
+                "fair_trade": "Fair Trade" in (scores.certifications if hasattr(scores, 'certifications') else []),
+                "rainforest_alliance": "Rainforest Alliance" in (scores.certifications if hasattr(scores, 'certifications') else []),
+                "leaping_bunny": "Leaping Bunny" in (scores.certifications if hasattr(scores, 'certifications') else []),
+            },
+            "certification_source": "Hardcoded Database (pre-calculated) + Excel Database (combined)",
+            "scoring_method": getattr(scores, 'scoring_method', 'error_fallback'),
+            "notes": getattr(scores, 'notes', 'Error processing request'),
+            "found_in_excel": cert_result.get("found", False),
+            "excel_details": cert_result.get("details", {}),
+            "certification_verified_date": datetime.utcnow().isoformat(),
+            "certification_sources": FileConfig.CERT_SOURCES,
+            "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses Only + Multi-Cert Bonus",
+            "methodology_explanation": "See /scoring-methodology for detailed breakdown",
+            "brand_extraction_info": brand_extraction_info,
+            "original_search_brand": cert_result.get("search_brand_used", original_brand),
+            "brand_was_corrected": canonical_brand is not None,
+            "brand_correction_note": f"Corrected to canonical brand: '{canonical_brand}'" if canonical_brand else "No brand correction needed",
+            "success": True,
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
-    logger.info(
-        f"Scan result for {product.brand} (searched as: {original_brand_for_logging}): score={tbl['overall_score']}, certs={scores.certifications}"
-    )
+        return response_data
 
-    response_data = {
-        "barcode": product.barcode,
-        # This is now the canonical brand (if corrected)
-        "brand": product.brand,
-        "product_name": product.product_name,
-        "category": product.category,
-        "social_score": scores.social,
-        "environmental_score": scores.environmental,
-        "economic_score": scores.economic,
-        "overall_tbl_score": tbl["overall_score"],
-        "grade": tbl["grade"],
-        "rating": tbl["grade"],
-        "certifications": scores.certifications,
-        "certifications_detailed": {
-            "b_corp": "B Corp" in scores.certifications,
-            "fair_trade": "Fair Trade" in scores.certifications,
-            "rainforest_alliance": "Rainforest Alliance" in scores.certifications,
-            "leaping_bunny": "Leaping Bunny" in scores.certifications,
-        },
-        "certification_source": "Hardcoded Database (pre-calculated) + Excel Database (combined)",
-        "scoring_method": scores.scoring_method,
-        "notes": scores.notes,
-        "found_in_excel": cert_result["found"],
-        "excel_details": cert_result["details"],
-        "certification_verified_date": datetime.utcnow().isoformat(),
-        "certification_sources": FileConfig.CERT_SOURCES,
-        "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses Only + Multi-Cert Bonus",
-        "methodology_explanation": "See /scoring-methodology for detailed breakdown",
-        "brand_extraction_info": brand_extraction_info,
-        # ============ ADD THESE NEW FIELDS ============
-        # Brand correction information
-        # What user actually searched
-        "original_search_brand": cert_result.get("search_brand_used", product.brand),
-        # True if we corrected the brand
-        "brand_was_corrected": cert_result.get("canonical_brand") is not None,
-        "brand_correction_note": (
-            f"Corrected to canonical brand: '{cert_result.get('canonical_brand')}'"
-            if cert_result.get("canonical_brand")
-            else "No brand correction needed"
-        ),
-        # ============ END OF NEW FIELDS ============
-    }
-
+    except Exception as e:
+        logger.error(f"Unhandled error in scan_product: {e}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e),
+            "barcode": getattr(product, 'barcode', ''),
+            "brand": getattr(product, 'brand', 'Unknown'),
+            "product_name": getattr(product, 'product_name', 'Unknown Product'),
+            "social_score": 0.0,
+            "environmental_score": 0.0,
+            "economic_score": 0.0,
+            "overall_tbl_score": 0.0,
+            "grade": "ERROR",
+            "certifications": [],
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 @app.post("/extract-brand")
 async def extract_brand_endpoint(search: ProductSearch) -> Dict[str, Any]:
@@ -3424,9 +3438,7 @@ async def test_brand_extraction_endpoint(product_name: str):
         "normalized_product_name": BrandNormalizer.normalize(product_name),
     }
 
-
 # ==================== EXCEL MANAGEMENT ENDPOINTS ====================
-
 
 @app.get("/certifications/status")
 async def get_certification_status():
