@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TBL Grocery Scanner - Transparent Certification Scoring</title>
+    <!-- OLD: -->
     <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
     <style>
         /* ==================== */
         /* RESET & BASE STYLES  */
@@ -1196,16 +1198,29 @@
             debugLog("Initializing ZXing scanner...");
 
             try {
-                // Check if ZXing is available
-                if (typeof ZXing === 'undefined') {
-                    throw new Error('ZXing library not loaded');
+                // Check if ZXing is available - NEW WAY
+                if (typeof window.ZXingBrowser === 'undefined') {
+                    // Try loading from global ZXing object
+                    if (typeof ZXing === 'undefined') {
+                        throw new Error('ZXing library not loaded. Try refreshing the page.');
+                    }
+                    // Check for BrowserMultiFormatReader in different locations
+                    if (!ZXing.BrowserMultiFormatReader && ZXing.browser && ZXing.browser.BrowserMultiFormatReader) {
+                        window.ZXingBrowser = ZXing.browser;
+                    } else if (ZXing.BrowserMultiFormatReader) {
+                        window.ZXingBrowser = ZXing;
+                    } else {
+                        throw new Error('ZXing library loaded but BrowserMultiFormatReader not found.');
+                    }
                 }
 
-                // Create ZXing reader
-                codeReader = new ZXing.BrowserMultiFormatReader();
+                // Create ZXing reader - NEW WAY
+                codeReader = new window.ZXingBrowser.BrowserMultiFormatReader();
+
+                debugLog("ZXing reader created successfully");
 
                 // Get available video inputs
-                const videoInputDevices = await ZXing.BrowserMultiFormatReader.listVideoInputDevices();
+                const videoInputDevices = await window.ZXingBrowser.BrowserMultiFormatReader.listVideoInputDevices();
                 debugLog(`Found ${videoInputDevices.length} video devices`);
 
                 // Get the rear-facing camera if available
@@ -1237,16 +1252,16 @@
                         }
                         if (error) {
                             // Don't show errors for NotFoundException (normal scanning)
-                            if (!(error instanceof ZXing.NotFoundException)) {
-                                debugLog(`Scanner error: ${error.message}`);
+                            if (!(error.name && error.name === 'NotFoundException')) {
+                                debugLog(`Scanner error: ${error.message || error}`);
                             }
                         }
                     }
                 );
 
                 scannerActive = true;
-                showMessage('success', 'Scanner ready - point camera at barcode');
-                debugLog("Scanner started successfully");
+                showMessage('success', 'ZXing scanner ready - point camera at barcode');
+                debugLog("ZXing scanner started successfully");
 
                 document.getElementById('scannerDebug').innerText = 'ZXing scanner status: Active - Scanning...';
                 document.getElementById('scannerDebug').style.display = 'block';
@@ -1268,28 +1283,28 @@
                 // Show test barcodes
                 document.getElementById('testBarcodes').style.display = 'block';
 
-              } catch (error) {
-                  console.error('ZXing scanner init error:', error);
+            } catch (error) {
+                console.error('ZXing scanner init error:', error);
 
-                  let errorMessage = 'ZXing Scanner error: ';
-                  if (error.name === 'NotAllowedError') {
-                      errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
-                  } else if (error.name === 'NotFoundError') {
-                      errorMessage = 'No camera found on this device. Use manual barcode entry instead.';
-                  } else if (error.name === 'NotReadableError') {
-                      errorMessage = 'Camera is in use by another application. Close other camera apps.';
-                  } else if (error.message.includes('could not start video source')) {
-                      errorMessage = 'ZXing camera error: Could not start video. Try closing other camera apps.';
-                  } else if (error.message.includes('ZXing')) {
-                      errorMessage = 'ZXing library error: ' + error.message;
-                  } else if (error.message.includes('decode')) {
-                      errorMessage = 'ZXing decoding error: ' + error.message;
-                  } else {
-                      errorMessage = 'ZXing scanner error: ' + error.message;
-                  }
+                let errorMessage = 'ZXing Scanner error: ';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'No camera found on this device. Use manual barcode entry instead.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = 'Camera is in use by another application. Close other camera apps.';
+                } else if (error.message.includes('could not start video source')) {
+                    errorMessage = 'ZXing camera error: Could not start video. Try closing other camera apps.';
+                } else if (error.message.includes('BrowserMultiFormatReader') || error.message.includes('ZXing')) {
+                    errorMessage = 'ZXing library error: ' + error.message + ' - Try using a different ZXing version.';
+                } else if (error.message.includes('decode')) {
+                    errorMessage = 'ZXing decoding error: ' + error.message;
+                } else {
+                    errorMessage = 'ZXing scanner error: ' + error.message;
+                }
 
-                  showMessage('error', errorMessage);
-                  debugLog(`ZXing scanner error: ${error.message}`);
+                showMessage('error', errorMessage);
+                debugLog(`ZXing scanner error: ${error.message}`);
 
                 // Update UI
                 const startBtn = document.getElementById('startScannerBtn');
@@ -1299,7 +1314,7 @@
                 }
             }
         }
-
+        
         async function handleBarcodeDetection(code, format) {
             debugLog(`✅ ZXing detected: ${code} (${format})`);
 
