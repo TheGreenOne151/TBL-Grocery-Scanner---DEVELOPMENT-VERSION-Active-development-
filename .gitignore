@@ -1,4 +1,3 @@
-# Create a COMPLETE .gitignore
 @"
 # Python
 __pycache__/
@@ -15,11 +14,16 @@ ENV/
 env.bak/
 venv.bak/
 
-# Logs and databases
-*.log
-*.sqlite3
+# Databases (LARGE FILES - DO NOT COMMIT)
+*.accdb
+*.mdb
+Access/
 *.db
-instance/
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
 
 # IDE and OS files
 .DS_Store
@@ -33,15 +37,25 @@ dmypy.json
 .tox/
 .hypothesis/
 .cache/
+instance/
 
-# Excel temporary files (Microsoft Office creates these)
+# Excel temporary files
 ~$*.xlsx
 ~$*.xls
 *.tmp
 *.temp
 .~*
 
-# Keep tracking our specific Excel files
-# (commented out the blanket *.xlsx rule)
-# *.xlsx
+# Documentation/backup files
+*.env
+*_commands.txt
+*_structure.txt
+*_rubric.*
+push.*
+Push_to_*
+CERT_SOURCES.txt
+License.txt
+
+# Our Excel data files ARE tracked (not ignored)
+# No *.xlsx line here!
 "@ | Out-File .gitignore -Encoding UTF8
