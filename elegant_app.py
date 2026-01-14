@@ -19,6 +19,21 @@ from typing import Optional, List, Dict, Any, Set, ClassVar
 from dataclasses import dataclass, field
 from urllib.parse import quote
 import os
+import math
+
+def safe_float(value, default=0.0):
+    """Convert any value to a JSON-safe float"""
+    try:
+        if value is None:
+            return default
+        # Convert to float first
+        num = float(value)
+        # Check for NaN or Infinity
+        if math.isnan(num) or math.isinf(num):
+            return default
+        return num
+    except (ValueError, TypeError):
+        return default
 
 PORT = int(os.getenv("PORT", 8000))
 
@@ -1632,9 +1647,9 @@ class ScoringManager:
         if not brand or brand == "Unknown":
             return BrandData(
                 brand=brand,  # Add this line
-                social=ScoringConfig.BASE_SCORE,
-                environmental=ScoringConfig.BASE_SCORE,
-                economic=ScoringConfig.BASE_SCORE,
+                social=safe_float(ScoringConfig.BASE_SCORE),
+                environmental=safe_float(ScoringConfig.BASE_SCORE),
+                economic=safe_float(ScoringConfig.BASE_SCORE),
                 certifications=[],
                 scoring_method="base_score_only",
                 notes="Base score of 5.0 (no brand identified)",
@@ -1647,14 +1662,14 @@ class ScoringManager:
             scores = BrandNormalizer.HARDCODED_SCORES_DB[brand_normalized]
             logger.info(f"Using hardcoded scores for '{brand_normalized}'")
             return BrandData(
-                brand=brand,  # ADD THIS LINE
-                social=scores["social"],  # KEEP THIS ONE (remove the duplicate)
-                environmental=scores["environmental"],
-                economic=scores["economic"],
+                brand=brand,
+                social=safe_float(scores["social"]),
+                environmental=safe_float(scores["environmental"]),
+                economic=safe_float(scores["economic"]),
                 certifications=scores.get("certifications", []),
                 scoring_method="hardcoded_database",
                 multi_cert_applied=scores.get("multi_cert_applied", False),
-                multi_cert_bonus=scores.get("multi_cert_bonus", 0.0),
+                multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
                 notes="Pre-calculated score from hardcoded database (includes multi-cert bonus if applicable)",
             )
 
@@ -1668,13 +1683,13 @@ class ScoringManager:
                 )
                 return BrandData(
                     brand=brand,  # Add this line
-                    social=scores["social"],
-                    environmental=scores["environmental"],
-                    economic=scores["economic"],
+                    social=safe_float(scores["social"]),
+                    environmental=safe_float(scores["environmental"]),
+                    economic=safe_float(scores["economic"]),
                     certifications=scores.get("certifications", []),
                     scoring_method="hardcoded_database_via_synonym",
                     multi_cert_applied=scores.get("multi_cert_applied", False),
-                    multi_cert_bonus=scores.get("multi_cert_bonus", 0.0),
+                    multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
                     notes=f"Pre-calculated score via brand synonym '{synonym_brand}'",
                 )
 
@@ -1689,14 +1704,14 @@ class ScoringManager:
                     f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'"
                 )
                 return BrandData(
-                    brand=brand,  # Add this line
-                    social=scores["social"],
-                    environmental=scores["environmental"],
-                    economic=scores["economic"],
+                    brand=brand,
+                    social=safe_float(scores["social"]),
+                    environmental=safe_float(scores["environmental"]),
+                    economic=safe_float(scores["economic"]),
                     certifications=scores.get("certifications", []),
                     scoring_method="parent_company_inheritance",
                     multi_cert_applied=scores.get("multi_cert_applied", False),
-                    multi_cert_bonus=scores.get("multi_cert_bonus", 0.0),
+                    multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
                     notes=f"Inherited score from parent company '{parent_company}'",
                 )
 
@@ -1742,19 +1757,18 @@ class ScoringManager:
 
         return BrandData(
             brand=brand,  # Add this line
-            social=social_score,
-            environmental=environmental_score,
-            economic=economic_score,
+            social=safe_float(social_score),
+            environmental=safe_float(environmental_score),
+            economic=safe_float(economic_score),
             certifications=all_certifications,
             scoring_method="dynamic_calculation",
-            multi_cert_applied=bonus_applied and len(all_certifications) > 1,
-            multi_cert_bonus=(
+            multi_cert_bonus=safe_float(
                 (len(all_certifications) - 1) * ScoringConfig.MULTI_CERT_BONUS
                 if bonus_applied and len(all_certifications) > 1
                 else 0.0
-            ),
-            notes="Base 5.0 + certification bonuses + multi-cert bonus (calculated dynamically)",
-        )
+        ),
+        notes="Base 5.0 + certification bonuses + multi-cert bonus (calculated dynamically)",
+    )
 
     @staticmethod
     def _get_all_certifications(brand: str) -> List[str]:
@@ -3286,9 +3300,9 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             # Return default scores
             scores = BrandData(
                 brand=brand,
-                social=ScoringConfig.BASE_SCORE,
-                environmental=ScoringConfig.BASE_SCORE,
-                economic=ScoringConfig.BASE_SCORE,
+                social=safe_float(ScoringConfig.BASE_SCORE),
+                environmental=safe_float(ScoringConfig.BASE_SCORE),
+                economic=safe_float(ScoringConfig.BASE_SCORE),
                 certifications=[],
                 scoring_method="error_fallback",
                 notes=f"Error calculating scores: {str(e)}"
@@ -3323,13 +3337,14 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "brand": brand or "Unknown",
             "product_name": product_name or "Unknown Product",
             "category": category or "",
-            "social_score": float(scores.social) if hasattr(scores, 'social') else 0.0,
-            "environmental_score": float(scores.environmental) if hasattr(scores, 'environmental') else 0.0,
-            "economic_score": float(scores.economic) if hasattr(scores, 'economic') else 0.0,
-            "overall_tbl_score": float(tbl.get("overall_score", 0.0)),
+            "social_score": safe_float(scores.social if hasattr(scores, 'social') else 0.0),
+            "environmental_score": safe_float(scores.environmental if hasattr(scores, 'environmental') else 0.0),
+            "economic_score": safe_float(scores.economic if hasattr(scores, 'economic') else 0.0),
+            "overall_tbl_score": safe_float(tbl.get("overall_score", 0.0)),
             "grade": tbl.get("grade", "UNKNOWN"),
             "rating": tbl.get("grade", "UNKNOWN"),
             "certifications": list(scores.certifications) if hasattr(scores, 'certifications') else [],
+
             "certifications_detailed": {
                 "b_corp": "B Corp" in (scores.certifications if hasattr(scores, 'certifications') else []),
                 "fair_trade": "Fair Trade" in (scores.certifications if hasattr(scores, 'certifications') else []),
@@ -3363,14 +3378,15 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "barcode": getattr(product, 'barcode', ''),
             "brand": getattr(product, 'brand', 'Unknown'),
             "product_name": getattr(product, 'product_name', 'Unknown Product'),
-            "social_score": 0.0,
-            "environmental_score": 0.0,
-            "economic_score": 0.0,
-            "overall_tbl_score": 0.0,
+            "social_score": safe_float(0.0),
+            "environmental_score": safe_float(0.0),
+            "economic_score": safe_float(0.0),
+            "overall_tbl_score": safe_float(0.0),
             "grade": "ERROR",
             "certifications": [],
             "timestamp": datetime.utcnow().isoformat()
         }
+
 
 @app.post("/extract-brand")
 async def extract_brand_endpoint(search: ProductSearch) -> Dict[str, Any]:
