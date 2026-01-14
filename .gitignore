@@ -1,19 +1,28 @@
+# Create a COMPLETE .gitignore
+@"
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Virtual environments
 env/
 venv/
 .venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Logs and databases
 *.log
 *.sqlite3
-.DS_Store
 *.db
 instance/
+
+# IDE and OS files
+.DS_Store
 .webassets-cache
 .coverage
 htmlcov/
@@ -24,11 +33,15 @@ dmypy.json
 .tox/
 .hypothesis/
 .cache/
-certifications.xlsx  # If you generate this file
-*.xlsx  # If you want to ignore all Excel files
 
-# Temporary/backup files
-~$*
+# Excel temporary files (Microsoft Office creates these)
+~$*.xlsx
+~$*.xls
 *.tmp
 *.temp
 .~*
+
+# Keep tracking our specific Excel files
+# (commented out the blanket *.xlsx rule)
+# *.xlsx
+"@ | Out-File .gitignore -Encoding UTF8
