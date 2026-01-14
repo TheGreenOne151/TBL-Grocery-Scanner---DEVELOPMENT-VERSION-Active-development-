@@ -26,3 +26,9 @@ dmypy.json
 .cache/
 certifications.xlsx  # If you generate this file
 *.xlsx  # If you want to ignore all Excel files
+
+# Temporary/backup files
+~$*
+*.tmp
+*.temp
+.~*
