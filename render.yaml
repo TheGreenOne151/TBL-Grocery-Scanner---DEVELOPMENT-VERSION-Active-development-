@@ -4,9 +4,13 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
-    startCommand: uvicorn elegant_app:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 300
+    buildCommand: |
+      python -m pip install --upgrade pip setuptools wheel
+      pip install -r requirements.txt
+    startCommand: gunicorn elegant_app:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
         value: "3.10.0"
+      - key: PORT
+        value: "10000"

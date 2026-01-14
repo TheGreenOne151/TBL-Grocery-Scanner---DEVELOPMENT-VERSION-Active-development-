@@ -1,3 +1,5 @@
+import sys
+import os
 from pydantic import BaseModel, field_validator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -106,8 +108,7 @@ class ScoringConfig:
 @dataclass
 class FileConfig:
     """Configuration for file paths"""
-
-    CERTIFICATION_EXCEL_FILE: ClassVar[str] = "certifications.xlsx"
+    CERTIFICATION_EXCEL_FILE: ClassVar[str] = "comprehensive_grocery_certifications.xlsx"  # CHANGED
     CREATE_EXCEL_SCRIPT: ClassVar[str] = "create_excel.py"
     CERT_SOURCES: ClassVar[Dict[str, str]] = {
         "b_corp": "https://www.bcorporation.net/en-us/find-a-b-corp/",
@@ -1291,26 +1292,19 @@ class CertificationManager:
 
                 cert_data = {}
                 for _, row in df.iterrows():
-                    # Try different possible column names for brand
+                    # Use "Product_Brand" column from new file
                     brand = None
-                    for possible_col in [
-                        "Brand",
-                        "brand",
-                        "Brand Name",
-                        "brand_name",
-                        "BRAND",
-                    ]:
-                        if possible_col in df.columns:
-                            brand = str(row.get(possible_col, "")).strip()
-                            if brand:
-                                break
+                    if "Product_Brand" in df.columns:
+                        brand_value = row.get("Product_Brand")
+                        if not pd.isna(brand_value):
+                            brand = str(brand_value).strip()
 
                     if not brand:
                         continue
 
                     brand_normalized = BrandNormalizer.normalize(brand)
 
-                    # Get certifications with flexible column name matching
+                    # Get certifications with exact column names
                     certifications = self._extract_certifications(row, df.columns)
 
                     # Store brand data
@@ -1348,20 +1342,23 @@ class CertificationManager:
     def _extract_certifications(self, row, columns) -> Dict[str, bool]:
         """Extract certifications from a row"""
         cert_mapping = {
-            "b_corp": ["B Corp", "b_corp", "B Corp Certification", "bcorp"],
+            "b_corp": ["B_Corp", "B Corp", "b_corp", "B Corp Certification", "bcorp"],
             "fair_trade": [
+                "Fair_Trade",
                 "Fair Trade",
                 "fair_trade",
                 "Fair Trade Certified",
                 "fairtrade",
             ],
             "rainforest_alliance": [
+                "Rainforest_Alliance",
                 "Rainforest Alliance",
                 "rainforest_alliance",
                 "Rainforest Alliance Certified",
                 "rainforest",
             ],
             "leaping_bunny": [
+                "Leaping_Bunny",
                 "Leaping Bunny",
                 "leaping_bunny",
                 "Cruelty Free",
@@ -3977,17 +3974,17 @@ async def favicon():
 
     return Response(content=transparent_png, media_type="image/png")
 
+# Load certification data on startup
+certification_manager.load_certification_data()
+
+if certification_manager.data:
+    logger.info(
+        f"Successfully loaded {len(certification_manager.data)} certification records from Excel"
+    )
+else:
+    logger.warning("No Excel certification data loaded")
 
 if __name__ == "__main__":
-    # Load certification data on startup
-    certification_manager.load_certification_data()
-
-    if certification_manager.data:
-        logger.info(
-            f"Successfully loaded {len(certification_manager.data)} certification records from Excel"
-        )
-    else:
-        logger.warning("No Excel certification data loaded")
 
     logger.info(
         f"Brand identification database has {len(BrandNormalizer.BRAND_IDENTIFICATION_DB)} brands"
@@ -4028,6 +4025,12 @@ if __name__ == "__main__":
     logger.info("📱 For mobile: Use your computer's IP address with port 8000")
     logger.info("🔧 Key endpoint: GET /scoring-methodology for complete transparency")
     logger.info("📊 Scanner health: GET /scanner/health")
-    import uvicorn
 
+    # Only run uvicorn directly when executing the script locally
+    # This block WON'T run when gunicorn imports the module
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
+
+# This line is needed for gunicorn to find the app variable
+# It should be at module level, outside the if __name__ block
+app = app

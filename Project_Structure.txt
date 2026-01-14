@@ -1,10 +1,10 @@
 your-project/
-├── elegant.app.py
-├── requirements.txt
-├── runtime.txt
-├── Procfile
-├── .gitignore
-+├── render.yaml          # ADD THIS FILE
-├── create_excel.py
-├── certifications.xlsx
-└── index.html
+├── elegant_app.py          # Your main app (with the code above)
+├── requirements.txt        # With all dependencies
+├── runtime.txt            # python-3.10.0
+├── Procfile              # With gunicorn and 2 workers
+├── .gitignore           # Updated
+├── render.yaml          # For Render deployment
+├── create_excel.py      # Your Excel creation script
+├── comprehensive_grocery_certifications.xlsx  # Your data file
+└── index.html          # Frontend HTML
