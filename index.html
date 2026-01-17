@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TBL Grocery Scanner - Transparent Certification Scoring</title>
-    <!-- OLD: -->
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
     <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
     <style>
         /* ==================== */
@@ -861,7 +859,8 @@
         /* ==================== */
         /* ENHANCED READABILITY */
         /* ==================== */
-        /* Fix ALL light text on light backgrounds */
+
+        /* Ensure good contrast for all text */
         .excel-details,
         .search-guide,
         .methodology-info,
@@ -870,10 +869,10 @@
         .product-info,
         .no-certs,
         .debug-info {
-            color: #000000 !important;
+            color: #212529; /* Dark gray instead of pure black */
         }
 
-        /* Make all headings bold and properly colored */
+        /* Make headings stand out */
         .excel-details h4,
         .search-guide h4,
         .methodology-info h4,
@@ -881,9 +880,13 @@
         .history-item h4,
         .product-info h3,
         .product-info h4 {
-            font-weight: bold !important;
-            color: inherit !important;
+            font-weight: 700 !important; /* Bold */
         }
+
+        /* Fix specific colored headings */
+        .excel-details h4 { color: #0d6efd !important; }
+        .search-guide h4 { color: #2e7d32 !important; }
+        .methodology-info h4 { color: #e65100 !important; }
 
         /* Ensure paragraph text has good contrast */
         .excel-details p,
@@ -894,21 +897,17 @@
         .product-info p,
         .debug-info p,
         .no-certs p {
-            color: #000000 !important;
-            font-weight: 500;
+            color: #495057; /* Medium gray for better readability */
+            font-weight: 400;
         }
 
-        /* Fix specific colored text that should stay colored */
-        .excel-details h4 { color: #0d6efd !important; }
-        .search-guide h4 { color: #2e7d32 !important; }
-        .methodology-info h4 { color: #e65100 !important; }
-
-        /* Fix the tip text in search guide */
+        /* Fix the tip text */
         .search-guide .tip {
-            color: #333333 !important;
+            color: #6c757d !important; /* Lighter gray for less important text */
+            font-style: italic;
         }
 
-        /* Fix extraction confidence badges */
+        /* Keep badges with white text */
         .extraction-confidence {
             color: #ffffff !important;
         }
@@ -1233,6 +1232,9 @@
         let scannerActive = false;
         let codeReader = null;
         let currentStream = null;
+        let currentUser = null;
+        let authToken = null;
+        let currentBrand = null; // FIX 1: Add missing currentBrand variable
 
         // ==================== //
         // ZXING SCANNER SETUP  //
@@ -1428,8 +1430,8 @@
                 // Minimal payload - backend will do the extraction
                 const productPayload = {
                     barcode: code,
-                    brand: "",  // Let backend extract brand
-                    product_name: `Scanned Barcode ${code}`,  // Generic name
+                    brand: "",  // Good - letting backend extract
+                    product_name: `Scanned Barcode ${code}`,  // This is okay
                     category: "Unknown"
                 };
 
@@ -1523,24 +1525,32 @@
         }
 
         function stopScanner() {
-            if (codeReader && scannerActive) {
+            // Stop ZXing scanner
+            if (codeReader && typeof codeReader.reset === 'function') {
                 try {
                     codeReader.reset();
                     codeReader = null;
                 } catch (error) {
-                    debugLog(`Error stopping scanner: ${error.message}`);
+                    debugLog(`Error stopping ZXing scanner: ${error.message}`);
                 }
             }
 
             // Stop any active media stream
             if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
+                currentStream.getTracks().forEach(track => {
+                    track.stop();
+                });
                 currentStream = null;
+            }
+
+            // Clear video element
+            const videoElement = document.getElementById('scanner-video');
+            if (videoElement && videoElement.srcObject) {
+                videoElement.srcObject = null;
             }
 
             scannerActive = false;
             debugLog("ZXing scanner stopped");
-            showMessage('success', 'ZXing scanner stopped');
 
             // Update UI
             document.getElementById('scannerDebug').innerText = 'ZXing scanner status: Stopped';
@@ -1551,6 +1561,7 @@
             if (startBtn) {
                 startBtn.textContent = '🎬 Start Scanner';
                 startBtn.classList.remove('scan-again');
+                startBtn.disabled = false;
             }
 
             // Hide detection indicator
@@ -1567,11 +1578,19 @@
         // ORIGINAL APP LOGIC   //
         // ==================== //
 
-        // Configuration
-        const API_BASE = window.location.origin;
-        let currentUser = null;
-        let authToken = null;
-        let currentBrand = null;
+        // Configure API base URL
+        const API_BASE = (() => {
+            // Try to detect if we're in development vs production
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                // Development - backend on port 8000
+                return 'http://localhost:8000';
+            } else {
+                // Production - assume same origin
+                return window.location.origin;
+            }
+        })();
+
+        console.log(`API Base URL: ${API_BASE}`);
 
         // Debug logging
         function debugLog(message) {
@@ -1686,7 +1705,7 @@
 
             try {
                 showLoading(true);
-                const response = await fetch('/auth/register', {
+                const response = await fetch(`${API_BASE}/auth/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, email, password })
@@ -1731,7 +1750,7 @@
 
             try {
                 showLoading(true);
-                const response = await fetch('/auth/login', {
+                const response = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -1806,7 +1825,7 @@
             debugLog(`Sending ${searchType} payload: ${JSON.stringify(safePayload)}`);
 
             try {
-                const response = await fetch('/scan', {
+                const response = await fetch(`${API_BASE}/scan`, {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify(safePayload)
@@ -1862,7 +1881,7 @@
             resultCard.style.display = 'block';
             resultCard.classList.add('showing');
 
-            currentBrand = data.brand;
+            currentBrand = data.brand; // FIX 2: Now currentBrand is defined
 
             document.getElementById('brandName').innerText = data.brand || 'Unknown Brand';
             document.getElementById('productName').innerText = data.product_name || 'Unknown Product';
@@ -2027,7 +2046,7 @@
 
             try {
                 showLoading(true);
-                const response = await fetch(`/purchase?username=${currentUser}`, {
+                const response = await fetch(`${API_BASE}/purchase?username=${currentUser}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(productData)
@@ -2063,7 +2082,7 @@
 
             try {
                 showLoading(true);
-                const response = await fetch(`/history/${currentUser}?limit=20`);
+                const response = await fetch(`${API_BASE}/history/${currentUser}?limit=20`);
                 const data = await response.json();
                 showLoading(false);
 
@@ -2145,8 +2164,8 @@
             const payload = {
                 barcode: barcode,
                 brand: "",
-                product_name: "Barcode Lookup",
-                category: "Unknown"
+                product_name: `Barcode: ${barcode}`,
+                category: ""
             };
 
             processScan(payload, 'barcode');
@@ -2190,7 +2209,7 @@
             processScan(payload, 'product');
         }
 
-        // Test brand extraction
+        // FIX 3: Add missing testBrandExtraction function
         function testBrandExtraction() {
             const testProducts = [
                 "Oreo Chocolate Sandwich Cookies",
@@ -2223,7 +2242,7 @@
         // Check Excel status
         async function checkExcelStatus() {
             try {
-                const response = await fetch('/certifications/status');
+                const response = await fetch(`${API_BASE}/certifications/status`);
                 const data = await response.json();
 
                 const statusDiv = document.getElementById('excelStatus');
@@ -2250,7 +2269,7 @@
         // Verify Excel script
         async function verifyExcelScript() {
             try {
-                const response = await fetch('/certifications/verify-script');
+                const response = await fetch(`${API_BASE}/certifications/verify-script`);
                 const data = await response.json();
 
                 const statusDiv = document.getElementById('excelStatus');
@@ -2303,7 +2322,7 @@
 
             try {
                 showLoading(true);
-                const response = await fetch('/certifications/upload', {
+                const response = await fetch(`${API_BASE}/certifications/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -2333,7 +2352,7 @@
 
         // Check scanner health
         function checkScannerHealth() {
-            fetch('/scanner/health')
+            fetch(`${API_BASE}/scanner/health`)
                 .then(response => response.json())
                 .then(data => {
                     debugLog(`Scanner Health: ${data.scanner_system}`);
@@ -2349,7 +2368,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             debugLog("Page loaded. Testing API connection...");
 
-            fetch('/health')
+            fetch(`${API_BASE}/health`)
                 .then(response => {
                     if (response.ok) {
                         return response.json();
