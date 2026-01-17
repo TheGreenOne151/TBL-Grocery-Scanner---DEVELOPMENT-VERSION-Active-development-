@@ -1424,38 +1424,59 @@
             showLoading(true);
 
             try {
-                // 5. Use backend API directly (backend will handle Open Food Facts if needed)
-                debugLog(`Sending barcode ${code} to backend for processing...`);
+                // 5. FIRST: Look up barcode in Open Food Facts via backend
+                debugLog(`Looking up barcode ${code} in Open Food Facts...`);
+                showMessage('info', `Looking up product ${code}...`);
 
-                // Minimal payload - backend will do the extraction
-                const productPayload = {
-                    barcode: code,
-                    brand: "",  // Good - letting backend extract
-                    product_name: `Scanned Barcode ${code}`,  // This is okay
-                    category: "Unknown"
-                };
+                const productResponse = await fetch(`${API_BASE}/product/${code}`);
+                const productData = await productResponse.json();
 
-                showMessage('info', `Processing barcode ${code} with backend...`);
+                if (productData.found) {
+                    // Found in Open Food Facts - use real product data
+                    debugLog(`Found in Open Food Facts: ${productData.name} by ${productData.brand}`);
+                    showMessage('success', `Found: ${productData.name}`);
 
-                // 6. Process with backend
-                await processScan(productPayload, 'barcode');
+                    const productPayload = {
+                        barcode: code,
+                        brand: productData.brand,
+                        product_name: productData.name,
+                        category: productData.category || "Unknown"
+                    };
 
-                // 7. Update scanner button for "Scan Another"
-                const startBtn = document.getElementById('startScannerBtn');
-                if (startBtn) {
-                    startBtn.textContent = '🔁 Scan Another Product';
-                    startBtn.classList.add('scan-again');
+                    await processScan(productPayload, 'barcode');
+                } else {
+                    // Not found in Open Food Facts - ask user for product name
+                    debugLog(`Not found in Open Food Facts for barcode ${code}`);
+                    showMessage('info', 'Product not found. Please enter product name.');
+
+                    // Hide scanner UI
+                    document.getElementById('scanner-ui').style.display = 'none';
+
+                    // Show product name input form
+                    const productNameForm = `
+                        <div id="productNameForm" style="margin-top: 20px;">
+                            <h4 style="color: #2e7d32; margin-bottom: 10px;">Product Not Found in Database</h4>
+                            <p style="color: #666; margin-bottom: 15px;">Barcode ${code} was not found in Open Food Facts. Please enter the product name:</p>
+                            <input type="text" id="manualProductNameInput" placeholder="Enter product name (e.g., Oreo Chocolate Cookies)" style="width: 100%; padding: 15px; margin-bottom: 10px; border: 2px solid #e9ecef; border-radius: 10px;">
+                            <div style="display: flex; gap: 10px;">
+                                <button onclick="submitManualProductName('${code}')" style="flex: 1; padding: 15px; background: #2e7d32; color: white; border: none; border-radius: 10px; font-weight: bold;">Submit</button>
+                                <button onclick="cancelManualEntry()" class="secondary" style="flex: 1; padding: 15px;">Cancel</button>
+                            </div>
+                        </div>
+                    `;
+
+                    document.getElementById('scan-sec').innerHTML += productNameForm;
                 }
 
             } catch (error) {
                 debugLog(`Error: ${error.message}`);
-                showMessage('error', 'Scan failed. Try manual entry or check backend connection.');
+                showMessage('error', 'Lookup failed. Try manual entry or check backend connection.');
 
-                // Fallback to simple payload
+                // Fallback to simple payload with error note
                 const payload = {
                     barcode: code,
-                    brand: "Scan Error",
-                    product_name: `Barcode: ${code}`,
+                    brand: "Lookup Error",
+                    product_name: `Product lookup failed for ${code}`,
                     category: "Error"
                 };
                 await processScan(payload, 'barcode');
@@ -1467,6 +1488,49 @@
                     detectionIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
                 }
             }
+        }
+
+        // Helper function to submit manual product name
+        function submitManualProductName(barcode) {
+            const productName = document.getElementById('manualProductNameInput').value.trim();
+
+            if (!productName) {
+                showMessage('error', 'Please enter a product name');
+                return;
+            }
+
+            // Remove the form
+            document.getElementById('productNameForm').remove();
+
+            // Show scanner UI again
+            document.getElementById('scanner-ui').style.display = 'block';
+
+            // Process with the manually entered product name
+            const payload = {
+                barcode: barcode,
+                brand: "", // Let backend extract from product name
+                product_name: productName,
+                category: "General"
+            };
+
+            processScan(payload, 'barcode');
+        }
+
+        // Helper function to cancel manual entry
+        function cancelManualEntry() {
+            // Remove the form
+            document.getElementById('productNameForm').remove();
+
+            // Show scanner UI again
+            document.getElementById('scanner-ui').style.display = 'block';
+
+            // Reset scanner button
+            const startBtn = document.getElementById('startScannerBtn');
+            if (startBtn) {
+                startBtn.textContent = '🎬 Start Scanner';
+            }
+
+            showMessage('info', 'Manual entry cancelled');
         }
 
         function testBarcodeScanner() {
@@ -1488,40 +1552,43 @@
                 stopScanner();
             }
 
-            // Manually trigger the detection flow
-            const detectionIndicator = document.getElementById('detectionIndicator');
-            if (detectionIndicator) {
-                detectionIndicator.innerHTML = `✅ ZXing: ${randomBarcode.format} - ${randomBarcode.code}`;
-                detectionIndicator.style.background = 'rgba(46, 125, 50, 0.9)';
-            }
-
-            showMessage('success', `✅ ZXing test scan (${randomBarcode.format}): ${randomBarcode.code}`);
+            // Manually trigger the detection flow with Open Food Facts lookup
             showLoading(true);
 
-            // Simulate the process
-            setTimeout(async () => {
-                const payload = {
-                    barcode: randomBarcode.code,
-                    brand: "Test Brand",
-                    product_name: "Test Product for ZXing Scanner",
-                    category: "Test"
-                };
+            // Use the same flow as real scanning
+            fetch(`${API_BASE}/product/${randomBarcode.code}`)
+                .then(response => response.json())
+                .then(productData => {
+                    showLoading(false);
 
-                await processScan(payload, 'barcode');
-                showLoading(false);
+                    if (productData.found) {
+                        showMessage('success', `Test: Found ${productData.name} by ${productData.brand}`);
 
-                if (detectionIndicator) {
-                    detectionIndicator.innerHTML = '🔍 Detecting...';
-                    detectionIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
-                }
+                        const payload = {
+                            barcode: randomBarcode.code,
+                            brand: productData.brand,
+                            product_name: productData.name,
+                            category: productData.category || "Test"
+                        };
 
-                // Update scanner button
-                const startBtn = document.getElementById('startScannerBtn');
-                if (startBtn) {
-                    startBtn.textContent = '🔁 Scan Another Product';
-                    startBtn.classList.add('scan-again');
-                }
-            }, 1000);
+                        processScan(payload, 'barcode');
+                    } else {
+                        showMessage('info', `Test: Product ${randomBarcode.code} not found. Using test product.`);
+
+                        const payload = {
+                            barcode: randomBarcode.code,
+                            brand: "Test Brand",
+                            product_name: "Test Product for ZXing Scanner",
+                            category: "Test"
+                        };
+
+                        processScan(payload, 'barcode');
+                    }
+                })
+                .catch(error => {
+                    showLoading(false);
+                    showMessage('error', `Test failed: ${error.message}`);
+                });
         }
 
         function stopScanner() {
