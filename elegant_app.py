@@ -28,6 +28,8 @@ def safe_float(value, default=0.0):
             return default
         # Convert to float first
         num = float(value)
+        # Lazy load math only when needed
+        math = get_math()
         # Check for NaN or Infinity
         if math.isnan(num) or math.isinf(num):
             return default
@@ -96,6 +98,15 @@ def get_numpy():
         _NUMPY = lazy_import("numpy")
     return _NUMPY
 
+# MATH CACHING
+_MATH = None
+
+def get_math():
+    """Get math module with lazy loading and caching"""
+    global _MATH
+    if _MATH is None:
+        _MATH = lazy_import("math")
+    return _MATH
 
 # ==================== CONFIGURATION DATACLASSES ====================
 
@@ -3332,24 +3343,26 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         logger.info(f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
 
         # Build response - ensure all values are not None
+        # Get certifications once to avoid repeated checks
+        certifications = list(getattr(scores, 'certifications', []))
+
         response_data = {
             "barcode": barcode or "",
             "brand": brand or "Unknown",
             "product_name": product_name or "Unknown Product",
             "category": category or "",
-            "social_score": safe_float(scores.social if hasattr(scores, 'social') else 0.0),
-            "environmental_score": safe_float(scores.environmental if hasattr(scores, 'environmental') else 0.0),
-            "economic_score": safe_float(scores.economic if hasattr(scores, 'economic') else 0.0),
+            "social_score": safe_float(getattr(scores, 'social', 0.0)),
+            "environmental_score": safe_float(getattr(scores, 'environmental', 0.0)),
+            "economic_score": safe_float(getattr(scores, 'economic', 0.0)),
             "overall_tbl_score": safe_float(tbl.get("overall_score", 0.0)),
             "grade": tbl.get("grade", "UNKNOWN"),
             "rating": tbl.get("grade", "UNKNOWN"),
-            "certifications": list(scores.certifications) if hasattr(scores, 'certifications') else [],
-
+            "certifications": certifications,
             "certifications_detailed": {
-                "b_corp": "B Corp" in (scores.certifications if hasattr(scores, 'certifications') else []),
-                "fair_trade": "Fair Trade" in (scores.certifications if hasattr(scores, 'certifications') else []),
-                "rainforest_alliance": "Rainforest Alliance" in (scores.certifications if hasattr(scores, 'certifications') else []),
-                "leaping_bunny": "Leaping Bunny" in (scores.certifications if hasattr(scores, 'certifications') else []),
+                "b_corp": "B Corp" in certifications,
+                "fair_trade": "Fair Trade" in certifications,
+                "rainforest_alliance": "Rainforest Alliance" in certifications,
+                "leaping_bunny": "Leaping Bunny" in certifications,
             },
             "certification_source": "Hardcoded Database (pre-calculated) + Excel Database (combined)",
             "scoring_method": getattr(scores, 'scoring_method', 'error_fallback'),
@@ -3375,15 +3388,25 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         return {
             "success": False,
             "error": str(e),
-            "barcode": getattr(product, 'barcode', ''),
-            "brand": getattr(product, 'brand', 'Unknown'),
-            "product_name": getattr(product, 'product_name', 'Unknown Product'),
-            "social_score": safe_float(0.0),
-            "environmental_score": safe_float(0.0),
-            "economic_score": safe_float(0.0),
-            "overall_tbl_score": safe_float(0.0),
+            "barcode": getattr(product, 'barcode', '') or "",
+            "brand": getattr(product, 'brand', 'Unknown') or "Unknown",
+            "product_name": getattr(product, 'product_name', 'Unknown Product') or "Unknown Product",
+            "category": getattr(product, 'category', '') or "",
+            "social_score": 0.0,
+            "environmental_score": 0.0,
+            "economic_score": 0.0,
+            "overall_tbl_score": 0.0,
             "grade": "ERROR",
+            "rating": "ERROR",
             "certifications": [],
+            "certifications_detailed": {
+                "b_corp": False,
+                "fair_trade": False,
+                "rainforest_alliance": False,
+                "leaping_bunny": False,
+            },
+            "scoring_method": "error_fallback",
+            "notes": f"Error processing request: {str(e)}",
             "timestamp": datetime.utcnow().isoformat()
         }
 
@@ -4046,7 +4069,3 @@ if __name__ == "__main__":
     # This block WON'T run when gunicorn imports the module
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
-
-# This line is needed for gunicorn to find the app variable
-# It should be at module level, outside the if __name__ block
-app = app
