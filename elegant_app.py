@@ -19,21 +19,38 @@ from typing import Optional, List, Dict, Any, Set, ClassVar
 from dataclasses import dataclass, field
 from urllib.parse import quote
 import os
+import math
 
 def safe_float(value, default=0.0):
-    """Convert any value to a JSON-safe float"""
+    """Convert any value to a JSON-safe float - prevents NaN and Infinity errors"""
     try:
         if value is None:
             return default
+
         # Convert to float first
         num = float(value)
-        # Check for NaN or Infinity using string representation
-        str_num = str(num).lower()
-        if str_num in ['nan', 'inf', 'infinity', '-inf', '-infinity']:
+
+        # Check for NaN or Infinity
+        if math.isnan(num) or math.isinf(num):
             return default
+
         return num
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         return default
+
+def sanitize_for_json(data):
+    """Recursively sanitize data to be JSON-compliant"""
+    if isinstance(data, dict):
+        return {k: sanitize_for_json(v) for k, v in data.items()}
+    elif isinstance(data, (list, tuple)):
+        return [sanitize_for_json(item) for item in data]
+    elif isinstance(data, float):
+        return safe_float(data)
+    elif isinstance(data, (int, str, bool, type(None))):
+        return data
+    else:
+        # For any other type, convert to string
+        return str(data)
 
 PORT = int(os.getenv("PORT", 8000))
 
@@ -146,19 +163,19 @@ class BrandData:
     multi_cert_bonus: float = 0.0
     notes: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "brand": self.brand,  # ADD THIS TO THE DICTIONARY
-            "social": round(self.social, 2),
-            "environmental": round(self.environmental, 2),
-            "economic": round(self.economic, 2),
-            "certifications": self.certifications,
-            "scoring_method": self.scoring_method,
-            "multi_cert_applied": self.multi_cert_applied,
-            "multi_cert_bonus": self.multi_cert_bonus,
-            "notes": self.notes,
-        }
-
+def to_dict(self) -> Dict[str, Any]:
+    """Convert to dictionary with JSON-safe values"""
+    return {
+        "brand": str(self.brand) if self.brand else "Unknown",
+        "social": safe_float(self.social),
+        "environmental": safe_float(self.environmental),
+        "economic": safe_float(self.economic),
+        "certifications": list(self.certifications) if self.certifications else [],
+        "scoring_method": str(self.scoring_method),
+        "multi_cert_applied": bool(self.multi_cert_applied),
+        "multi_cert_bonus": safe_float(self.multi_cert_bonus),
+        "notes": str(self.notes) if self.notes else "",
+    }
 
 # ==================== DECORATORS ====================
 
@@ -3368,17 +3385,17 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "timestamp": datetime.utcnow().isoformat()
         }
 
-        return response_data
+        return sanitize_for_json(response_data)
 
-    except Exception as e:
+except Exception as e:
         logger.error(f"Unhandled error in scan_product: {e}", exc_info=True)
-        return {
+        error_response = {
             "success": False,
             "error": str(e),
-            "barcode": getattr(product, 'barcode', '') or "",
-            "brand": getattr(product, 'brand', 'Unknown') or "Unknown",
-            "product_name": getattr(product, 'product_name', 'Unknown Product') or "Unknown Product",
-            "category": getattr(product, 'category', '') or "",
+            "barcode": str(getattr(product, 'barcode', '')) if getattr(product, 'barcode', '') else "",
+            "brand": str(getattr(product, 'brand', 'Unknown')) if getattr(product, 'brand', 'Unknown') else "Unknown",
+            "product_name": str(getattr(product, 'product_name', 'Unknown Product')) if getattr(product, 'product_name', 'Unknown Product') else "Unknown Product",
+            "category": str(getattr(product, 'category', '')) if getattr(product, 'category', '') else "",
             "social_score": 0.0,
             "environmental_score": 0.0,
             "economic_score": 0.0,
@@ -3396,7 +3413,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "notes": f"Error processing request: {str(e)}",
             "timestamp": datetime.utcnow().isoformat()
         }
-
+        return sanitize_for_json(error_response)
 
 @app.post("/extract-brand")
 async def extract_brand_endpoint(search: ProductSearch) -> Dict[str, Any]:
@@ -3780,7 +3797,7 @@ async def compare_brands(brands: List[BrandInput]) -> Dict[str, Any]:
     comparison.sort(key=lambda x: x["overall_score"], reverse=True)
 
     logger.info(f"Compared {len(brands)} brands")
-    return {"comparison": comparison}
+    return sanitize_for_json({"comparison": comparison})
 
 
 @app.post("/purchase")
@@ -3933,7 +3950,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
     logger.info(
         f"ZXing-web product lookup for barcode: {barcode} - Found: {product.get('found', False)}"
     )
-    return result
+    return sanitize_for_json(result)
 
 
 # ==================== SCANNER HEALTH ENDPOINT ====================
