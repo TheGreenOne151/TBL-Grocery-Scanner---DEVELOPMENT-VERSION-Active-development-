@@ -1226,19 +1226,19 @@
         </div>
     </div>
     <script>
-        // ==================== //
-        // GLOBAL VARIABLES     //
-        // ==================== //
-        let scannerActive = false;
-        let codeReader = null;
-        let currentStream = null;
-        let currentUser = null;
-        let authToken = null;
-        let currentBrand = null; // FIX 1: Add missing currentBrand variable
+            // ==================== //
+            // GLOBAL VARIABLES     //
+            // ==================== //
+            let currentBrand = null;
+            let scannerActive = false;
+            let codeReader = null;
+            let currentStream = null;
+            let currentUser = null;
+            let authToken = null;
 
-        // ==================== //
-        // ZXING SCANNER SETUP  //
-        // ==================== //
+            // ==================== //
+            // ZXING SCANNER SETUP  //
+            // ==================== //
 
         async function startScanner() {
             if (scannerActive) {
@@ -1868,28 +1868,12 @@
             switchTab('scan-sec');
         }
 
-        // Process scan - Excel-based version
+        // Process scan - Robust version for novices
         async function processScan(payload, searchType = 'barcode') {
             showLoading(true);
             hideMessages();
 
-            const headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            };
-
-            if (authToken) {
-                headers['Authorization'] = `Bearer ${authToken}`;
-            }
-
-            const safePayload = {
-                barcode: payload.barcode || "",
-                brand: payload.brand || "",
-                product_name: payload.product_name || "Scanned Product",
-                category: payload.category || "Unknown"
-            };
-
-            debugLog(`Sending ${searchType} payload: ${JSON.stringify(safePayload)}`);
+            // ... (keep your existing headers and safePayload setup)
 
             try {
                 const response = await fetch(`${API_BASE}/scan`, {
@@ -1900,45 +1884,40 @@
 
                 debugLog(`Response status: ${response.status}`);
 
+                // --- NEW ROBUST ERROR HANDLING ---
                 if (!response.ok) {
-                    let errorText = `HTTP ${response.status}`;
+                    // 1. Read the error message ONCE as raw text
+                    const rawErrorText = await response.text();
+                    let finalErrorMessage = `HTTP ${response.status}`;
+
                     try {
-                        const errorData = await response.json();
-                        debugLog(`Error details: ${JSON.stringify(errorData)}`);
-                        errorText = errorData.detail || JSON.stringify(errorData);
+                        // 2. See if the text is actually a JSON error from the server
+                        const errorData = JSON.parse(rawErrorText);
+                        finalErrorMessage = errorData.detail || JSON.stringify(errorData);
                     } catch (e) {
-                        errorText = await response.text();
+                        // 3. If it's not JSON, just use the raw text we already read
+                        finalErrorMessage = rawErrorText;
                     }
-                    throw new Error(errorText);
+                    throw new Error(finalErrorMessage);
                 }
+                // --- END OF FIX ---
 
+                // If we got here, the response was successful (200 OK)
                 const data = await response.json();
-                debugLog(`Success! Data received from Excel system`);
-                showLoading(false);
+                debugLog(`Success! Data received`);
 
+                showLoading(false);
                 displayResults(data, searchType);
 
-                if (searchType === 'barcode') {
-                    showMessage('success', `Scanned barcode ${safePayload.barcode}`);
-                } else if (searchType === 'brand') {
-                    showMessage('success', `Found brand: ${data.brand}`);
-                } else if (searchType === 'product') {
-                    const confidence = data.brand_extraction_info?.confidence || 0;
-                    showMessage('success', `Extracted brand "${data.brand}" from product name (${confidence}% confidence)`);
-                }
+                // ... (keep your existing success messages)
 
             } catch (err) {
                 showLoading(false);
                 console.error('Full scan error:', err);
                 debugLog(`Error: ${err.message}`);
 
-                if (err.message.includes('422')) {
-                    showMessage('error', 'Invalid data sent to server. Please check the format.');
-                } else if (err.message.includes('Failed to fetch')) {
-                    showMessage('error', 'Cannot connect to server. Make sure backend is running.');
-                } else {
-                    showMessage('error', 'Scan failed: ' + err.message);
-                }
+                // Now err.message will contain the REAL reason (like the Lay's logic error)
+                showMessage('error', 'Scan failed: ' + err.message);
             }
         }
 
