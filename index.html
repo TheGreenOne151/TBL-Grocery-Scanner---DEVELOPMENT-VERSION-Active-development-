@@ -2476,7 +2476,7 @@
                 })
                 .catch(() => {
                     debugLog('Cannot connect to backend API');
-                    showMessage('error', 'Cannot connect to backend API. Make sure it is running on port 8000.');
+                    showMessage('error', `Cannot connect to backend at ${API_BASE}. Check if Render service is live.`);
                 });
 
             updateUserStatus();
