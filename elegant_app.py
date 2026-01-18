@@ -19,7 +19,6 @@ from typing import Optional, List, Dict, Any, Set, ClassVar
 from dataclasses import dataclass, field
 from urllib.parse import quote
 import os
-import math
 
 def safe_float(value, default=0.0):
     """Convert any value to a JSON-safe float"""
@@ -28,10 +27,9 @@ def safe_float(value, default=0.0):
             return default
         # Convert to float first
         num = float(value)
-        # Lazy load math only when needed
-        math = get_math()
-        # Check for NaN or Infinity
-        if math.isnan(num) or math.isinf(num):
+        # Check for NaN or Infinity using string representation
+        str_num = str(num).lower()
+        if str_num in ['nan', 'inf', 'infinity', '-inf', '-infinity']:
             return default
         return num
     except (ValueError, TypeError):
@@ -97,16 +95,6 @@ def get_numpy():
     if _NUMPY is None:
         _NUMPY = lazy_import("numpy")
     return _NUMPY
-
-# MATH CACHING
-_MATH = None
-
-def get_math():
-    """Get math module with lazy loading and caching"""
-    global _MATH
-    if _MATH is None:
-        _MATH = lazy_import("math")
-    return _MATH
 
 # ==================== CONFIGURATION DATACLASSES ====================
 
@@ -677,7 +665,6 @@ class BrandNormalizer:
         "hormel": ["hormel foods"],
         "danone": ["dannon", "danone sa"],
         "hershey": ["hershey's", "hershey company"],
-        "starbucks": ["starbucks coffee"],
     }
 
     # Brand synonyms for matching
