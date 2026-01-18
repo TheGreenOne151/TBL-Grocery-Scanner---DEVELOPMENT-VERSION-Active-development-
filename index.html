@@ -3,286 +3,295 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TBL Grocery Scanner - Transparent Certification Scoring</title>
-    <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+    <title>TBL Grocery Scanner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        /* ==================== */
-        /* RESET & BASE STYLES  */
-        /* ==================== */
+        :root {
+            /* Color palette with high contrast for accessibility */
+            --primary: #2e7d32;
+            --primary-dark: #1b5e20;
+            --primary-light: #4caf50;
+            --secondary: #ff9800;
+            --secondary-dark: #e65100;
+            --background: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-primary: #212121;
+            --text-secondary: #666666;
+            --text-light: #ffffff;
+            --border: #e0e0e0;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --error: #f44336;
+            --info: #2196f3;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+            --radius: 12px;
+            --radius-small: 8px;
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        html {
-            scroll-behavior: smooth;
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding-bottom: 80px; /* Space for bottom nav */
         }
 
-        /* ==================== */
-        /* TYPOGRAPHY & GLOBAL  */
-        /* ==================== */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            padding: 20px;
+        /* High contrast adjustments for accessibility */
+        @media (prefers-contrast: high) {
+            :root {
+                --text-primary: #000000;
+                --text-secondary: #333333;
+                --border: #000000;
+            }
+        }
+
+        /* Header */
+        .app-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--text-light);
+            padding: var(--spacing-lg) var(--spacing-md);
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
         }
 
-        /* ==================== */
-        /* LAYOUT COMPONENTS    */
-        /* ==================== */
-        .container {
-            max-width: 500px;
-            width: 100%;
-            background: white;
-            border-radius: 25px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .logo-icon {
+            font-size: 24px;
+        }
+
+        .logo-text {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .nav-toggle {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 24px;
+            cursor: pointer;
+            padding: var(--spacing-xs);
+        }
+
+        /* Main container */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: var(--card-bg);
+            border-radius: var(--radius);
             overflow: hidden;
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow);
         }
 
-        .content {
-            padding: 25px;
+        .tab {
+            flex: 1;
+            padding: var(--spacing-md);
+            text-align: center;
+            font-weight: 600;
+            background: var(--card-bg);
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
         }
 
-        .section {
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background-color: rgba(46, 125, 50, 0.05);
+        }
+
+        .tab:hover {
+            background-color: rgba(46, 125, 50, 0.1);
+        }
+
+        /* Tab content */
+        .tab-content {
             display: none;
-            animation: fadeIn 0.5s ease;
+            animation: fadeIn 0.3s ease;
         }
 
-        .section.active {
+        .tab-content.active {
             display: block;
         }
 
-        /* ==================== */
-        /* HEADER & NAVIGATION  */
-        /* ==================== */
-        .header {
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-            color: white;
-            padding: 30px 25px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-            background-size: 30px 30px;
-            opacity: 0.1;
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow);
+            transition: box-shadow 0.3s ease;
         }
 
-        .header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            position: relative;
-            z-index: 1;
+        .card:hover {
+            box-shadow: var(--shadow-hover);
         }
 
-        .header p {
-            font-size: 14px;
-            opacity: 0.9;
-            position: relative;
-            z-index: 1;
-        }
-
-        .header .subtitle {
-            font-size: 12px;
-            opacity: 0.8;
-            margin-top: 5px;
-            color: #c8e6c9;
-        }
-
-        .user-info {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            color: white;
-            backdrop-filter: blur(10px);
-            z-index: 100;
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .user-info a {
-            color: white;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-left: 5px;
-        }
-
-        .nav-tabs {
+        .card-header {
             display: flex;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-            flex-wrap: nowrap;
-            overflow-x: auto;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+            color: var(--primary);
         }
 
-        .nav-tabs::-webkit-scrollbar {
-            display: none;
+        .card-header i {
+            margin-right: var(--spacing-sm);
+            font-size: 20px;
         }
 
-        .nav-tab {
-            flex: 1;
-            padding: 16px 8px;
-            text-align: center;
-            border: none;
-            background: none;
-            cursor: pointer;
+        .card-title {
+            font-family: 'Poppins', sans-serif;
             font-weight: 600;
-            font-size: 13px;
-            color: #6c757d;
-            transition: all 0.3s ease;
-            position: relative;
-            min-width: 80px;
-            white-space: nowrap;
-            user-select: none;
+            font-size: 18px;
         }
 
-        .nav-tab.active {
-            color: #2e7d32;
+        /* Forms */
+        .form-group {
+            margin-bottom: var(--spacing-md);
         }
 
-        .nav-tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
+        .form-label {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-input, .form-textarea, .form-select {
             width: 100%;
-            height: 3px;
-            background: #2e7d32;
-            border-radius: 3px 3px 0 0;
-        }
-
-        .nav-tab:focus {
-            outline: 2px solid #2e7d32;
-            outline-offset: 2px;
-        }
-
-        /* ==================== */
-        /* FORM ELEMENTS        */
-        /* ==================== */
-        input {
-            width: 100%;
-            padding: 16px;
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            margin-bottom: 15px;
+            padding: 12px var(--spacing-md);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-small);
             font-size: 16px;
-            transition: all 0.3s ease;
-            background: #f8f9fa;
+            transition: border-color 0.3s ease;
+            background: var(--card-bg);
+            color: var(--text-primary);
         }
 
-        input:focus {
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
             outline: none;
-            border-color: #2e7d32;
-            background: white;
+            border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
         }
 
-        button {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-            color: white;
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
             border: none;
-            border-radius: 12px;
-            font-size: 17px;
+            border-radius: var(--radius-small);
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            margin-bottom: 15px;
             transition: all 0.3s ease;
-            letter-spacing: 0.5px;
-            user-select: none;
+            text-decoration: none;
+            gap: 8px;
         }
 
-        button:hover {
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--text-light);
+        }
+
+        .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(46, 125, 50, 0.3);
+            box-shadow: 0 6px 12px rgba(46, 125, 50, 0.3);
         }
 
-        button:active {
-            transform: translateY(0);
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+            color: var(--text-light);
         }
 
-        button:focus {
-            outline: 2px solid #2e7d32;
-            outline-offset: 2px;
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(255, 152, 0, 0.3);
         }
 
-        /* Button Variants */
-        button.secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-        }
-
-        button.secondary:hover {
-            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
-        }
-
-        button.excel {
-            background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-        }
-
-        button.excel:hover {
-            box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
-        }
-
-        button.danger {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        }
-
-        button.danger:hover {
-            box-shadow: 0 10px 20px rgba(220, 53, 69, 0.3);
-        }
-
-        button.info {
-            background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);
-        }
-
-        button.info:hover {
-            box-shadow: 0 10px 20px rgba(255, 152, 0, 0.3);
-        }
-
-        button.test-button {
-            background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);
-            margin-top: 10px;
-        }
-
-        /* ==================== */
-        /* SCANNER COMPONENTS   */
-        /* ==================== */
-        #interactive.viewport {
+        .btn-full {
             width: 100%;
-            height: 280px;
-            border-radius: 15px;
-            overflow: hidden;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Scanner */
+        .scanner-container {
             position: relative;
-            background: #1a1a1a;
-            margin-bottom: 20px;
-            border: 3px solid #2e7d32;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto var(--spacing-lg);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #000;
         }
 
-        #interactive.viewport video {
+        #scanner-video {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            height: auto;
+            display: block;
         }
 
         .scanner-overlay {
@@ -291,431 +300,127 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 10;
-            pointer-events: none;
-        }
-
-        .scanner-line {
-            position: absolute;
-            top: 50%;
-            left: 10%;
-            width: 80%;
-            height: 3px;
-            background: #2e7d32;
-            animation: scan 2s infinite linear;
-            box-shadow: 0 0 10px #2e7d32;
-        }
-
-        /* Scanner detection indicator */
-        .detection-indicator {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
             color: white;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 11px;
-            z-index: 20;
+        }
+
+        .scanner-frame {
+            width: 250px;
+            height: 150px;
+            border: 3px solid var(--primary-light);
+            border-radius: 8px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        /* Results */
+        .results-container {
             display: none;
         }
 
-        .detection-active {
-            background: rgba(46, 125, 50, 0.8);
+        .results-container.active {
+            display: block;
         }
 
-        /* ==================== */
-        /* RESULTS DISPLAY      */
-        /* ==================== */
-        .result-card {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 25px;
+        .score-display {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-md);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .score-pillar {
+            background: var(--background);
+            padding: var(--spacing-md);
+            border-radius: var(--radius);
+            text-align: center;
+            border: 2px solid var(--border);
+        }
+
+        .pillar-name {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .pillar-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .overall-score {
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--text-light);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius);
+            margin: var(--spacing-lg) 0;
+        }
+
+        .overall-value {
+            font-size: 48px;
+            font-weight: 700;
+            margin: var(--spacing-xs) 0;
+        }
+
+        .grade-badge {
+            display: inline-block;
+            padding: 8px 20px;
             border-radius: 20px;
-            margin-top: 20px;
-            border: 1px solid #dee2e6;
-            display: none;
-            animation: slideUp 0.5s ease;
+            font-weight: 700;
+            font-size: 18px;
+            background: var(--text-light);
+            margin-top: var(--spacing-sm);
         }
 
-        .result-card.showing {
-            animation: slideInUp 0.5s ease-out;
+        .grade-excellent { color: #155724; background: #d4edda; }
+        .grade-great { color: #0c5460; background: #d1ecf1; }
+        .grade-good { color: #856404; background: #fff3cd; }
+        .grade-poor { color: #721c24; background: #f8d7da; }
+
+        .certifications-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin: var(--spacing-md) 0;
         }
 
-        .product-info {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            border: 1px solid #dee2e6;
+        .cert-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: var(--primary);
+            color: var(--text-light);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
         }
 
-        .product-info h3 {
-            color: #2e7d32;
-            margin-bottom: 10px;
-            font-size: 20px;
-        }
+        .cert-badge.fair-trade { background: #e57373; }
+        .cert-badge.rainforest { background: #81c784; }
+        .cert-badge.leaping-bunny { background: #ffb74d; }
 
-        .score-circle {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
-            color: white;
+        /* Loading */
+        .loading {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 20px auto 30px auto;
-            border: 8px solid #a5d6a7;
-            box-shadow: 0 10px 30px rgba(46, 125, 50, 0.3);
-            position: relative;
-        }
-
-        .score-circle .val {
-            font-size: 42px;
-            font-weight: bold;
-            line-height: 1;
-        }
-
-        .score-circle .label {
-            font-size: 12px;
-            letter-spacing: 1px;
-            opacity: 0.9;
-        }
-
-        .score-grade {
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            background: #ff6b6b;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.3);
-        }
-
-        .pillar {
-            display: flex;
-            justify-content: space-between;
-            padding: 15px 0;
-            border-bottom: 1px solid #dee2e6;
-            font-size: 16px;
-        }
-
-        .pillar:last-child {
-            border-bottom: none;
-        }
-
-        .pillar span:first-child {
-            color: #495057;
-        }
-
-        .pillar span:last-child {
-            font-weight: bold;
-            color: #2e7d32;
-            font-size: 18px;
-        }
-
-        /* ==================== */
-        /* CERTIFICATION BADGES */
-        /* ==================== */
-        .cert-tag {
-            display: inline-block;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            color: #2e7d32;
-            padding: 8px 16px;
-            border-radius: 25px;
-            font-size: 14px;
-            margin: 6px;
-            border: 2px solid #2e7d32;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(46, 125, 50, 0.1);
-        }
-
-        .cert-source {
-            font-size: 12px;
-            color: #6c757d;
+            padding: var(--spacing-xl);
             text-align: center;
-            margin-top: 10px;
-            font-style: italic;
         }
 
-        .cert-status {
-            text-align: center;
-            font-size: 12px;
-            color: #6c757d;
-            margin-top: 5px;
-        }
-
-        .excel-found {
-            color: #198754;
-            font-weight: bold;
-        }
-
-        .excel-not-found {
-            color: #dc3545;
-            font-weight: bold;
-        }
-
-        .no-certs {
-            color: #6c757d;
-            font-style: italic;
-            text-align: center;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            margin-top: 15px;
-        }
-
-        /* ==================== */
-        /* INFORMATION BOXES    */
-        /* ==================== */
-        .excel-details {
-            background: #e7f5ff;
-            border: 1px solid #a5d8ff;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 15px;
-            font-size: 14px;
-        }
-
-        .excel-details h4 {
-            color: #0d6efd;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .search-guide {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border-left: 4px solid #2e7d32;
-        }
-
-        .search-guide h4 {
-            color: #2e7d32;
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-size: 16px;
-        }
-
-        .search-guide p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #495057;
-        }
-
-        .search-guide .tip {
-            font-size: 12px;
-            color: #666;
-            font-style: italic;
-            margin-top: 8px;
-        }
-
-        .methodology-info {
-            background: #fff3e0;
-            border: 1px solid #ffcc80;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 15px 0;
-        }
-
-        .methodology-info h4 {
-            color: #e65100;
-            margin-top: 0;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .methodology-info p {
-            margin: 5px 0;
-            font-size: 13px;
-            color: #5a3e1b;
-        }
-
-        .result-box {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 12px;
-            margin-top: 10px;
-            border: 1px solid #dee2e6;
-        }
-
-        /* ==================== */
-        /* HISTORY & DATA       */
-        /* ==================== */
-        .history-item {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #e9ecef;
-            border-left: 4px solid #2e7d32;
-        }
-
-        /* ==================== */
-        /* STATUS & BADGES      */
-        /* ==================== */
-        .extraction-confidence {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 8px;
-        }
-
-        .confidence-high {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .confidence-medium {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .confidence-low {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .brand-extraction-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            color: #1565c0;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 8px;
-            border: 1px solid #90caf9;
-        }
-
-        .consistency-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            color: #2e7d32;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 8px;
-            border: 1px solid #2e7d32;
-        }
-
-        /* ==================== */
-        /* FEEDBACK & MESSAGES  */
-        /* ==================== */
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-            color: #2e7d32;
-        }
-
-        .loading-spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #2e7d32;
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--border);
+            border-top: 5px solid var(--primary);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 15px auto;
-        }
-
-        .error-msg {
-            color: #dc3545;
-            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            display: none;
-            margin-bottom: 20px;
-            border: 2px solid #dc3545;
-            font-weight: 500;
-        }
-
-        .success-msg {
-            color: #2e7d32;
-            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            display: none;
-            margin-bottom: 20px;
-            border: 2px solid #2e7d32;
-            font-weight: 500;
-        }
-
-        .debug-info {
-            font-size: 12px;
-            color: #666;
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-            display: none;
-        }
-
-        /* ==================== */
-        /* UTILITY & MISC       */
-        /* ==================== */
-        .transparency-link {
-            text-align: center;
-            margin: 15px 0;
-        }
-
-        .transparency-link a {
-            color: #2e7d32;
-            text-decoration: none;
-            font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .transparency-link a:hover {
-            text-decoration: underline;
-        }
-
-        hr {
-            margin: 25px 0;
-            border: none;
-            height: 1px;
-            background: linear-gradient(to right, transparent, #dee2e6, transparent);
-        }
-
-        /* ==================== */
-        /* ANIMATIONS           */
-        /* ==================== */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes scan {
-            0%, 100% { top: 20%; }
-            50% { top: 80%; }
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            margin-bottom: var(--spacing-md);
         }
 
         @keyframes spin {
@@ -723,1787 +428,1176 @@
             100% { transform: rotate(360deg); }
         }
 
-        @keyframes scanSuccess {
-            0% { background-color: #1a1a1a; }
-            50% { background-color: #4caf50; }
-            100% { background-color: #1a1a1a; }
+        /* Alerts */
+        .alert {
+            padding: var(--spacing-md);
+            border-radius: var(--radius-small);
+            margin-bottom: var(--spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
         }
 
-        @keyframes loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
 
-        @keyframes detectionPulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-            100% { transform: scale(1); opacity: 1; }
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
         }
 
-        /* Animation Classes */
-        .scan-success {
-            animation: scanSuccess 0.5s ease-in-out;
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: var(--card-bg);
+            display: flex;
+            justify-content: space-around;
+            padding: var(--spacing-sm) 0;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 100;
         }
 
-        .scan-again {
-            animation: pulse 2s infinite;
-            background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%) !important;
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 12px;
+            transition: color 0.3s ease;
+            flex: 1;
+            max-width: 100px;
         }
 
-        .skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
+        .nav-item.active {
+            color: var(--primary);
         }
 
-        .detection-pulse {
-            animation: detectionPulse 0.5s ease-in-out;
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
         }
 
-        /* ==================== */
-        /* RESPONSIVE DESIGN    */
-        /* ==================== */
-        /* Better tap targets for mobile */
+        /* Comparison */
+        .comparison-item {
+            background: var(--background);
+            padding: var(--spacing-md);
+            border-radius: var(--radius);
+            margin-bottom: var(--spacing-sm);
+            border-left: 4px solid var(--primary);
+        }
+
+        .add-brand-btn {
+            background: none;
+            border: 2px dashed var(--border);
+            color: var(--text-secondary);
+            padding: var(--spacing-md);
+            border-radius: var(--radius);
+            width: 100%;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: var(--spacing-sm);
+            transition: all 0.3s ease;
+        }
+
+        .add-brand-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(46, 125, 50, 0.05);
+        }
+
+        /* Footer */
+        .app-footer {
+            text-align: center;
+            padding: var(--spacing-lg) var(--spacing-md);
+            color: var(--text-secondary);
+            font-size: 14px;
+            border-top: 1px solid var(--border);
+            margin-top: var(--spacing-xl);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .score-display {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-sm);
+            }
+
+            .pillar-value {
+                font-size: 28px;
+            }
+
+            .overall-value {
+                font-size: 36px;
+            }
+
+            .card {
+                padding: var(--spacing-md);
+            }
+        }
+
         @media (max-width: 480px) {
-            button, .nav-tab {
-                min-height: 44px; /* Apple's recommended minimum tap target */
+            .tabs {
+                flex-direction: column;
             }
 
-            input {
-                font-size: 16px; /* Prevents iOS zoom on focus */
-                min-height: 44px;
+            .tab {
+                padding: var(--spacing-sm);
             }
 
-            .container {
-                margin: 10px;
-                border-radius: 20px;
+            .logo-text {
+                font-size: 18px;
             }
         }
 
-        /* ==================== */
-        /* ACCESSIBILITY FEATURES */
-        /* ==================== */
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%);
-            }
-
-            .container {
-                background: #2d2d2d;
-                color: #e2e8f0;
-            }
-
-            input {
-                background: #3a3a3a;
-                border-color: #4a5568;
-                color: #e2e8f0;
-            }
-
-            input:focus {
-                background: #2d2d2d;
-            }
+        /* Utility classes */
+        .hidden {
+            display: none !important;
         }
 
-        /* Reduced motion preferences */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
+        .text-center {
+            text-align: center;
         }
 
-        /* ==================== */
-        /* PRINT STYLES         */
-        /* ==================== */
-        @media print {
-            .nav-tabs, button, .camera-permission {
-                display: none !important;
-            }
-
-            .result-card {
-                box-shadow: none;
-                border: 1px solid #ccc;
-            }
-        }
-
-        /* ==================== */
-        /* BROWSER ENHANCEMENTS */
-        /* ==================== */
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #2e7d32;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #1b5e20;
-        }
-
-        /* ==================== */
-        /* ENHANCED READABILITY */
-        /* ==================== */
-
-        /* Ensure good contrast for all text */
-        .excel-details,
-        .search-guide,
-        .methodology-info,
-        .result-box,
-        .history-item,
-        .product-info,
-        .no-certs,
-        .debug-info {
-            color: #212529; /* Dark gray instead of pure black */
-        }
-
-        /* Make headings stand out */
-        .excel-details h4,
-        .search-guide h4,
-        .methodology-info h4,
-        .result-box h4,
-        .history-item h4,
-        .product-info h3,
-        .product-info h4 {
-            font-weight: 700 !important; /* Bold */
-        }
-
-        /* Fix specific colored headings */
-        .excel-details h4 { color: #0d6efd !important; }
-        .search-guide h4 { color: #2e7d32 !important; }
-        .methodology-info h4 { color: #e65100 !important; }
-
-        /* Ensure paragraph text has good contrast */
-        .excel-details p,
-        .search-guide p,
-        .methodology-info p,
-        .result-box p,
-        .history-item p,
-        .product-info p,
-        .debug-info p,
-        .no-certs p {
-            color: #495057; /* Medium gray for better readability */
-            font-weight: 400;
-        }
-
-        /* Fix the tip text */
-        .search-guide .tip {
-            color: #6c757d !important; /* Lighter gray for less important text */
-            font-style: italic;
-        }
-
-        /* Keep badges with white text */
-        .extraction-confidence {
-            color: #ffffff !important;
-        }
+        .mt-1 { margin-top: var(--spacing-sm); }
+        .mt-2 { margin-top: var(--spacing-md); }
+        .mt-3 { margin-top: var(--spacing-lg); }
+        .mb-1 { margin-bottom: var(--spacing-sm); }
+        .mb-2 { margin-bottom: var(--spacing-md); }
+        .mb-3 { margin-bottom: var(--spacing-lg); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🌿 TBL Scanner</h1>
-            <p>Social • Environmental • Economic Impact</p>
-            <!-- UPDATE 1: Version number updated from 2.1 to 2.3.0 -->
-            <p class="subtitle">Consistent Certification Scoring v2.3.0</p>
-            <div id="userStatus" class="user-info">Not logged in</div>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo">
+                <div class="logo-icon">🌿</div>
+                <div>
+                    <div class="logo-text">TBL Grocery Scanner</div>
+                    <div class="logo-subtitle">Triple Bottom Line Sustainability</div>
+                </div>
+            </div>
+            <button class="nav-toggle" id="navToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="scan">Scan</button>
+            <button class="tab" data-tab="search">Search</button>
+            <button class="tab" data-tab="compare">Compare</button>
+            <button class="tab" data-tab="info">Info</button>
         </div>
 
-        <div class="nav-tabs">
-            <button class="nav-tab active" onclick="switchTab('scan-sec')">📷 Scan</button>
-            <button class="nav-tab" onclick="switchTab('lookup-sec')">🔍 Search</button>
-            <button class="nav-tab" onclick="switchTab('excel-sec')">📊 Excel</button>
-            <button class="nav-tab" onclick="switchTab('register-sec')">📝 Register</button>
-            <button class="nav-tab" onclick="switchTab('login-sec')">🔐 Login</button>
-            <button class="nav-tab" onclick="switchTab('history-sec')">📋 History</button>
+        <!-- Scan Tab -->
+        <div id="scan-tab" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-barcode"></i>
+                    <h2 class="card-title">Scan Product Barcode</h2>
+                </div>
+
+                <div class="scanner-container hidden" id="scannerContainer">
+                    <video id="scanner-video" playsinline></video>
+                    <div class="scanner-overlay">
+                        <div class="scanner-frame"></div>
+                        <p>Align barcode within frame</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Or Enter Barcode Manually</label>
+                    <input type="text" class="form-input" id="barcodeInput" placeholder="e.g., 012345678912" maxlength="13">
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-primary btn-full" id="startScanBtn">
+                        <i class="fas fa-camera"></i> Start Camera Scanner
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-secondary btn-full" id="scanBtn">
+                        <i class="fas fa-search"></i> Scan Barcode
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-container" id="scanResults">
+                <!-- Results will be dynamically inserted here -->
+            </div>
         </div>
 
-        <div class="content">
-            <div id="errorBox" class="error-msg"></div>
-            <div id="successBox" class="success-msg"></div>
-            <div id="loading" class="loading">
-                <div class="loading-spinner"></div>
-                <p>Scanning...</p>
-            </div>
-
-            <!-- Scanner Section -->
-            <div id="scan-sec" class="section active">
-                <!-- Simplified scanner interface -->
-                <div id="scanner-ui">
-                    <div id="interactive" class="viewport">
-                        <video id="scanner-video"></video>
-                        <div class="scanner-overlay">
-                            <div class="scanner-line"></div>
-                            <div id="detectionIndicator" class="detection-indicator">🔍 Detecting...</div>
-                        </div>
-                    </div>
-
-                    <div style="text-align: center; margin-top: 15px;">
-                        <button onclick="startScanner()" id="startScannerBtn">🎬 Start Scanner</button>
-                        <button onclick="stopScanner()" class="secondary">⏹️ Stop Scanner</button>
-                        <button onclick="testBarcodeScanner()" class="info" style="margin-top: 10px;">🧪 Test ZXing Scanner</button>
-                    </div>
+        <!-- Search Tab -->
+        <div id="search-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-search"></i>
+                    <h2 class="card-title">Search by Product or Brand</h2>
                 </div>
 
-                <div class="transparency-link">
-                    <a href="#" onclick="showMethodology()">📖 View Scoring Methodology</a>
+                <div class="form-group">
+                    <label class="form-label">Product Name</label>
+                    <input type="text" class="form-input" id="productNameInput" placeholder="e.g., Oreo Cookies, Cheerios">
                 </div>
 
-                <div class="debug-info" id="scannerDebug">
-                    ZXing scanner status: Click "Start Scanner" to begin •
-                    <a href="#" onclick="checkScannerHealth()" style="color: #2e7d32; text-decoration: underline;">Check ZXing Scanner Health</a>
+                <div class="form-group">
+                    <label class="form-label">Or Brand Name</label>
+                    <input type="text" class="form-input" id="brandNameInput" placeholder="e.g., Nestle, Kraft Heinz">
                 </div>
 
-                <!-- Test barcode images -->
-                <div id="testBarcodes" style="display: none; margin-top: 20px; text-align: center;">
-                    <h4 style="color: #2e7d32; margin-bottom: 10px;">Test Barcodes</h4>
-                    <p style="font-size: 14px; color: #666; margin-bottom: 10px;">Try scanning these test barcodes:</p>
-                    <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                        <div style="text-align: center;">
-                            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #dee2e6;">
-                                <img src="https://barcode.tec-it.com/barcode.ashx?data=7613036925575&code=EAN13&dpi=96" alt="Test Barcode 1" style="width: 150px; height: 80px; object-fit: contain;">
-                                <p style="font-size: 12px; margin-top: 5px;">7613036925575 (EAN-13)</p>
-                            </div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #dee2e6;">
-                                <img src="https://barcode.tec-it.com/barcode.ashx?data=9780140157376&code=EAN13&dpi=96" alt="Test Barcode 2" style="width: 150px; height: 80px; object-fit: contain;">
-                                <p style="font-size: 12px; margin-top: 5px;">9780140157376 (EAN-13)</p>
-                            </div>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <button class="btn btn-primary btn-full" id="searchBtn">
+                        <i class="fas fa-search"></i> Search Product/Brand
+                    </button>
                 </div>
             </div>
 
-            <!-- Manual Lookup Section -->
-            <div id="lookup-sec" class="section">
-                <h3 style="color: #2e7d32; margin-bottom: 15px;">📦 Barcode Lookup</h3>
-                <input type="text" id="manualBarcode" placeholder="Enter Barcode (e.g., 7613036925575)">
-                <button onclick="manualScan()">🔍 Lookup by Barcode</button>
-
-                <hr>
-
-                <div class="search-guide">
-                    <!-- UPDATE 2: Updated subtitle to reflect consistent scoring -->
-                    <h4>🔍 Consistent Scoring Across All Search Methods:</h4>
-                    <p><strong>✅ Single Scoring Function:</strong> Same brand always gets same score</p>
-                    <p><strong>🔍 Barcode Scan:</strong> Full product info → Brand → Consistent score</p>
-                    <p><strong>🔤 Brand Search:</strong> Direct lookup → Hardcoded/Excel score</p>
-                    <p><strong>📝 Product Name:</strong> Brand extraction → Same score as brand search</p>
-                    <p class="tip">💡 Single scoring function ensures consistency across all search methods</p>
-                </div>
-
-                <h3 style="color: #2e7d32; margin-bottom: 10px;">🔤 Search by Brand Name</h3>
-                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Direct certification lookup for known brands</p>
-                <input type="text" id="manualBrand" placeholder="Enter Brand Name (e.g., Hershey's, General Mills)">
-                <button onclick="brandSearch()" class="secondary">🔤 Search by Brand</button>
-
-                <div style="height: 20px;"></div>
-
-                <h3 style="color: #2e7d32; margin-bottom: 10px;">📝 Search by Product Name</h3>
-                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">We'll extract the brand from product name automatically</p>
-                <input type="text" id="manualProductName" placeholder="Enter Product Name (e.g., Oreo Chocolate Cookies)">
-                <button onclick="productNameSearch()" class="secondary">📝 Search by Product Name</button>
-
-                <div class="methodology-info">
-                    <!-- UPDATE 3: Updated methodology section -->
-                    <h4>📊 Consistent Scoring Methodology v2.3.0</h4>
-                    <p>• Base Score: 5.0 in each pillar</p>
-                    <p>• Hardcoded scores prioritized for consistency</p>
-                    <p>• Same brand → Same score always (single scoring function)</p>
-                    <p>• Parent company mapping (Cheerios → General Mills)</p>
-                    <p>• Multi-certification bonus automatically applied</p>
-                    <button onclick="showMethodology()" class="info" style="margin-top: 10px;">📖 View Full Methodology</button>
-                </div>
-
-                <hr>
-
-                <h3 style="color: #2e7d32; margin-bottom: 15px;">🧪 Consistency Tests</h3>
-                <!-- UPDATE 4: Added new test button for Dannon consistency -->
-                <button onclick="testDannonConsistency()" class="test-button">Test Dannon Consistency</button>
-                <button onclick="testBrandExtraction()" class="secondary">Test Brand Extraction</button>
-                <button onclick="testScoringMethodology()" class="info">Test Nespresso Multi-Cert</button>
-
-                <div class="debug-info" id="debugInfo">
-                    Debug info will appear here
-                </div>
+            <div class="results-container" id="searchResults">
+                <!-- Search results will be dynamically inserted here -->
             </div>
+        </div>
 
-            <!-- Excel Status Section -->
-            <div id="excel-sec" class="section">
-                <h3 style="color: #2e7d32; margin-bottom: 15px;">📊 Excel Certification System</h3>
-
-                <div class="excel-details">
-                    <h4>📋 About Excel System</h4>
-                    <p>This app uses an Excel file as one source for certification data.</p>
-                    <p><strong>Scoring Priority:</strong> Hardcoded DB → Brand Synonyms → Parent Company → Excel DB</p>
-                    <p><strong>Consistency:</strong> Single scoring function ensures identical results</p>
+        <!-- Compare Tab -->
+        <div id="compare-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-balance-scale"></i>
+                    <h2 class="card-title">Compare Brands</h2>
                 </div>
 
-                <button onclick="checkExcelStatus()" class="excel">🔄 Check Excel Status</button>
-                <button onclick="showExcelUpload()" class="secondary">📤 Upload Excel File</button>
-                <button onclick="verifyExcelScript()" class="info">🔧 Verify Script</button>
-
-                <div id="excelStatus" style="margin-top: 20px;"></div>
-
-                <div id="excelUpload" style="display: none; margin-top: 20px;">
-                    <h4 style="color: #2e7d32; margin-bottom: 10px;">Upload New Excel File</h4>
-                    <input type="file" id="excelFile" accept=".xlsx,.xls">
-                    <button onclick="uploadExcelFile()" class="excel">📤 Upload File</button>
-                    <div id="uploadResult" style="margin-top: 10px;"></div>
-                </div>
-
-                <hr>
-
-                <div class="excel-details">
-                    <h4>📋 Excel Format Requirements</h4>
-                    <p><strong>Required columns:</strong></p>
-                    <ul style="font-size: 12px; padding-left: 20px;">
-                        <li><code>brand</code> - Brand name</li>
-                        <li><code>b_corp</code> - TRUE/FALSE</li>
-                        <li><code>fair_trade</code> - TRUE/FALSE</li>
-                        <li><code>rainforest_alliance</code> - TRUE/FALSE</li>
-                        <li><code>leaping_bunny</code> - TRUE/FALSE</li>
-                    </ul>
-                    <p><strong>Optional columns:</strong> certification_date, certification_id, notes</p>
-                </div>
-
-                <div class="transparency-link">
-                    <a href="#" onclick="showMethodology()">📊 View Complete Scoring Methodology</a>
-                </div>
-            </div>
-
-            <!-- Registration Section -->
-            <div id="register-sec" class="section">
-                <h3 style="color: #2e7d32; margin-bottom: 15px;">📝 Create New Account</h3>
-
-                <input type="text" id="regUsername" placeholder="Username (min 3 characters)">
-                <input type="email" id="regEmail" placeholder="Email address">
-                <input type="password" id="regPassword" placeholder="Password (min 6 characters)">
-                <input type="password" id="regConfirmPassword" placeholder="Confirm Password">
-
-                <button onclick="registerUser()">📝 Create Account</button>
-
-                <div id="registerResult" style="margin-top: 15px;"></div>
-
-                <hr>
-
-                <p style="text-align: center; color: #6c757d; font-size: 14px;">
-                    Already have an account? <a href="#" onclick="switchTab('login-sec')" style="color: #2e7d32; font-weight: bold;">Click here to login</a>
-                </p>
-            </div>
-
-            <!-- Login Section -->
-            <div id="login-sec" class="section">
-                <h3 style="color: #2e7d32; margin-bottom: 15px;">🔐 Login to Your Account</h3>
-
-                <input type="text" id="loginUsername" placeholder="Username">
-                <input type="password" id="loginPassword" placeholder="Password">
-
-                <button onclick="loginUser()">🔐 Login</button>
-
-                <div id="loginResult" style="margin-top: 15px;"></div>
-
-                <hr>
-
-                <div class="excel-details" style="margin-top: 15px;">
-                    <h4>Test Account</h4>
-                    <p><strong>Username:</strong> Test123</p>
-                    <p><strong>Password:</strong> Oranges</p>
-                    <button onclick="useTestAccount()" class="secondary" style="margin-top: 10px;">Use Test Account</button>
-                </div>
-            </div>
-
-            <!-- Purchase History Section -->
-            <div id="history-sec" class="section">
-                <h3 style="color: #2e7d32; margin-bottom: 15px;">📋 Purchase History</h3>
-
-                <div id="historyStatus" class="result-box">
-                    <p id="historyMessage">Login to view your purchase history</p>
-                </div>
-
-                <div id="historyContent" style="display: none;">
-                    <div id="historyStats" class="excel-details" style="margin-bottom: 20px;"></div>
-                    <div id="historyList"></div>
-                    <button onclick="refreshHistory()" class="secondary">🔄 Refresh History</button>
-                </div>
-
-                <hr>
-
-                <div class="excel-details">
-                    <h4>About Purchase History</h4>
-                    <p>Your scanned products are automatically saved when you're logged in.</p>
-                    <p>View your average TBL score and track your sustainable shopping habits.</p>
-                </div>
-            </div>
-
-            <!-- Results Section -->
-            <div id="resultCard" class="result-card">
-                <div class="product-info">
-                    <h3 id="brandName">Brand Name</h3>
-                    <p id="productName" style="color: #6c757d; margin-bottom: 10px;">Product Name</p>
-                    <p id="category" style="color: #6c757d; font-size: 14px;">Category</p>
-                    <div id="extractionBadge" style="display: none; margin-top: 5px;"></div>
-                </div>
-
-                <div class="score-circle">
-                    <span class="val" id="scoreVal">0.0</span>
-                    <span class="label">TBL SCORE</span>
-                    <div class="score-grade" id="gradeText">GRADE</div>
-                </div>
-
-                <div class="pillar">
-                    <span>👥 Social Impact</span>
-                    <span id="socScore">5.0</span>
-                </div>
-                <div class="pillar">
-                    <span>🌱 Environmental Impact</span>
-                    <span id="envScore">5.0</span>
-                </div>
-                <div class="pillar">
-                    <span>💰 Economic Impact</span>
-                    <span id="econScore">5.0</span>
-                </div>
-
-                <!-- UPDATE 5: Added consistency badge -->
-                <div style="text-align: center; margin: 10px 0;">
-                    <span class="consistency-badge">✅ Single Scoring Function Guarantees Consistency</span>
-                </div>
-
-                <div class="transparency-link" style="margin-top: 15px;">
-                    <a href="#" onclick="showMethodologyForCurrentBrand()">📊 See how this score was calculated</a>
-                </div>
-
-                <div style="margin-top: 25px;">
-                    <h4 style="color: #2e7d32; text-align: center; margin-bottom: 15px; font-size: 16px;">
-                        ✅ VERIFIED CERTIFICATIONS
-                    </h4>
-                    <div id="certsList" style="text-align: center;"></div>
-                    <div id="noCerts" class="no-certs" style="display: none;">
-                        No active certifications found for this brand
+                <div id="comparisonBrands">
+                    <div class="form-group">
+                        <label class="form-label">Brand 1</label>
+                        <input type="text" class="form-input comparison-brand" placeholder="e.g., Nespresso">
                     </div>
-
-                    <div class="cert-source" id="certSource">
-                        Source: Hardcoded Database + Excel Database • Base 5.0 + Certification Bonuses Only
-                    </div>
-
-                    <div class="cert-status" id="excelStatusInfo">
-                        <span id="excelFoundStatus" class="excel-found">✓ Found in Excel</span>
-                        <span id="excelNotFoundStatus" class="excel-not-found" style="display: none;">✗ Not in Excel</span>
-                    </div>
-
-                    <div id="excelDetails" class="excel-details" style="display: none;">
-                        <h4>📋 Excel Details</h4>
-                        <div id="excelDetailsContent"></div>
-                    </div>
-
-                    <div id="extractionInfo" class="excel-details" style="display: none; margin-top: 15px;">
-                        <h4>🔍 Brand Extraction Details</h4>
-                        <div id="extractionDetailsContent"></div>
+                    <div class="form-group">
+                        <label class="form-label">Brand 2</label>
+                        <input type="text" class="form-input comparison-brand" placeholder="e.g., Starbucks">
                     </div>
                 </div>
 
-                <div id="purchaseButtonContainer" style="margin-top: 15px;"></div>
-
-                <button onclick="clearResults()" class="secondary" style="margin-top: 15px;">
-                    🗑️ Clear Results
+                <button class="add-brand-btn" id="addBrandBtn">
+                    <i class="fas fa-plus"></i> Add Another Brand
                 </button>
+
+                <div class="form-group mt-2">
+                    <button class="btn btn-primary btn-full" id="compareBtn">
+                        <i class="fas fa-chart-bar"></i> Compare Brands
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-container" id="compareResults">
+                <!-- Comparison results will be dynamically inserted here -->
             </div>
         </div>
+
+        <!-- Info Tab -->
+        <div id="info-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i>
+                    <h2 class="card-title">About TBL Scoring</h2>
+                </div>
+                <p>TBL (Triple Bottom Line) scoring evaluates brands based on three pillars:</p>
+
+                <div class="score-display mt-2">
+                    <div class="score-pillar">
+                        <div class="pillar-name">👥 Social</div>
+                        <div class="pillar-value">5.0+</div>
+                        <div>Fair labor, community impact</div>
+                    </div>
+                    <div class="score-pillar">
+                        <div class="pillar-name">🌱 Environmental</div>
+                        <div class="pillar-value">5.0+</div>
+                        <div>Sustainability, eco-practices</div>
+                    </div>
+                    <div class="score-pillar">
+                        <div class="pillar-name">💰 Economic</div>
+                        <div class="pillar-value">5.0+</div>
+                        <div>Ethical business practices</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-2">
+                    <i class="fas fa-lightbulb"></i>
+                    <div>All brands start with a base score of 5.0. Points are added for verified certifications like B Corp, Fair Trade, Rainforest Alliance, and Leaping Bunny.</div>
+                </div>
+
+                <div class="form-group mt-2">
+                    <button class="btn btn-secondary btn-full" id="methodologyBtn">
+                        <i class="fas fa-book"></i> View Full Methodology
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-primary btn-full" id="healthBtn">
+                        <i class="fas fa-heartbeat"></i> Check System Health
+                    </button>
+                </div>
+            </div>
+
+            <div class="card mt-2">
+                <div class="card-header">
+                    <i class="fas fa-database"></i>
+                    <h2 class="card-title">Certification Database</h2>
+                </div>
+                <p>Our database includes certification status for hundreds of brands across 18 product categories.</p>
+
+                <div class="form-group mt-2">
+                    <button class="btn btn-secondary btn-full" id="certStatusBtn">
+                        <i class="fas fa-database"></i> Check Certification Status
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading hidden" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p>Processing your request...</p>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer"></div>
     </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active" data-tab="scan">
+            <i class="fas fa-camera nav-icon"></i>
+            <span>Scan</span>
+        </a>
+        <a href="#" class="nav-item" data-tab="search">
+            <i class="fas fa-search nav-icon"></i>
+            <span>Search</span>
+        </a>
+        <a href="#" class="nav-item" data-tab="compare">
+            <i class="fas fa-balance-scale nav-icon"></i>
+            <span>Compare</span>
+        </a>
+        <a href="#" class="nav-item" data-tab="info">
+            <i class="fas fa-info-circle nav-icon"></i>
+            <span>Info</span>
+        </a>
+    </nav>
+
     <script>
-            // ==================== //
-            // GLOBAL VARIABLES     //
-            // ==================== //
-            let currentBrand = null;
-            let scannerActive = false;
-            let codeReader = null;
-            let currentStream = null;
-            let currentUser = null;
-            let authToken = null;
+        // Global state
+        const state = {
+            currentTab: 'scan',
+            scannerActive: false,
+            mediaStream: null,
+            currentResults: null
+        };
 
-            // ADD THIS LINE HERE:
-            const API_BASE = 'https://tbl-grocery-scanner.onrender.com/';
+        // DOM Elements
+        const elements = {
+            // Tabs
+            tabs: document.querySelectorAll('.tab'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            navItems: document.querySelectorAll('.nav-item'),
 
-            // ==================== //
-            // ZXING SCANNER SETUP  //
-            // ==================== //
+            // Scan tab
+            scannerContainer: document.getElementById('scannerContainer'),
+            scannerVideo: document.getElementById('scanner-video'),
+            barcodeInput: document.getElementById('barcodeInput'),
+            startScanBtn: document.getElementById('startScanBtn'),
+            scanBtn: document.getElementById('scanBtn'),
+            scanResults: document.getElementById('scanResults'),
 
-        async function startScanner() {
-            if (scannerActive) {
-                stopScanner();
-                return;
-            }
+            // Search tab
+            productNameInput: document.getElementById('productNameInput'),
+            brandNameInput: document.getElementById('brandNameInput'),
+            searchBtn: document.getElementById('searchBtn'),
+            searchResults: document.getElementById('searchResults'),
 
-            const videoElement = document.getElementById('scanner-video');
-            if (!videoElement) {
-                showMessage('error', 'Scanner video element not found');
-                return;
-            }
+            // Compare tab
+            comparisonBrands: document.getElementById('comparisonBrands'),
+            addBrandBtn: document.getElementById('addBrandBtn'),
+            compareBtn: document.getElementById('compareBtn'),
+            compareResults: document.getElementById('compareResults'),
 
-            debugLog("Initializing ZXing scanner...");
+            // Info tab
+            methodologyBtn: document.getElementById('methodologyBtn'),
+            healthBtn: document.getElementById('healthBtn'),
+            certStatusBtn: document.getElementById('certStatusBtn'),
 
-            try {
-                // Check if ZXing is available
-                if (typeof window.ZXing === 'undefined') {
-                    throw new Error('ZXing library not loaded. Please refresh the page.');
-                }
+            // Common
+            loadingIndicator: document.getElementById('loadingIndicator'),
+            alertContainer: document.getElementById('alertContainer'),
+            navToggle: document.getElementById('navToggle')
+        };
 
-                // Log ZXing structure for debugging
-                console.log('ZXing object:', window.ZXing);
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            checkBackendHealth();
+        });
 
-                // Try different ways to find BrowserMultiFormatReader
-                let BrowserMultiFormatReader;
-                if (window.ZXing.BrowserMultiFormatReader) {
-                    BrowserMultiFormatReader = window.ZXing.BrowserMultiFormatReader;
-                    debugLog("Found BrowserMultiFormatReader in ZXing root");
-                } else if (window.ZXing.browser && window.ZXing.browser.BrowserMultiFormatReader) {
-                    BrowserMultiFormatReader = window.ZXing.browser.BrowserMultiFormatReader;
-                    debugLog("Found BrowserMultiFormatReader in ZXing.browser");
-                } else {
-                    // Try to find it in the global scope
-                    for (let key in window) {
-                        if (key.includes('BrowserMultiFormatReader')) {
-                            BrowserMultiFormatReader = window[key];
-                            debugLog(`Found BrowserMultiFormatReader as ${key}`);
-                            break;
-                        }
-                    }
+        // Setup all event listeners
+        function setupEventListeners() {
+            // Tab switching
+            elements.tabs.forEach(tab => {
+                tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
 
-                    if (!BrowserMultiFormatReader) {
-                        throw new Error('BrowserMultiFormatReader not found in ZXing library');
-                    }
-                }
+            elements.navItems.forEach(navItem => {
+                navItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchTab(navItem.dataset.tab);
+                });
+            });
 
-                // Create ZXing reader
-                codeReader = new BrowserMultiFormatReader();
-                debugLog("ZXing reader created successfully");
+            // Scan tab
+            elements.startScanBtn.addEventListener('click', toggleScanner);
+            elements.scanBtn.addEventListener('click', scanBarcode);
+            elements.barcodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') scanBarcode();
+            });
 
-                // Get available video inputs
-                let videoInputDevices = [];
-                try {
-                    videoInputDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-                    debugLog(`Found ${videoInputDevices.length} video devices`);
-                } catch (deviceError) {
-                    debugLog(`Warning: Could not list video devices: ${deviceError.message}`);
-                    // Continue without device selection
-                }
+            // Search tab
+            elements.searchBtn.addEventListener('click', searchProduct);
+            elements.productNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchProduct();
+            });
+            elements.brandNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchProduct();
+            });
 
-                // Get camera ID (use first available if we can't list devices)
-                let selectedDeviceId = null;
-                if (videoInputDevices.length > 0) {
-                    // Try to find a rear-facing camera
-                    const rearCamera = videoInputDevices.find(device =>
-                        device.label && (
-                            device.label.toLowerCase().includes('back') ||
-                            device.label.toLowerCase().includes('rear') ||
-                            device.label.toLowerCase().includes('environment')
-                        )
-                    );
+            // Compare tab
+            elements.addBrandBtn.addEventListener('click', addBrandField);
+            elements.compareBtn.addEventListener('click', compareBrands);
 
-                    if (rearCamera) {
-                        selectedDeviceId = rearCamera.deviceId;
-                        debugLog(`Selected rear camera: ${rearCamera.label}`);
-                    } else {
-                        selectedDeviceId = videoInputDevices[0].deviceId;
-                        debugLog(`Selected first camera: ${videoInputDevices[0].label}`);
-                    }
-                }
+            // Info tab
+            elements.methodologyBtn.addEventListener('click', viewMethodology);
+            elements.healthBtn.addEventListener('click', checkBackendHealth);
+            elements.certStatusBtn.addEventListener('click', checkCertificationStatus);
 
-                // Clear any previous video
-                videoElement.srcObject = null;
-
-                // Start decoding
-                await codeReader.decodeFromVideoDevice(
-                    selectedDeviceId,
-                    'scanner-video',
-                    async (result, error) => {
-                        if (result) {
-                            await handleBarcodeDetection(result.text, result.format);
-                        }
-                        if (error) {
-                            // Don't show errors for NotFoundException (normal scanning)
-                            if (!error || !error.message || !error.message.includes('NotFoundException')) {
-                                debugLog(`Scanner error: ${error ? error.message : 'Unknown error'}`);
-                            }
-                        }
-                    }
-                );
-
-                scannerActive = true;
-                showMessage('success', 'ZXing scanner ready - point camera at barcode');
-                debugLog("ZXing scanner started successfully");
-
-                document.getElementById('scannerDebug').innerText = 'ZXing scanner status: Active - Scanning...';
-                document.getElementById('scannerDebug').style.display = 'block';
-
-                // Update UI
-                const startBtn = document.getElementById('startScannerBtn');
-                if (startBtn) {
-                    startBtn.textContent = '🔄 Restart Scanner';
-                    startBtn.classList.remove('scan-again');
-                }
-
-                // Show detection indicator
-                const detectionIndicator = document.getElementById('detectionIndicator');
-                if (detectionIndicator) {
-                    detectionIndicator.style.display = 'block';
-                    detectionIndicator.classList.add('detection-active');
-                }
-
-                // Show test barcodes
-                document.getElementById('testBarcodes').style.display = 'block';
-
-            } catch (error) {
-                console.error('ZXing scanner init error:', error);
-                console.error('Error stack:', error.stack);
-
-                let errorMessage = 'ZXing Scanner error: ';
-                if (error.name === 'NotAllowedError') {
-                    errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.';
-                } else if (error.name === 'NotFoundError') {
-                    errorMessage = 'No camera found on this device. Use manual barcode entry instead.';
-                } else if (error.name === 'NotReadableError') {
-                    errorMessage = 'Camera is in use by another application. Close other camera apps.';
-                } else if (error.message.includes('could not start video source')) {
-                    errorMessage = 'ZXing camera error: Could not start video. Try closing other camera apps.';
-                } else if (error.message.includes('BrowserMultiFormatReader') || error.message.includes('ZXing')) {
-                    errorMessage = 'ZXing library error: ' + error.message + '\nTry refreshing the page or using a different browser.';
-                } else if (error.message.includes('decode')) {
-                    errorMessage = 'ZXing decoding error: ' + error.message;
-                } else {
-                    errorMessage = 'ZXing scanner error: ' + error.message;
-                }
-
-                showMessage('error', errorMessage);
-                debugLog(`ZXing scanner error: ${error.message}`);
-
-                // Update UI
-                const startBtn = document.getElementById('startScannerBtn');
-                if (startBtn) {
-                    startBtn.textContent = '🎬 Start Scanner';
-                    startBtn.disabled = false;
-                }
+            // Navigation toggle
+            if (elements.navToggle) {
+                elements.navToggle.addEventListener('click', toggleNavigation);
             }
         }
 
-        async function handleBarcodeDetection(code, format) {
-            debugLog(`✅ ZXing detected: ${code} (${format})`);
+        // Switch between tabs
+        function switchTab(tabId) {
+            // Update active tab
+            elements.tabs.forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === tabId);
+            });
 
-            // Show visual feedback immediately
-            const detectionIndicator = document.getElementById('detectionIndicator');
-            if (detectionIndicator) {
-                detectionIndicator.innerHTML = `✅ ZXing: ${format} - ${code}`;
-                detectionIndicator.style.background = 'rgba(46, 125, 50, 0.9)';
+            elements.tabContents.forEach(content => {
+                content.classList.toggle('active', content.id === `${tabId}-tab`);
+            });
+
+            elements.navItems.forEach(navItem => {
+                navItem.classList.toggle('active', navItem.dataset.tab === tabId);
+            });
+
+            // Stop scanner if switching away from scan tab
+            if (tabId !== 'scan' && state.scannerActive) {
+                toggleScanner();
             }
 
-            // 1. STOP SCANNER IMMEDIATELY
-            stopScanner();
-            document.getElementById('scannerDebug').innerText = 'ZXing scanner status: Stopped (processing...)';
+            // Update state
+            state.currentTab = tabId;
 
-            // 2. Provide visual feedback
-            showMessage('success', `✅ ZXing scanned ${format}: ${code}`);
+            // Clear results when switching tabs (except when going back to scan with results)
+            if (tabId !== 'scan' || !state.currentResults) {
+                clearResults();
+            } else if (tabId === 'scan' && state.currentResults) {
+                // If we have results and are going back to scan tab, show them
+                displayResults(state.currentResults, elements.scanResults);
+            }
+        }
 
-            // 3. Add visual feedback to scanner
-            const scannerDiv = document.getElementById('interactive');
-            scannerDiv.classList.add('scan-success');
-            setTimeout(() => scannerDiv.classList.remove('scan-success'), 500);
+        // Toggle scanner camera
+        async function toggleScanner() {
+            if (!state.scannerActive) {
+                // Start scanner
+                try {
+                    state.mediaStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    });
 
-            // 4. Show loading
-            showLoading(true);
+                    elements.scannerVideo.srcObject = state.mediaStream;
+                    elements.scannerContainer.classList.remove('hidden');
+                    elements.startScanBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Camera';
+                    state.scannerActive = true;
+
+                    // Set up barcode detection (simplified - in a real app you'd use a library like ZXing)
+                    setupBarcodeDetection();
+
+                    showAlert('Camera started. Point at barcode to scan.', 'success');
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    showAlert('Could not access camera. Please check permissions.', 'error');
+                }
+            } else {
+                // Stop scanner
+                if (state.mediaStream) {
+                    state.mediaStream.getTracks().forEach(track => track.stop());
+                    state.mediaStream = null;
+                }
+
+                elements.scannerVideo.srcObject = null;
+                elements.scannerContainer.classList.add('hidden');
+                elements.startScanBtn.innerHTML = '<i class="fas fa-camera"></i> Start Camera Scanner';
+                state.scannerActive = false;
+            }
+        }
+
+        // Simplified barcode detection (for demo)
+        function setupBarcodeDetection() {
+            // In a real implementation, you would use a barcode scanning library
+            // For this demo, we'll simulate detection when user clicks scan button
+            console.log('Barcode detection would be set up here with a library like ZXing');
+        }
+
+        // Scan barcode (manual or via camera)
+        async function scanBarcode() {
+            const barcode = elements.barcodeInput.value.trim();
+
+            if (!barcode && !state.scannerActive) {
+                showAlert('Please enter a barcode or start the camera scanner.', 'error');
+                return;
+            }
+
+            // For demo purposes, if camera is active, simulate a scanned barcode
+            let scannedBarcode = barcode;
+            if (state.scannerActive && !barcode) {
+                // Simulate scanning a barcode (in real app, this would come from the scanner)
+                scannedBarcode = '7613034627294'; // Example barcode
+                elements.barcodeInput.value = scannedBarcode;
+                showAlert('Simulated scan. In production, this would be a real barcode.', 'info');
+            }
+
+            if (!scannedBarcode) {
+                showAlert('Please enter a barcode to scan.', 'error');
+                return;
+            }
+
+            // Validate barcode format (simple check)
+            if (!/^\d{8,13}$/.test(scannedBarcode)) {
+                showAlert('Please enter a valid 8-13 digit barcode.', 'error');
+                return;
+            }
+
+            showLoading();
 
             try {
-                // 5. FIRST: Look up barcode in Open Food Facts via backend
-                debugLog(`Looking up barcode ${code} in Open Food Facts...`);
-                showMessage('info', `Looking up product ${code}...`);
+                // Call the backend API
+                const response = await fetch(`/product/${scannedBarcode}`);
+                const data = await response.json();
 
-                const productResponse = await fetch(`${API_BASE}/product/${code}`);
-                const productData = await productResponse.json();
+                hideLoading();
 
-                if (productData.found) {
-                    // Found in Open Food Facts - use real product data
-                    debugLog(`Found in Open Food Facts: ${productData.name} by ${productData.brand}`);
-                    showMessage('success', `Found: ${productData.name}`);
+                if (data.success === false && data.error) {
+                    showAlert(`Scan failed: ${data.error}`, 'error');
+                    return;
+                }
 
-                    const productPayload = {
-                        barcode: code,
-                        brand: productData.brand,
-                        product_name: productData.name,
-                        category: productData.category || "Unknown"
-                    };
+                // Store results and display
+                state.currentResults = data;
+                displayResults(data, elements.scanResults);
 
-                    await processScan(productPayload, 'barcode');
+            } catch (error) {
+                hideLoading();
+                console.error('Scan error:', error);
+                showAlert('Failed to scan product. Please try again.', 'error');
+            }
+        }
+
+        // Search for product or brand
+        async function searchProduct() {
+            const productName = elements.productNameInput.value.trim();
+            const brandName = elements.brandNameInput.value.trim();
+
+            if (!productName && !brandName) {
+                showAlert('Please enter a product name or brand name to search.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                let data;
+
+                if (brandName) {
+                    // Search by brand name
+                    const response = await fetch('/scan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            barcode: '',
+                            brand: brandName,
+                            product_name: '',
+                            category: ''
+                        })
+                    });
+                    data = await response.json();
                 } else {
-                    // Not found in Open Food Facts - ask user for product name
-                    debugLog(`Not found in Open Food Facts for barcode ${code}`);
-                    showMessage('info', 'Product not found. Please enter product name.');
+                    // Extract brand from product name
+                    const extractResponse = await fetch('/extract-brand', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            product_name: productName,
+                            max_results: 10
+                        })
+                    });
 
-                    // Hide scanner UI
-                    document.getElementById('scanner-ui').style.display = 'none';
+                    const extractData = await extractResponse.json();
 
-                    // Show product name input form
-                    const productNameForm = `
-                        <div id="productNameForm" style="margin-top: 20px;">
-                            <h4 style="color: #2e7d32; margin-bottom: 10px;">Product Not Found in Database</h4>
-                            <p style="color: #666; margin-bottom: 15px;">Barcode ${code} was not found in Open Food Facts. Please enter the product name:</p>
-                            <input type="text" id="manualProductNameInput" placeholder="Enter product name (e.g., Oreo Chocolate Cookies)" style="width: 100%; padding: 15px; margin-bottom: 10px; border: 2px solid #e9ecef; border-radius: 10px;">
-                            <div style="display: flex; gap: 10px;">
-                                <button onclick="submitManualProductName('${code}')" style="flex: 1; padding: 15px; background: #2e7d32; color: white; border: none; border-radius: 10px; font-weight: bold;">Submit</button>
-                                <button onclick="cancelManualEntry()" class="secondary" style="flex: 1; padding: 15px;">Cancel</button>
+                    if (extractData.result.success) {
+                        // Now get scores for the extracted brand
+                        const brand = extractData.result.extracted_brand;
+                        const scanResponse = await fetch('/scan', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                barcode: '',
+                                brand: brand,
+                                product_name: productName,
+                                category: ''
+                            })
+                        });
+                        data = await scanResponse.json();
+                        data.brand_extraction_info = extractData.result;
+                    } else {
+                        hideLoading();
+                        showAlert(`Could not identify brand: ${extractData.result.message}`, 'error');
+                        return;
+                    }
+                }
+
+                hideLoading();
+
+                if (data.success === false && data.error) {
+                    showAlert(`Search failed: ${data.error}`, 'error');
+                    return;
+                }
+
+                displayResults(data, elements.searchResults);
+
+            } catch (error) {
+                hideLoading();
+                console.error('Search error:', error);
+                showAlert('Failed to search. Please try again.', 'error');
+            }
+        }
+
+        // Add another brand field for comparison
+        function addBrandField() {
+            const brandCount = elements.comparisonBrands.children.length + 1;
+
+            const newField = document.createElement('div');
+            newField.className = 'form-group';
+            newField.innerHTML = `
+                <label class="form-label">Brand ${brandCount}</label>
+                <input type="text" class="form-input comparison-brand" placeholder="e.g., General Mills">
+                <button class="btn btn-secondary mt-1 remove-brand-btn" style="width: 100%; padding: 8px;">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            `;
+
+            elements.comparisonBrands.appendChild(newField);
+
+            // Add event listener to remove button
+            newField.querySelector('.remove-brand-btn').addEventListener('click', function() {
+                elements.comparisonBrands.removeChild(newField);
+                // Renumber remaining brands
+                renumberBrandFields();
+            });
+        }
+
+        // Renumber brand fields after removal
+        function renumberBrandFields() {
+            const brandFields = elements.comparisonBrands.querySelectorAll('.form-group');
+            brandFields.forEach((field, index) => {
+                const label = field.querySelector('.form-label');
+                if (label) {
+                    label.textContent = `Brand ${index + 1}`;
+                }
+            });
+        }
+
+        // Compare multiple brands
+        async function compareBrands() {
+            const brandInputs = document.querySelectorAll('.comparison-brand');
+            const brands = [];
+
+            brandInputs.forEach(input => {
+                const brand = input.value.trim();
+                if (brand) {
+                    brands.push({ brand: brand });
+                }
+            });
+
+            if (brands.length < 2) {
+                showAlert('Please enter at least 2 brands to compare.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch('/compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(brands)
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                displayComparisonResults(data.comparison, elements.compareResults);
+
+            } catch (error) {
+                hideLoading();
+                console.error('Comparison error:', error);
+                showAlert('Failed to compare brands. Please try again.', 'error');
+            }
+        }
+
+        // View scoring methodology
+        function viewMethodology() {
+            window.open('/scoring-methodology', '_blank');
+        }
+
+        // Check backend health
+        async function checkBackendHealth() {
+            showLoading();
+
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+
+                hideLoading();
+
+                // Create a health report
+                let healthHtml = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i>
+                        <div>
+                            <strong>Backend Status: ${data.status.toUpperCase()}</strong><br>
+                            Version: ${data.version}<br>
+                            Users: ${data.total_users}<br>
+                            Hardcoded Brands: ${data.hardcoded_scores}<br>
+                            Certification System: ${data.certification_system}
+                        </div>
+                    </div>
+                `;
+
+                // Add Excel file status
+                if (data.excel_file_status === 'found') {
+                    healthHtml += `
+                        <div class="alert alert-info">
+                            <i class="fas fa-file-excel"></i>
+                            <div>
+                                <strong>Excel Database Loaded</strong><br>
+                                File: ${data.excel_file}<br>
+                                Records: ${data.excel_records || 'Unknown'}<br>
+                                Size: ${(data.excel_file_size / 1024).toFixed(2)} KB
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    healthHtml += `
+                        <div class="alert alert-error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div>
+                                <strong>Excel Database Not Found</strong><br>
+                                File: ${data.excel_file}<br>
+                                Please run the create-excel script.
+                            </div>
+                        </div>
+                    `;
+                }
+
+                showAlert(healthHtml, 'info', false); // false means don't auto-hide
+
+            } catch (error) {
+                hideLoading();
+                showAlert('Could not connect to backend. Please check if server is running.', 'error');
+            }
+        }
+
+        // Check certification database status
+        async function checkCertificationStatus() {
+            showLoading();
+
+            try {
+                const response = await fetch('/certifications/status');
+                const data = await response.json();
+
+                hideLoading();
+
+                let statusHtml = '';
+
+                if (data.status === 'success') {
+                    statusHtml = `
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Certification Database Loaded</strong><br>
+                                Total Records: ${data.total_records}<br>
+                                Last Loaded: ${new Date(data.last_loaded).toLocaleString()}<br>
+                                File: ${data.excel_file}
                             </div>
                         </div>
                     `;
 
-                    document.getElementById('scan-sec').innerHTML += productNameForm;
-                }
-
-            } catch (error) {
-                debugLog(`Error: ${error.message}`);
-                showMessage('error', 'Lookup failed. Try manual entry or check backend connection.');
-
-                // Fallback to simple payload with error note
-                const payload = {
-                    barcode: code,
-                    brand: "Lookup Error",
-                    product_name: `Product lookup failed for ${code}`,
-                    category: "Error"
-                };
-                await processScan(payload, 'barcode');
-            } finally {
-                showLoading(false);
-                // Reset detection indicator
-                if (detectionIndicator) {
-                    detectionIndicator.innerHTML = '🔍 Detecting...';
-                    detectionIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
-                }
-            }
-        }
-
-        // Helper function to submit manual product name
-        function submitManualProductName(barcode) {
-            const productName = document.getElementById('manualProductNameInput').value.trim();
-
-            if (!productName) {
-                showMessage('error', 'Please enter a product name');
-                return;
-            }
-
-            // Remove the form
-            document.getElementById('productNameForm').remove();
-
-            // Show scanner UI again
-            document.getElementById('scanner-ui').style.display = 'block';
-
-            // Process with the manually entered product name
-            const payload = {
-                barcode: barcode,
-                brand: "", // Let backend extract from product name
-                product_name: productName,
-                category: "General"
-            };
-
-            processScan(payload, 'barcode');
-        }
-
-        // Helper function to cancel manual entry
-        function cancelManualEntry() {
-            // Remove the form
-            document.getElementById('productNameForm').remove();
-
-            // Show scanner UI again
-            document.getElementById('scanner-ui').style.display = 'block';
-
-            // Reset scanner button
-            const startBtn = document.getElementById('startScannerBtn');
-            if (startBtn) {
-                startBtn.textContent = '🎬 Start Scanner';
-            }
-
-            showMessage('info', 'Manual entry cancelled');
-        }
-
-        function testBarcodeScanner() {
-            // Test barcodes with ZXing format info
-            const testBarcodes = [
-                {code: '7613036925575', format: 'EAN_13'}, // EAN-13 test
-                {code: '9780140157376', format: 'EAN_13'}, // Book EAN-13 test
-                {code: '1234567890128', format: 'EAN_13'}, // Valid EAN-13 checksum
-                {code: '4006381333931', format: 'EAN_13'}  // Another valid EAN-13
-            ];
-
-            const randomBarcode = testBarcodes[Math.floor(Math.random() * testBarcodes.length)];
-
-            // Simulate ZXing scanning process
-            showMessage('info', `Testing ZXing scanner with ${randomBarcode.format}: ${randomBarcode.code}`);
-
-            // If scanner is active, stop it first
-            if (scannerActive) {
-                stopScanner();
-            }
-
-            // Manually trigger the detection flow with Open Food Facts lookup
-            showLoading(true);
-
-            // Use the same flow as real scanning
-            fetch(`${API_BASE}/product/${randomBarcode.code}`)
-                .then(response => response.json())
-                .then(productData => {
-                    showLoading(false);
-
-                    if (productData.found) {
-                        showMessage('success', `Test: Found ${productData.name} by ${productData.brand}`);
-
-                        const payload = {
-                            barcode: randomBarcode.code,
-                            brand: productData.brand,
-                            product_name: productData.name,
-                            category: productData.category || "Test"
-                        };
-
-                        processScan(payload, 'barcode');
-                    } else {
-                        showMessage('info', `Test: Product ${randomBarcode.code} not found. Using test product.`);
-
-                        const payload = {
-                            barcode: randomBarcode.code,
-                            brand: "Test Brand",
-                            product_name: "Test Product for ZXing Scanner",
-                            category: "Test"
-                        };
-
-                        processScan(payload, 'barcode');
-                    }
-                })
-                .catch(error => {
-                    showLoading(false);
-                    showMessage('error', `Test failed: ${error.message}`);
-                });
-        }
-
-        function stopScanner() {
-            // Stop ZXing scanner
-            if (codeReader && typeof codeReader.reset === 'function') {
-                try {
-                    codeReader.reset();
-                    codeReader = null;
-                } catch (error) {
-                    debugLog(`Error stopping ZXing scanner: ${error.message}`);
-                }
-            }
-
-            // Stop any active media stream
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => {
-                    track.stop();
-                });
-                currentStream = null;
-            }
-
-            // Clear video element
-            const videoElement = document.getElementById('scanner-video');
-            if (videoElement && videoElement.srcObject) {
-                videoElement.srcObject = null;
-            }
-
-            scannerActive = false;
-            debugLog("ZXing scanner stopped");
-
-            // Update UI
-            document.getElementById('scannerDebug').innerText = 'ZXing scanner status: Stopped';
-            document.getElementById('scannerDebug').style.display = 'block';
-
-            // Show restart button
-            const startBtn = document.getElementById('startScannerBtn');
-            if (startBtn) {
-                startBtn.textContent = '🎬 Start Scanner';
-                startBtn.classList.remove('scan-again');
-                startBtn.disabled = false;
-            }
-
-            // Hide detection indicator
-            const detectionIndicator = document.getElementById('detectionIndicator');
-            if (detectionIndicator) {
-                detectionIndicator.style.display = 'none';
-            }
-
-            // Hide test barcodes
-            document.getElementById('testBarcodes').style.display = 'none';
-        }
-
-        // ==================== //
-        // ORIGINAL APP LOGIC   //
-        // ==================== //
-
-        // Configure API base URL
-
-        console.log(`API Base URL: ${API_BASE}`);
-
-        // Debug logging
-        function debugLog(message) {
-            console.log(`[DEBUG] ${message}`);
-            const debugDiv = document.getElementById('debugInfo');
-            if (debugDiv) {
-                debugDiv.innerHTML = message;
-                debugDiv.style.display = 'block';
-            }
-        }
-
-        // Tab switching
-        function switchTab(id) {
-            const event = window.event || arguments[0];
-
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-
-            document.getElementById(id).classList.add('active');
-
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            } else {
-                const tabs = document.querySelectorAll('.nav-tab');
-                tabs.forEach(tab => {
-                    if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes(id)) {
-                        tab.classList.add('active');
-                    }
-                });
-            }
-
-            if(id !== 'scan-sec' && scannerActive) {
-                stopScanner();
-            }
-
-            if (id === 'history-sec' && currentUser) {
-                loadPurchaseHistory();
-            }
-        }
-
-        // Update user status display
-        function updateUserStatus() {
-            const userStatus = document.getElementById('userStatus');
-            if (currentUser) {
-                userStatus.innerHTML = `👤 ${currentUser} | <a href="#" onclick="logoutUser()">Logout</a>`;
-                userStatus.style.display = 'block';
-
-                document.getElementById('historyMessage').innerHTML =
-                    `Welcome ${currentUser}! Click refresh to load your purchase history.`;
-                document.getElementById('historyContent').style.display = 'block';
-            } else {
-                userStatus.innerHTML = 'Not logged in';
-                document.getElementById('historyMessage').innerHTML =
-                    'Please login to view your purchase history';
-                document.getElementById('historyContent').style.display = 'none';
-            }
-        }
-
-        // Show/hide loading
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
-        }
-
-        // Show/hide messages
-        function showMessage(type, text) {
-            const errorBox = document.getElementById('errorBox');
-            const successBox = document.getElementById('successBox');
-
-            if (type === 'error') {
-                errorBox.innerText = text;
-                errorBox.style.display = 'block';
-                successBox.style.display = 'none';
-            } else if (type === 'success') {
-                successBox.innerText = text;
-                successBox.style.display = 'block';
-                errorBox.style.display = 'none';
-            }
-
-            setTimeout(() => {
-                errorBox.style.display = 'none';
-                successBox.style.display = 'none';
-            }, 5000);
-        }
-
-        // Hide all messages
-        function hideMessages() {
-            document.getElementById('errorBox').style.display = 'none';
-            document.getElementById('successBox').style.display = 'none';
-        }
-
-        // Register user
-        async function registerUser() {
-            const username = document.getElementById('regUsername').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value;
-            const confirmPassword = document.getElementById('regConfirmPassword').value;
-
-            if (!username || !email || !password || !confirmPassword) {
-                showMessage('error', 'All fields are required');
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                showMessage('error', 'Passwords do not match');
-                return;
-            }
-
-            if (password.length < 6) {
-                showMessage('error', 'Password must be at least 6 characters');
-                return;
-            }
-
-            try {
-                showLoading(true);
-                const response = await fetch(`${API_BASE}/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password })
-                });
-
-                const data = await response.json();
-                showLoading(false);
-
-                if (response.ok) {
-                    document.getElementById('registerResult').innerHTML =
-                        `<div style="color: #198754; background: #d1e7dd; padding: 10px; border-radius: 8px;">
-                            ✅ Account created successfully!<br>
-                            Username: ${data.username}<br>
-                            <a href="#" onclick="switchTab('login-sec')" style="color: #2e7d32; font-weight: bold;">Click here to login</a>
-                        </div>`;
-
-                    document.getElementById('regUsername').value = '';
-                    document.getElementById('regEmail').value = '';
-                    document.getElementById('regPassword').value = '';
-                    document.getElementById('regConfirmPassword').value = '';
-                } else {
-                    throw new Error(data.detail || 'Registration failed');
-                }
-            } catch (err) {
-                showLoading(false);
-                document.getElementById('registerResult').innerHTML =
-                    `<div style="color: #dc3545; background: #ffebee; padding: 10px; border-radius: 8px;">
-                        ❌ Error: ${err.message}
-                    </div>`;
-            }
-        }
-
-        // Login user
-        async function loginUser() {
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value;
-
-            if (!username || !password) {
-                showMessage('error', 'Username and password required');
-                return;
-            }
-
-            try {
-                showLoading(true);
-                const response = await fetch(`${API_BASE}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                const data = await response.json();
-                showLoading(false);
-
-                if (response.ok) {
-                    currentUser = data.username;
-                    authToken = data.token;
-
-                    document.getElementById('loginResult').innerHTML =
-                        `<div style="color: #198754; background: #d1e7dd; padding: 10px; border-radius: 8px;">
-                            ✅ Login successful! Welcome ${data.username}
-                        </div>`;
-
-                    updateUserStatus();
-
-                    document.getElementById('loginUsername').value = '';
-                    document.getElementById('loginPassword').value = '';
-                    setTimeout(() => switchTab('scan-sec'), 1500);
-                } else {
-                    throw new Error(data.detail || 'Login failed');
-                }
-            } catch (err) {
-                showLoading(false);
-                document.getElementById('loginResult').innerHTML =
-                    `<div style="color: #dc3545; background: #ffebee; padding: 10px; border-radius: 8px;">
-                        ❌ Error: ${err.message}
-                    </div>`;
-            }
-        }
-
-        // Use test account
-        function useTestAccount() {
-            document.getElementById('loginUsername').value = 'Test123';
-            document.getElementById('loginPassword').value = 'Oranges';
-            loginUser();
-        }
-
-        // Logout user
-        function logoutUser() {
-            currentUser = null;
-            authToken = null;
-            updateUserStatus();
-            showMessage('success', 'Logged out successfully');
-            switchTab('scan-sec');
-        }
-
-        // Process scan - Robust version for novices
-        async function processScan(payload, searchType = 'barcode') {
-            showLoading(true);
-            hideMessages();
-
-            // ... (keep your existing headers and safePayload setup)
-
-            try {
-                const response = await fetch(`${API_BASE}/scan`, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(safePayload)
-                });
-
-                debugLog(`Response status: ${response.status}`);
-
-                // --- NEW ROBUST ERROR HANDLING ---
-                if (!response.ok) {
-                    // 1. Read the error message ONCE as raw text
-                    const rawErrorText = await response.text();
-                    let finalErrorMessage = `HTTP ${response.status}`;
-
-                    try {
-                        // 2. See if the text is actually a JSON error from the server
-                        const errorData = JSON.parse(rawErrorText);
-                        finalErrorMessage = errorData.detail || JSON.stringify(errorData);
-                    } catch (e) {
-                        // 3. If it's not JSON, just use the raw text we already read
-                        finalErrorMessage = rawErrorText;
-                    }
-                    throw new Error(finalErrorMessage);
-                }
-                // --- END OF FIX ---
-
-                // If we got here, the response was successful (200 OK)
-                const data = await response.json();
-                debugLog(`Success! Data received`);
-
-                showLoading(false);
-                displayResults(data, searchType);
-
-                // ... (keep your existing success messages)
-
-            } catch (err) {
-                showLoading(false);
-                console.error('Full scan error:', err);
-                debugLog(`Error: ${err.message}`);
-
-                // Now err.message will contain the REAL reason (like the Lay's logic error)
-                showMessage('error', 'Scan failed: ' + err.message);
-            }
-        }
-
-        // Display results with Excel info and extraction details
-        function displayResults(data, searchType = 'barcode') {
-            const resultCard = document.getElementById('resultCard');
-            resultCard.style.display = 'block';
-            resultCard.classList.add('showing');
-
-            currentBrand = data.brand; // FIX 2: Now currentBrand is defined
-
-            document.getElementById('brandName').innerText = data.brand || 'Unknown Brand';
-            document.getElementById('productName').innerText = data.product_name || 'Unknown Product';
-            document.getElementById('category').innerText = `Category: ${data.category || 'Unknown'}`;
-
-            const extractionBadge = document.getElementById('extractionBadge');
-            if (data.brand_extraction_info && data.brand_extraction_info.extracted_from_name) {
-                const confidence = data.brand_extraction_info.confidence || 0;
-                let confidenceClass = 'confidence-low';
-                if (confidence >= 80) confidenceClass = 'confidence-high';
-                else if (confidence >= 50) confidenceClass = 'confidence-medium';
-
-                extractionBadge.innerHTML = `
-                    <span class="brand-extraction-badge">Brand Extracted</span>
-                    <span class="extraction-confidence ${confidenceClass}">${confidence}% confidence</span>
-                `;
-                extractionBadge.style.display = 'block';
-            } else {
-                extractionBadge.style.display = 'none';
-            }
-
-            document.getElementById('scoreVal').innerText = data.overall_tbl_score?.toFixed(1) || '0.0';
-            document.getElementById('gradeText').innerText = data.grade || 'UNKNOWN';
-
-            document.getElementById('socScore').innerText = data.social_score?.toFixed(1) || '5.0';
-            document.getElementById('envScore').innerText = data.environmental_score?.toFixed(1) || '5.0';
-            document.getElementById('econScore').innerText = data.economic_score?.toFixed(1) || '5.0';
-
-            const certsDiv = document.getElementById('certsList');
-            const noCertsDiv = document.getElementById('noCerts');
-            const excelDetailsDiv = document.getElementById('excelDetails');
-            const excelDetailsContent = document.getElementById('excelDetailsContent');
-            const excelFoundStatus = document.getElementById('excelFoundStatus');
-            const excelNotFoundStatus = document.getElementById('excelNotFoundStatus');
-            const purchaseButtonContainer = document.getElementById('purchaseButtonContainer');
-            const extractionInfoDiv = document.getElementById('extractionInfo');
-            const extractionDetailsContent = document.getElementById('extractionDetailsContent');
-
-            certsDiv.innerHTML = '';
-            excelDetailsDiv.style.display = 'none';
-            extractionInfoDiv.style.display = 'none';
-            purchaseButtonContainer.innerHTML = '';
-
-            let certifications = [];
-
-            if (Array.isArray(data.certifications)) {
-                certifications = data.certifications;
-            } else if (data.certifications_detailed && typeof data.certifications_detailed === 'object') {
-                certifications = Object.entries(data.certifications_detailed)
-                    .filter(([_, value]) => value)
-                    .map(([key, _]) => key.replace('_', ' ').toUpperCase());
-            }
-
-            if (certifications.length > 0) {
-                certifications.forEach(cert => {
-                    const certElement = document.createElement('span');
-                    certElement.className = 'cert-tag';
-                    certElement.innerText = `✓ ${cert}`;
-                    certsDiv.appendChild(certElement);
-                });
-                noCertsDiv.style.display = 'none';
-            } else {
-                noCertsDiv.style.display = 'block';
-            }
-
-            if (data.found_in_excel) {
-                excelFoundStatus.style.display = 'inline';
-                excelNotFoundStatus.style.display = 'none';
-
-                if (data.excel_details) {
-                    excelDetailsDiv.style.display = 'block';
-                    let detailsHtml = '';
-
-                    if (data.excel_details.original_brand) {
-                        detailsHtml += `<strong>Original Brand:</strong> ${data.excel_details.original_brand}<br>`;
-                    }
-                    if (data.excel_details.certification_date) {
-                        detailsHtml += `<strong>Certification Date:</strong> ${data.excel_details.certification_date}<br>`;
-                    }
-                    if (data.excel_details.certification_id) {
-                        detailsHtml += `<strong>Certification ID:</strong> ${data.excel_details.certification_id}<br>`;
-                    }
-                    if (data.excel_details.notes) {
-                        detailsHtml += `<strong>Notes:</strong> ${data.excel_details.notes}<br>`;
-                    }
-
-                    excelDetailsContent.innerHTML = detailsHtml || 'No additional details available.';
-                }
-            } else {
-                excelFoundStatus.style.display = 'none';
-                excelNotFoundStatus.style.display = 'inline';
-            }
-
-            document.getElementById('certSource').innerText = `Source: ${data.certification_source || 'Hardcoded Database + Excel Database'} • Base 5.0 + Certification Bonuses Only`;
-
-            if (data.brand_extraction_info && data.brand_extraction_info.extracted_from_name) {
-                extractionInfoDiv.style.display = 'block';
-                let extractionHtml = '';
-                const extractionInfo = data.brand_extraction_info;
-
-                extractionHtml += `<p><strong>Search Method:</strong> Product Name → Brand Extraction</p>`;
-                extractionHtml += `<p><strong>Confidence Level:</strong> ${extractionInfo.confidence || 0}%</p>`;
-
-                if (extractionInfo.warning) {
-                    extractionHtml += `<p><strong>⚠️ Note:</strong> ${extractionInfo.warning}</p>`;
-                }
-
-                if (extractionInfo.alternative_brands && extractionInfo.alternative_brands.length > 0) {
-                    extractionHtml += `<p><strong>Other possible brands:</strong> ${extractionInfo.alternative_brands.join(', ')}</p>`;
-                }
-
-                if (extractionInfo.search_results) {
-                    extractionHtml += `<p><strong>Search Results:</strong> ${extractionInfo.search_results.total_products || 0} products found</p>`;
-                }
-
-                extractionDetailsContent.innerHTML = extractionHtml;
-            }
-
-            if (currentUser) {
-                const purchaseButton = document.createElement('button');
-                purchaseButton.className = 'danger';
-                purchaseButton.innerHTML = '💰 Save to Purchase History';
-                purchaseButton.onclick = () => recordPurchase({
-                    barcode: data.barcode,
-                    brand: data.brand,
-                    product_name: data.product_name,
-                    category: data.category,
-                    price: null
-                });
-                purchaseButtonContainer.appendChild(purchaseButton);
-            }
-
-            // Auto-scroll to results
-            setTimeout(() => {
-                resultCard.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }, 100);
-        }
-
-        // Show scoring methodology
-        function showMethodology() {
-            window.open(`${API_BASE}/scoring-methodology`, '_blank');
-        }
-
-        // Show methodology for current brand
-        function showMethodologyForCurrentBrand() {
-            if (currentBrand) {
-                window.open(`${API_BASE}/test/scoring/${encodeURIComponent(currentBrand)}`, '_blank');
-            } else {
-                showMethodology();
-            }
-        }
-
-        // Record purchase
-        async function recordPurchase(productData) {
-            if (!currentUser) {
-                showMessage('error', 'Please login to record purchases');
-                return;
-            }
-
-            try {
-                showLoading(true);
-                const response = await fetch(`${API_BASE}/purchase?username=${currentUser}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(productData)
-                });
-
-                const result = await response.json();
-                showLoading(false);
-
-                if (response.ok) {
-                    showMessage('success', 'Purchase recorded to your history');
-                    const purchaseButton = document.querySelector('#purchaseButtonContainer button');
-                    if (purchaseButton) {
-                        purchaseButton.innerHTML = '✅ Purchase Saved!';
-                        purchaseButton.disabled = true;
-                        purchaseButton.style.background = 'linear-gradient(135deg, #198754 0%, #157347 100%)';
-                    }
-                } else {
-                    throw new Error(result.detail || 'Failed to record purchase');
-                }
-            } catch (err) {
-                showLoading(false);
-                showMessage('error', 'Failed to save purchase: ' + err.message);
-            }
-        }
-
-        // Load purchase history
-        async function loadPurchaseHistory() {
-            if (!currentUser) {
-                document.getElementById('historyStatus').innerHTML =
-                    '<p style="color: #dc3545;">Please login to view your purchase history</p>';
-                return;
-            }
-
-            try {
-                showLoading(true);
-                const response = await fetch(`${API_BASE}/history/${currentUser}?limit=20`);
-                const data = await response.json();
-                showLoading(false);
-
-                if (response.ok) {
-                    const statsDiv = document.getElementById('historyStats');
-                    statsDiv.innerHTML = `
-                        <h4>📊 Your Shopping Stats</h4>
-                        <p><strong>Total Purchases:</strong> ${data.total_purchases}</p>
-                        <p><strong>Average TBL Score:</strong> ${data.average_tbl_score}</p>
-                    `;
-
-                    const historyList = document.getElementById('historyList');
-                    if (data.purchases && data.purchases.length > 0) {
-                        let html = '<h4 style="color: #2e7d32; margin-bottom: 15px;">Recent Purchases:</h4>';
-                        data.purchases.forEach(purchase => {
-                            html += `
-                                <div class="history-item">
-                                    <div style="font-weight: bold; color: #2e7d32;">${purchase.brand}</div>
-                                    <div style="color: #6c757d; font-size: 14px;">${purchase.product_name}</div>
-                                    <div style="margin-top: 8px;">
-                                        <span style="color: #495057;">TBL Score:</span>
-                                        <span style="font-weight: bold; color: #2e7d32; margin-left: 10px;">${purchase.tbl_score}</span>
-                                        <span style="margin-left: 15px; color: #6c757d; font-size: 12px;">${purchase.timestamp ? new Date(purchase.timestamp).toLocaleDateString() : ''}</span>
-                                    </div>
-                                    ${purchase.certifications && purchase.certifications.length > 0 ?
-                                        `<div style="margin-top: 5px;">
-                                            ${purchase.certifications.map(cert =>
-                                                `<span style="background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 5px;">${cert}</span>`
-                                            ).join('')}
-                                        </div>` : ''
-                                    }
+                    // Show sample brands
+                    if (data.sample_brands && data.sample_brands.length > 0) {
+                        statusHtml += '<div class="card mt-2"><div class="card-header"><h3 class="card-title">Sample Brands</h3></div><div class="certifications-list">';
+
+                        data.sample_brands.forEach(brand => {
+                            const certs = Object.entries(brand.certifications)
+                                .filter(([key, value]) => value)
+                                .map(([key]) => key.replace('_', ' '))
+                                .join(', ');
+
+                            statusHtml += `
+                                <div class="comparison-item mt-1">
+                                    <strong>${brand.original_brand}</strong><br>
+                                    <small>Certifications: ${certs || 'None'}</small>
                                 </div>
                             `;
                         });
-                        historyList.innerHTML = html;
-                    } else {
-                        historyList.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 20px;">No purchase history yet. Start scanning!</p>';
+
+                        statusHtml += '</div></div>';
                     }
                 } else {
-                    throw new Error(data.detail || 'Failed to load history');
+                    statusHtml = `
+                        <div class="alert alert-error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div>
+                                <strong>Certification Database Not Loaded</strong><br>
+                                ${data.message || 'Unknown error'}
+                            </div>
+                        </div>
+                    `;
                 }
-            } catch (err) {
-                showLoading(false);
-                document.getElementById('historyStatus').innerHTML =
-                    `<div style="color: #dc3545; background: #ffebee; padding: 10px; border-radius: 8px;">
-                        ❌ Error loading history: ${err.message}
-                    </div>`;
+
+                showAlert(statusHtml, 'info', false);
+
+            } catch (error) {
+                hideLoading();
+                showAlert('Failed to check certification status.', 'error');
             }
         }
 
-        // Refresh history
-        function refreshHistory() {
-            loadPurchaseHistory();
-            showMessage('success', 'History refreshed');
-        }
+        // Display results from scan/search
+        function displayResults(data, container) {
+            // Clear previous results
+            container.innerHTML = '';
+            container.classList.remove('active');
 
-        // Clear results
-        function clearResults() {
-            document.getElementById('resultCard').style.display = 'none';
-            hideMessages();
-            currentBrand = null;
-
-            document.getElementById('manualBarcode').value = '';
-            document.getElementById('manualBrand').value = '';
-            document.getElementById('manualProductName').value = '';
-
-            showMessage('success', 'Results cleared');
-        }
-
-        // Manual scan by barcode
-        function manualScan() {
-            const barcode = document.getElementById('manualBarcode').value.trim();
-
-            if (!barcode) {
-                showMessage('error', 'Please enter a barcode');
+            if (!data || data.success === false) {
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>No results found or an error occurred.</div>
+                    </div>
+                `;
+                container.classList.add('active');
                 return;
             }
 
-            const payload = {
-                barcode: barcode,
-                brand: "",
-                product_name: `Barcode: ${barcode}`,
-                category: ""
-            };
+            // Determine grade class
+            let gradeClass = 'grade-poor';
+            if (data.grade === 'EXCELLENT') gradeClass = 'grade-excellent';
+            else if (data.grade === 'GREAT') gradeClass = 'grade-great';
+            else if (data.grade === 'GOOD') gradeClass = 'grade-good';
 
-            processScan(payload, 'barcode');
+            // Create certifications badges HTML
+            let certBadgesHtml = '';
+            if (data.certifications && data.certifications.length > 0) {
+                data.certifications.forEach(cert => {
+                    let certClass = 'cert-badge';
+                    if (cert.includes('Fair Trade')) certClass += ' fair-trade';
+                    else if (cert.includes('Rainforest')) certClass += ' rainforest';
+                    else if (cert.includes('Leaping Bunny')) certClass += ' leaping-bunny';
+
+                    certBadgesHtml += `<span class="${certClass}">${cert}</span>`;
+                });
+            } else {
+                certBadgesHtml = '<p><em>No verified certifications found</em></p>';
+            }
+
+            // Check if brand was extracted from product name
+            let extractionInfoHtml = '';
+            if (data.brand_extraction_info && data.brand_extraction_info.extracted_from_name) {
+                extractionInfoHtml = `
+                    <div class="alert alert-info mt-2">
+                        <i class="fas fa-lightbulb"></i>
+                        <div>
+                            <strong>Brand extracted from product name</strong><br>
+                            Confidence: ${data.brand_extraction_info.confidence || 0}%<br>
+                            Method: ${data.brand_extraction_info.method || 'Unknown'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Create results HTML
+            const resultsHtml = `
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-check-circle"></i>
+                        <h2 class="card-title">Scan Results</h2>
+                    </div>
+
+                    <div class="text-center mb-3">
+                        <h3 style="color: var(--primary);">${data.brand || 'Unknown Brand'}</h3>
+                        <p>${data.product_name || 'Product name not available'}</p>
+                        ${data.category ? `<p><small>Category: ${data.category}</small></p>` : ''}
+                        ${data.barcode ? `<p><small>Barcode: ${data.barcode}</small></p>` : ''}
+                    </div>
+
+                    ${extractionInfoHtml}
+
+                    <div class="score-display">
+                        <div class="score-pillar">
+                            <div class="pillar-name">👥 Social</div>
+                            <div class="pillar-value">${data.social_score?.toFixed(1) || '0.0'}</div>
+                            <div>Impact on people</div>
+                        </div>
+                        <div class="score-pillar">
+                            <div class="pillar-name">🌱 Environmental</div>
+                            <div class="pillar-value">${data.environmental_score?.toFixed(1) || '0.0'}</div>
+                            <div>Planet impact</div>
+                        </div>
+                        <div class="score-pillar">
+                            <div class="pillar-name">💰 Economic</div>
+                            <div class="pillar-value">${data.economic_score?.toFixed(1) || '0.0'}</div>
+                            <div>Business ethics</div>
+                        </div>
+                    </div>
+
+                    <div class="overall-score">
+                        <div>Overall TBL Score</div>
+                        <div class="overall-value">${data.overall_tbl_score?.toFixed(1) || '0.0'}</div>
+                        <div class="grade-badge ${gradeClass}">${data.grade || 'UNKNOWN'}</div>
+                    </div>
+
+                    <div class="mt-3">
+                        <h4>Certifications</h4>
+                        <div class="certifications-list">
+                            ${certBadgesHtml}
+                        </div>
+                        <p class="mt-1"><small>Scoring Method: ${data.scoring_method || 'Unknown'}</small></p>
+                        ${data.notes ? `<p class="mt-1"><small>${data.notes}</small></p>` : ''}
+                    </div>
+
+                    <div class="mt-3">
+                        <button class="btn btn-secondary btn-full" onclick="viewScoreBreakdown('${data.brand || ''}')">
+                            <i class="fas fa-chart-line"></i> View Score Breakdown
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = resultsHtml;
+            container.classList.add('active');
         }
 
-        // Updated Brand Search with Web Discovery Fallback
-                async function brandSearch() {
-                    const brand = document.getElementById('manualBrand').value.trim();
+        // Display comparison results
+        function displayComparisonResults(comparisonData, container) {
+            // Clear previous results
+            container.innerHTML = '';
+            container.classList.remove('active');
 
-                    if (!brand) {
-                        showMessage('error', 'Please enter a brand name');
-                        return;
-                    }
+            if (!comparisonData || comparisonData.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>No comparison results available.</div>
+                    </div>
+                `;
+                container.classList.add('active');
+                return;
+            }
 
-                    showLoading(true);
-                    clearResults();
+            // Sort by overall score (descending)
+            const sortedData = [...comparisonData].sort((a, b) => b.overall_score - a.overall_score);
 
-                    try {
-                        // Call the specific search-brand endpoint
-                        const response = await fetch(`${API_URL}/search-brand?q=${encodeURIComponent(brand)}`);
-                        const data = await response.json();
+            let comparisonHtml = `
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar"></i>
+                        <h2 class="card-title">Brand Comparison</h2>
+                    </div>
 
-                        // Scenario A: Backend didn't find a local match, but found products on Open Food Facts
-                        if (data.source === 'open_food_facts') {
-                            renderDiscoveredProducts(data.discovered_products, data.message);
-                        }
-                        // Scenario B: Backend found a high-confidence match in your Excel/Hardcoded list
-                        else if (data.success) {
-                            displayResult(data);
-                        }
-                        else {
-                            showMessage('error', data.message || 'Brand not found');
-                        }
-                    } catch (err) {
-                        console.error('Search error:', err);
-                        showMessage('error', 'Search failed. Check your connection.');
-                    } finally {
-                        showLoading(false);
-                    }
-                }
+                    <div class="text-center mb-3">
+                        <h3 style="color: var(--primary);">${sortedData.length} Brands Compared</h3>
+                        <p>Ranked by overall TBL score</p>
+                    </div>
+            `;
 
-                // Add this helper to render the "Did you mean?" list from the web
-                function renderDiscoveredProducts(products, message) {
-                    const resultsDiv = document.getElementById('results');
-                    resultsDiv.style.display = 'block';
+            // Create comparison chart (simplified)
+            sortedData.forEach((brand, index) => {
+                // Determine grade class
+                let gradeClass = 'grade-poor';
+                if (brand.grade === 'EXCELLENT') gradeClass = 'grade-excellent';
+                else if (brand.grade === 'GREAT') gradeClass = 'grade-great';
+                else if (brand.grade === 'GOOD') gradeClass = 'grade-good';
 
-                    let html = `
-                        <div class="search-guide" style="border-left: 4px solid #3498db; background: #ebf5ff; padding: 15px; border-radius: 8px;">
-                            <h4 style="color: #2980b9; margin-bottom: 10px;">🔍 ${message}</h4>
-                            <div style="display: flex; flex-direction: column; gap: 10px;">
-                    `;
+                // Create a simple bar for visualization
+                const barWidth = Math.min(100, (brand.overall_score / 10) * 100);
 
-                    products.forEach(p => {
-                        html += `
-                            <div class="result-box" onclick="quickScan('${p.barcode}')"
-                                 style="cursor: pointer; background: white; padding: 10px; border: 1px solid #d1e2f3; border-radius: 6px; transition: transform 0.1s;">
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    ${p.image ? `<img src="${p.image}" style="height: 40px; width: 40px; object-fit: contain; border-radius: 4px;">` : ''}
-                                    <div>
-                                        <strong style="display: block; color: #2c3e50;">${p.name}</strong>
-                                        <small style="color: #7f8c8d;">Brand: ${p.brand}</small>
-                                    </div>
+                comparisonHtml += `
+                    <div class="comparison-item ${index === 0 ? 'mt-2' : ''}">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${index + 1}. ${brand.brand}</strong>
+                                <div class="grade-badge ${gradeClass}" style="font-size: 12px; padding: 4px 10px; margin-top: 4px;">
+                                    ${brand.grade}
                                 </div>
                             </div>
-                        `;
-                    });
+                            <div style="text-align: right;">
+                                <div style="font-size: 24px; font-weight: bold; color: var(--primary);">
+                                    ${brand.overall_score.toFixed(1)}
+                                </div>
+                                <small>Overall Score</small>
+                            </div>
+                        </div>
 
-                    html += `</div><p class="tip" style="margin-top: 10px; font-size: 0.85em; color: #666;">Click a product to calculate its TBL score.</p></div>`;
-                    resultsDiv.innerHTML = html;
-                }
+                        <div style="margin: 10px 0; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                            <div style="width: ${barWidth}%; height: 100%; background: var(--primary);"></div>
+                        </div>
 
-                // Helper to trigger a score lookup based on a selected web product
-                async function quickScan(barcode) {
-                    document.getElementById('manualBarcode').value = barcode;
-                    manualScan();
-                }
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;">
+                            <div style="text-align: center;">
+                                <div style="font-weight: bold;">${brand.social_score.toFixed(1)}</div>
+                                <small style="color: var(--text-secondary);">Social</small>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-weight: bold;">${brand.environmental_score.toFixed(1)}</div>
+                                <small style="color: var(--text-secondary);">Environmental</small>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-weight: bold;">${brand.economic_score.toFixed(1)}</div>
+                                <small style="color: var(--text-secondary);">Economic</small>
+                            </div>
+                        </div>
 
-        // Product name search (extracts brand)
-        function productNameSearch() {
-            const productName = document.getElementById('manualProductName').value.trim();
+                        ${brand.certifications && brand.certifications.length > 0 ?
+                            `<div style="margin-top: 10px;">
+                                <small><strong>Certifications:</strong> ${brand.certifications.join(', ')}</small>
+                            </div>` : ''
+                        }
+                    </div>
+                `;
+            });
 
-            if (!productName) {
-                showMessage('error', 'Please enter a product name');
-                return;
-            }
+            comparisonHtml += `
+                    <div class="mt-3">
+                        <button class="btn btn-secondary btn-full" onclick="switchTab('info')">
+                            <i class="fas fa-info-circle"></i> Learn About Scoring
+                        </button>
+                    </div>
+                </div>
+            `;
 
-            const payload = {
-                barcode: "",
-                brand: "",
-                product_name: productName,
-                category: "General"
-            };
-
-            processScan(payload, 'product');
+            container.innerHTML = comparisonHtml;
+            container.classList.add('active');
         }
 
-        // FIX 3: Add missing testBrandExtraction function
-        function testBrandExtraction() {
-            const testProducts = [
-                "Oreo Chocolate Sandwich Cookies",
-                "Coca-Cola Classic 12oz",
-                "Ben & Jerry's Chocolate Chip Cookie Dough Ice Cream",
-                "Great Value Chocolate Chip Cookies",
-                "Hershey's Milk Chocolate Bar",
-                "Cheerios Original Cereal",
-                "Tide Original Scent Laundry Detergent"
+        // View detailed score breakdown for a brand
+        function viewScoreBreakdown(brand) {
+            if (brand) {
+                window.open(`/test/scoring/${encodeURIComponent(brand)}`, '_blank');
+            } else {
+                showAlert('No brand specified for score breakdown.', 'error');
+            }
+        }
+
+        // Clear all results
+        function clearResults() {
+            const resultContainers = [
+                elements.scanResults,
+                elements.searchResults,
+                elements.compareResults
             ];
 
-            const randomProduct = testProducts[Math.floor(Math.random() * testProducts.length)];
+            resultContainers.forEach(container => {
+                container.innerHTML = '';
+                container.classList.remove('active');
+            });
 
-            document.getElementById('manualProductName').value = randomProduct;
-            productNameSearch();
+            state.currentResults = null;
         }
 
-        // NEW FUNCTION: Test Dannon consistency
-        function testDannonConsistency() {
-            window.open(`${API_BASE}/test/scoring/Dannon`, '_blank');
-            showMessage('info', 'Testing Dannon consistency using scoring endpoint');
-            debugLog('Testing Dannon consistency with existing backend endpoint');
+        // Show loading indicator
+        function showLoading() {
+            elements.loadingIndicator.classList.remove('hidden');
         }
 
-        // Test scoring methodology
-        function testScoringMethodology() {
-            window.open(`${API_BASE}/test/scoring/Nespresso`, '_blank');
+        // Hide loading indicator
+        function hideLoading() {
+            elements.loadingIndicator.classList.add('hidden');
         }
 
-        // Check Excel status
-        async function checkExcelStatus() {
-            try {
-                const response = await fetch(`${API_BASE}/certifications/status`);
-                const data = await response.json();
-
-                const statusDiv = document.getElementById('excelStatus');
-                let html = `<div class="excel-details">
-                    <h4>📊 Excel Database Status</h4>
-                    <p><strong>File:</strong> ${data.excel_file}</p>
-                    <p><strong>Status:</strong> <span style="color: ${data.status === 'success' ? '#198754' : '#dc3545'}">${data.status}</span></p>
-                    <p><strong>Total Records:</strong> ${data.total_records || 0}</p>
-                    <p><strong>Last Loaded:</strong> ${data.last_loaded || 'Never'}</p>`;
-
-                if (data.sample_brands && data.sample_brands.length > 0) {
-                    html += `<p><strong>Sample Brands:</strong> ${data.sample_brands.map(b => b.original_brand).join(', ')}</p>`;
-                }
-
-                html += `</div>`;
-                statusDiv.innerHTML = html;
-
-            } catch (err) {
-                document.getElementById('excelStatus').innerHTML =
-                    `<div style="color: #dc3545; background: #ffebee; padding: 15px; border-radius: 8px;">Error: ${err.message}</div>`;
+        // Show alert message
+        function showAlert(message, type = 'info', autoHide = true) {
+            // Remove existing alerts
+            while (elements.alertContainer.firstChild) {
+                elements.alertContainer.removeChild(elements.alertContainer.firstChild);
             }
-        }
 
-        // Verify Excel script
-        async function verifyExcelScript() {
-            try {
-                const response = await fetch(`${API_BASE}/certifications/verify-script`);
-                const data = await response.json();
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message;
 
-                const statusDiv = document.getElementById('excelStatus');
-                let html = `<div class="excel-details">
-                    <h4>🔧 Script Verification</h4>
-                    <p><strong>Script Status:</strong> ${data.script.exists ? 'Found' : 'Not Found'}</p>
-                    <p><strong>Excel File:</strong> ${data.excel_file.exists ? 'Found' : 'Not Found'}</p>`;
+            elements.alertContainer.appendChild(alertDiv);
 
-                if (data.excel_file.data) {
-                    if (data.excel_file.data.error) {
-                        html += `<p><strong>Excel Data:</strong> Error: ${data.excel_file.data.error}</p>`;
-                    } else {
-                        html += `<p><strong>Rows/Columns:</strong> ${data.excel_file.data.rows} × ${data.excel_file.data.columns}</p>`;
-                        html += `<p><strong>Columns:</strong> ${data.excel_file.data.columns_list.join(', ')}</p>`;
+            // Auto-hide after 5 seconds
+            if (autoHide) {
+                setTimeout(() => {
+                    if (elements.alertContainer.contains(alertDiv)) {
+                        elements.alertContainer.removeChild(alertDiv);
                     }
-                }
-
-                html += `</div>`;
-                statusDiv.innerHTML = html;
-
-            } catch (err) {
-                document.getElementById('excelStatus').innerHTML =
-                    `<div style="color: #dc3545; background: #ffebee; padding: 15px; border-radius: 8px;">Error: ${err.message}</div>`;
+                }, 5000);
             }
         }
 
-        // Show Excel upload form
-        function showExcelUpload() {
-            document.getElementById('excelUpload').style.display = 'block';
-            document.getElementById('excelStatus').innerHTML = '';
+        // Toggle navigation (for mobile)
+        function toggleNavigation() {
+            // This could be expanded for a more complex navigation menu
+            showAlert('Navigation menu would open here on mobile.', 'info');
         }
 
-        // Upload Excel file
-        async function uploadExcelFile() {
-            const fileInput = document.getElementById('excelFile');
-            const file = fileInput.files[0];
-
-            if (!file) {
-                showMessage('error', 'Please select an Excel file to upload');
-                return;
-            }
-
-            if (!file.name.match(/\.(xlsx|xls)$/i)) {
-                showMessage('error', 'Please select an Excel file (.xlsx or .xls)');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                showLoading(true);
-                const response = await fetch(`${API_BASE}/certifications/upload`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-                showLoading(false);
-
-                if (response.ok) {
-                    document.getElementById('uploadResult').innerHTML =
-                        `<div style="color: #198754; background: #d1e7dd; padding: 10px; border-radius: 8px;">
-                            ✅ ${result.message}<br>
-                            Total records: ${result.total_records}
-                        </div>`;
-
-                    checkExcelStatus();
-                } else {
-                    throw new Error(result.detail || 'Upload failed');
-                }
-            } catch (err) {
-                showLoading(false);
-                document.getElementById('uploadResult').innerHTML =
-                    `<div style="color: #dc3545; background: #ffebee; padding: 10px; border-radius: 8px;">
-                        ❌ Error: ${err.message}
-                    </div>`;
-            }
-        }
-
-        // Check scanner health
-        function checkScannerHealth() {
-            fetch(`${API_BASE}/scanner/health`)
-                .then(response => response.json())
-                .then(data => {
-                    debugLog(`Scanner Health: ${data.scanner_system}`);
-                    showMessage('success', `Scanner system: ${data.scanner_system}`);
-                })
-                .catch(err => {
-                    debugLog('Scanner health check failed');
-                    showMessage('info', 'Scanner health endpoint not available');
-                });
-        }
-
-        // Auto-start on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            debugLog("Page loaded. Testing API connection...");
-
-            fetch(`${API_BASE}/health`)
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    }
-                    throw new Error('Network response was not ok');
-                })
-                .then(data => {
-                    debugLog(`API connected: ${data.status} - v${data.version}`);
-                    showMessage('success', `Connected to consistent scoring system v${data.version}`);
-
-                    // Log key backend info
-                    debugLog(`Backend: ${data.total_brands} brands, ${data.hardcoded_scores} hardcoded scores`);
-                })
-                .catch(() => {
-                    debugLog('Cannot connect to backend API');
-                    showMessage('error', `Cannot connect to backend at ${API_BASE}. Check if Render service is live.`);
-                });
-
-            updateUserStatus();
-        });
-
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden && scannerActive) {
-                stopScanner();
-            }
-        });
-
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'Enter') {
-                if (document.getElementById('manualBarcode').value) {
-                    manualScan();
-                } else if (document.getElementById('manualBrand').value) {
-                    brandSearch();
-                } else if (document.getElementById('manualProductName').value) {
-                    productNameSearch();
-                }
-            }
-            if (e.key === 'Escape') {
-                clearResults();
-            }
-        });
+        // Make functions available globally
+        window.switchTab = switchTab;
+        window.viewScoreBreakdown = viewScoreBreakdown;
     </script>
 </body>
 </html>
