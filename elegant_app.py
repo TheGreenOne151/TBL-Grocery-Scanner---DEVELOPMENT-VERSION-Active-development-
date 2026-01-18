@@ -3425,6 +3425,91 @@ async def test_brand_extraction_endpoint(product_name: str):
         "normalized_product_name": BrandNormalizer.normalize(product_name),
     }
 
+@app.get("/search-brand")
+async def search_brand(q: str = Query(...)):
+    """Search for a brand with fuzzy matching and OFF discovery fallback"""
+    get_pandas() # Ensure pandas is loaded
+    df = get_data()
+
+    if df is None:
+        raise HTTPException(status_code=500, detail="Database not initialized")
+
+    best_match = None
+    best_score = 0
+    search_query = q.lower().strip()
+
+    # 1. Try local Excel search using fuzzy matching
+    for _, row in df.iterrows():
+        brand_name = str(row['Product_Brand'])
+        # SequenceMatcher handles typos (e.g., "Kellog" -> "Kellogg's")
+        score = SequenceMatcher(None, search_query, brand_name.lower()).ratio() * 100
+
+        if score > best_score:
+            best_score = score
+            best_match = brand_name
+
+        # Optimization: If we find a 100% match, stop looking
+        if best_score == 100:
+            break
+
+    # 2. IF local search score is low, query OFF for discovery
+    if not best_match or best_score < 60:
+        logger.info(f"Low local match score ({round(best_score, 1)}%). Discovering via OFF...")
+
+        off_url = f"https://world.openfoodfacts.org/api/v2/search?brands_tags={quote(q)}&fields=product_name,brands,image_small_url,code&page_size=5"
+
+        async with httpx.AsyncClient() as client:
+            try:
+                headers = {"User-Agent": "TBLGroceryScanner/1.0"}
+                response = await client.get(off_url, headers=headers, timeout=10.0)
+
+                if response.status_code == 200:
+                    products = response.json().get("products", [])
+                    if products:
+                        return {
+                            "source": "open_food_facts",
+                            "query": q,
+                            "message": "Brand not found in local records. Showing web matches:",
+                            "discovered_products": [
+                                {
+                                    "name": p.get("product_name", "Unknown Product"),
+                                    "brand": p.get("brands", "Unknown Brand"),
+                                    "image": p.get("image_small_url"),
+                                    "barcode": p.get("code")
+                                } for p in products
+                            ],
+                            "success": True
+                        }
+            except Exception as e:
+                logger.error(f"OFF Search Error: {str(e)}")
+
+    # 3. Return local result if a good match was found
+    if best_match and best_score >= 60:
+        parent_company = BrandNormalizer.find_parent_company(best_match)
+        target_brand = parent_company or best_match
+
+        scores = scoring_manager.calculate_brand_scores(target_brand)
+        tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+
+        return {
+            "source": "local_database",
+            "match_quality": round(best_score, 2),
+            "brand": best_match,
+            "parent_company": parent_company,
+            "overall_tbl_score": safe_float(tbl.get("overall_score")),
+            "grade": tbl.get("grade", "N/A"),
+            "social_score": safe_float(scores.social),
+            "environmental_score": safe_float(scores.environmental),
+            "economic_score": safe_float(scores.economic),
+            "certifications": list(scores.certifications),
+            "success": True
+        }
+
+    return JSONResponse(
+        status_code=404,
+        content={"success": False, "message": "No matching brands found locally or on the web."}
+    )
+
 # ==================== EXCEL MANAGEMENT ENDPOINTS ====================
 
 @app.get("/certifications/status")

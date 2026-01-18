@@ -2238,24 +2238,77 @@
             processScan(payload, 'barcode');
         }
 
-        // Brand search
-        function brandSearch() {
-            const brand = document.getElementById('manualBrand').value.trim();
+        // Updated Brand Search with Web Discovery Fallback
+                async function brandSearch() {
+                    const brand = document.getElementById('manualBrand').value.trim();
 
-            if (!brand) {
-                showMessage('error', 'Please enter a brand name');
-                return;
-            }
+                    if (!brand) {
+                        showMessage('error', 'Please enter a brand name');
+                        return;
+                    }
 
-            const payload = {
-                barcode: "",
-                brand: brand,
-                product_name: "Brand Search",
-                category: "General"
-            };
+                    showLoading(true);
+                    clearResults();
 
-            processScan(payload, 'brand');
-        }
+                    try {
+                        // Call the specific search-brand endpoint
+                        const response = await fetch(`${API_URL}/search-brand?q=${encodeURIComponent(brand)}`);
+                        const data = await response.json();
+
+                        // Scenario A: Backend didn't find a local match, but found products on Open Food Facts
+                        if (data.source === 'open_food_facts') {
+                            renderDiscoveredProducts(data.discovered_products, data.message);
+                        }
+                        // Scenario B: Backend found a high-confidence match in your Excel/Hardcoded list
+                        else if (data.success) {
+                            displayResult(data);
+                        }
+                        else {
+                            showMessage('error', data.message || 'Brand not found');
+                        }
+                    } catch (err) {
+                        console.error('Search error:', err);
+                        showMessage('error', 'Search failed. Check your connection.');
+                    } finally {
+                        showLoading(false);
+                    }
+                }
+
+                // Add this helper to render the "Did you mean?" list from the web
+                function renderDiscoveredProducts(products, message) {
+                    const resultsDiv = document.getElementById('results');
+                    resultsDiv.style.display = 'block';
+
+                    let html = `
+                        <div class="search-guide" style="border-left: 4px solid #3498db; background: #ebf5ff; padding: 15px; border-radius: 8px;">
+                            <h4 style="color: #2980b9; margin-bottom: 10px;">🔍 ${message}</h4>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                    `;
+
+                    products.forEach(p => {
+                        html += `
+                            <div class="result-box" onclick="quickScan('${p.barcode}')"
+                                 style="cursor: pointer; background: white; padding: 10px; border: 1px solid #d1e2f3; border-radius: 6px; transition: transform 0.1s;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    ${p.image ? `<img src="${p.image}" style="height: 40px; width: 40px; object-fit: contain; border-radius: 4px;">` : ''}
+                                    <div>
+                                        <strong style="display: block; color: #2c3e50;">${p.name}</strong>
+                                        <small style="color: #7f8c8d;">Brand: ${p.brand}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += `</div><p class="tip" style="margin-top: 10px; font-size: 0.85em; color: #666;">Click a product to calculate its TBL score.</p></div>`;
+                    resultsDiv.innerHTML = html;
+                }
+
+                // Helper to trigger a score lookup based on a selected web product
+                async function quickScan(barcode) {
+                    document.getElementById('manualBarcode').value = barcode;
+                    manualScan();
+                }
 
         // Product name search (extracts brand)
         function productNameSearch() {
