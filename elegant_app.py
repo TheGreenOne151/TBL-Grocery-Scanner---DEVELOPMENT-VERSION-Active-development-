@@ -3385,9 +3385,9 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "timestamp": datetime.utcnow().isoformat()
         }
 
-        return sanitize_for_json(response_data)
+            return sanitize_for_json(response_data)
 
-except Exception as e:
+        except Exception as e:
         logger.error(f"Unhandled error in scan_product: {e}", exc_info=True)
         error_response = {
             "success": False,
@@ -3413,7 +3413,7 @@ except Exception as e:
             "notes": f"Error processing request: {str(e)}",
             "timestamp": datetime.utcnow().isoformat()
         }
-        return sanitize_for_json(error_response)
+            return sanitize_for_json(error_response)
 
 @app.post("/extract-brand")
 async def extract_brand_endpoint(search: ProductSearch) -> Dict[str, Any]:
