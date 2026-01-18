@@ -1649,16 +1649,6 @@
         // ==================== //
 
         // Configure API base URL
-        const API_BASE = (() => {
-            // Try to detect if we're in development vs production
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                // Development - backend on port 8000
-                return 'http://localhost:8000';
-            } else {
-                // Production - assume same origin
-                return window.location.origin;
-            }
-        })();
 
         console.log(`API Base URL: ${API_BASE}`);
 
