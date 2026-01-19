@@ -711,7 +711,7 @@ class BrandNormalizer:
             "multi_cert_applied": True,
             "multi_cert_bonus": 1.0,
         },
-        "ben jerrys": {
+        "ben and jerrys": {
             "social": 7.5,
             "environmental": 7.0,
             "economic": 7.0,
