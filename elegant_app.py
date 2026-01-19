@@ -1,22 +1,19 @@
-import sys
 import os
 from pydantic import BaseModel, field_validator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi import FastAPI, Query, Request, HTTPException, File, UploadFile
+from fastapi import FastAPI, Query, HTTPException, File, UploadFile
 import importlib.util
 import io
 from contextlib import redirect_stdout, redirect_stderr
 from collections import Counter
 import re
-import json
 import logging
-import asyncio
 from difflib import SequenceMatcher
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, List, Dict, Any, Set, ClassVar
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from urllib.parse import quote
 import os
 import math
@@ -163,19 +160,19 @@ class BrandData:
     multi_cert_bonus: float = 0.0
     notes: str = ""
 
-def to_dict(self) -> Dict[str, Any]:
-    """Convert to dictionary with JSON-safe values"""
-    return {
-        "brand": str(self.brand) if self.brand else "Unknown",
-        "social": safe_float(self.social),
-        "environmental": safe_float(self.environmental),
-        "economic": safe_float(self.economic),
-        "certifications": list(self.certifications) if self.certifications else [],
-        "scoring_method": str(self.scoring_method),
-        "multi_cert_applied": bool(self.multi_cert_applied),
-        "multi_cert_bonus": safe_float(self.multi_cert_bonus),
-        "notes": str(self.notes) if self.notes else "",
-    }
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary with JSON-safe values"""
+        return {
+            "brand": str(self.brand) if self.brand else "Unknown",
+            "social": safe_float(self.social),
+            "environmental": safe_float(self.environmental),
+            "economic": safe_float(self.economic),
+            "certifications": list(self.certifications) if self.certifications else [],
+            "scoring_method": str(self.scoring_method),
+            "multi_cert_applied": bool(self.multi_cert_applied),
+            "multi_cert_bonus": safe_float(self.multi_cert_bonus),
+            "notes": str(self.notes) if self.notes else "",
+        }
 
 # ==================== DECORATORS ====================
 
@@ -1781,9 +1778,9 @@ class ScoringManager:
                 (len(all_certifications) - 1) * ScoringConfig.MULTI_CERT_BONUS
                 if bonus_applied and len(all_certifications) > 1
                 else 0.0
-        ),
-        notes="Base 5.0 + certification bonuses + multi-cert bonus (calculated dynamically)",
-    )
+            ),
+            notes="Base 5.0 + certification bonuses + multi-cert bonus (calculated dynamically)",
+        )
 
     @staticmethod
     def _get_all_certifications(brand: str) -> List[str]:
@@ -2406,10 +2403,11 @@ scoring_manager = ScoringManager()
 food_facts_client = OpenFoodFactsClient()
 brand_extraction_manager = BrandExtractionManager()
 
-# Database
-USERS_DB = {}
-PURCHASE_HISTORY_DB = {}
-PRODUCT_CACHE = {}
+# Better: Use proper database classes or ORM
+class UserDatabase:
+    def __init__(self):
+        self.users = {}
+        self.history = {}
 
 # Test user with secure password
 USERS_DB["Test123"] = {
@@ -3383,11 +3381,11 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "brand_correction_note": f"Corrected to canonical brand: '{canonical_brand}'" if canonical_brand else "No brand correction needed",
             "success": True,
             "timestamp": datetime.utcnow().isoformat()
-        }
+            }
 
-            return sanitize_for_json(response_data)
+        return sanitize_for_json(response_data)
 
-        except Exception as e:
+    except Exception as e:
         logger.error(f"Unhandled error in scan_product: {e}", exc_info=True)
         error_response = {
             "success": False,
@@ -3413,7 +3411,8 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "notes": f"Error processing request: {str(e)}",
             "timestamp": datetime.utcnow().isoformat()
         }
-            return sanitize_for_json(error_response)
+        return sanitize_for_json(error_response)
+
 
 @app.post("/extract-brand")
 async def extract_brand_endpoint(search: ProductSearch) -> Dict[str, Any]:

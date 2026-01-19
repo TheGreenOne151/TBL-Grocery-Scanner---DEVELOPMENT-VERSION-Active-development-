@@ -20,9 +20,7 @@ gunicorn elegant.app:app --workers 2 --worker-class uvicorn.workers.UvicornWorke
 
 ******************************
 
-Replace: with open("index.html", "r") as f:
-
-With: with open("index.html", "r", encoding="utf-8") as f:
+python -m py_compile "c:\Users\StardogChampion\tbl-grocery-app\elegant_app.py"
 
 ******************************
 
