@@ -524,7 +524,7 @@ class BrandNormalizer:
         "rexona": "unilever",
         "vaseline": "unilever",
         "lipton": "unilever",
-        "ben jerrys": "unilever",
+        # "ben jerrys": "unilever",  # ← Remove this line
         "magnum": "unilever",
         "breyers": "unilever",
         "klondike": "unilever",
