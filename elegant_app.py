@@ -15,7 +15,6 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any, Set, ClassVar
 from dataclasses import dataclass
 from urllib.parse import quote
-import os
 import math
 
 def safe_float(value, default=0.0):
@@ -2395,7 +2394,6 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 # ==================== GLOBAL STATE ====================
 
-
 # Initialize managers
 brand_normalizer = BrandNormalizer()
 certification_manager = CertificationManager()
@@ -2403,20 +2401,25 @@ scoring_manager = ScoringManager()
 food_facts_client = OpenFoodFactsClient()
 brand_extraction_manager = BrandExtractionManager()
 
+# ADD THESE 3 LINES HERE:
+USERS_DB = {}
+PURCHASE_HISTORY_DB = {}
+PRODUCT_CACHE = {}
+
 # Better: Use proper database classes or ORM
-class UserDatabase:
-    def __init__(self):
-        self.users = {}
-        self.history = {}
+class UserDatabase:                    # ← NO EXTRA SPACES HERE (0 spaces)
+    def __init__(self):                # ← 4 spaces
+        self.users = {}                # ← 8 spaces
+        self.history = {}              # ← 8 spaces
 
 # Test user with secure password
-USERS_DB["Test123"] = {
-    "username": "Test123",
-    "email": "test@example.com",
-    "password_hash": hash_password("Oranges"),
-    "created_at": datetime.utcnow(),
+USERS_DB["Test123"] = {                # ← NO EXTRA SPACES HERE (0 spaces)
+    "username": "Test123",             # ← NO EXTRA SPACES HERE (0 spaces)
+    "email": "test@example.com",       # ← NO EXTRA SPACES HERE (0 spaces)
+    "password_hash": hash_password("Oranges"),  # ← NO EXTRA SPACES
+    "created_at": datetime.utcnow(),   # ← NO EXTRA SPACES HERE (0 spaces)
 }
-PURCHASE_HISTORY_DB["Test123"] = []
+PURCHASE_HISTORY_DB["Test123"] = []    # ← NO EXTRA SPACES HERE (0 spaces)
 
 # ==================== SCRIPT EXECUTION FUNCTIONS ====================
 
@@ -2536,6 +2539,15 @@ def verify_excel_script() -> Dict[str, Any]:
             "script": {"exists": False},
             "excel_file": {"exists": False},
         }
+
+
+def get_data():
+    """Get certification data from the manager"""
+    if certification_manager.data is None:
+        certification_manager.load_certification_data()
+    # You might need to return a pandas DataFrame or the raw data
+    # For now, returning the certification manager's data
+    return certification_manager.data
 
 
 # ==================== TEMPLATE FUNCTIONS ====================
@@ -3444,10 +3456,12 @@ async def test_brand_extraction_endpoint(product_name: str):
 @app.get("/search-brand")
 async def search_brand(q: str = Query(...)):
     """Search for a brand with fuzzy matching and OFF discovery fallback"""
-    get_pandas() # Ensure pandas is loaded
-    df = get_data()
+    # Load certification data if not already loaded
+    if certification_manager.data is None:
+        certification_manager.load_certification_data()
 
-    if df is None:
+    # Check if we have data
+    if certification_manager.data is None:
         raise HTTPException(status_code=500, detail="Database not initialized")
 
     best_match = None
@@ -3455,18 +3469,34 @@ async def search_brand(q: str = Query(...)):
     search_query = q.lower().strip()
 
     # 1. Try local Excel search using fuzzy matching
-    for _, row in df.iterrows():
-        brand_name = str(row['Product_Brand'])
-        # SequenceMatcher handles typos (e.g., "Kellog" -> "Kellogg's")
-        score = SequenceMatcher(None, search_query, brand_name.lower()).ratio() * 100
+    # FIRST: Read the Excel file to get the DataFrame
+    try:
+        pd = get_pandas()  # LAZY load pandas
+        # Check if Excel file exists
+        if not os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE):
+            logger.warning(f"Excel file not found: {FileConfig.CERTIFICATION_EXCEL_FILE}")
+            df = None
+        else:
+            # Read the Excel file
+            df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
 
-        if score > best_score:
-            best_score = score
-            best_match = brand_name
+            # Only proceed if we have data and the right column
+            if df is not None and 'Product_Brand' in df.columns:
+                for _, row in df.iterrows():
+                    brand_name = str(row['Product_Brand'])
+                    # SequenceMatcher handles typos (e.g., "Kellog" -> "Kellogg's")
+                    score = SequenceMatcher(None, search_query, brand_name.lower()).ratio() * 100
 
-        # Optimization: If we find a 100% match, stop looking
-        if best_score == 100:
-            break
+                    if score > best_score:
+                        best_score = score
+                        best_match = brand_name
+
+                    # Optimization: If we find a 100% match, stop looking
+                    if best_score == 100:
+                        break
+    except Exception as e:
+        logger.error(f"Error reading Excel file for search: {e}")
+        df = None
 
     # 2. IF local search score is low, query OFF for discovery
     if not best_match or best_score < 60:
