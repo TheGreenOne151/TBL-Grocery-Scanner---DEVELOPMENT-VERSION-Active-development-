@@ -1,21 +1,24 @@
 import os
-from pydantic import BaseModel, field_validator
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi import FastAPI, Query, HTTPException, File, UploadFile
-import importlib.util
-import io
-from contextlib import redirect_stdout, redirect_stderr
-from collections import Counter
 import re
+import io
+import json
+import math
+import sqlite3
+import importlib.util
 import logging
-from difflib import SequenceMatcher
-import httpx
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Set, ClassVar
-from dataclasses import dataclass
 from urllib.parse import quote
-import math
+from collections import Counter
+from contextlib import contextmanager, redirect_stdout, redirect_stderr
+from dataclasses import dataclass
+from difflib import SequenceMatcher
+
+import httpx
+from fastapi import FastAPI, Query, HTTPException, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
+from pydantic import BaseModel, field_validator
 
 def safe_float(value, default=0.0):
     """Convert any value to a JSON-safe float - prevents NaN and Infinity errors"""
@@ -53,20 +56,13 @@ PORT = int(os.getenv("PORT", 8000))
 # REMOVED: import bcrypt           # Will load inside functions
 # REMOVED: import pandas as pd     # Will load inside functions
 
-
-# ADD THIS HELPER FUNCTION
-
-
 def lazy_import(module_name: str):
     """Import modules only when needed to save memory"""
     import importlib
-
     return importlib.import_module(module_name)
-
 
 # Add these after the lazy_import function in your imports section
 _BCRYPT = None
-
 
 def get_bcrypt():
     """Get bcrypt module with lazy loading and caching"""
@@ -75,11 +71,9 @@ def get_bcrypt():
         _BCRYPT = lazy_import("bcrypt")
     return _BCRYPT
 
-
 # CACHED PANDAS IMPORT
 _PANDAS = None
 _OPENPYXL = None
-
 
 def get_pandas():
     """Get pandas module with lazy loading and caching"""
@@ -88,7 +82,6 @@ def get_pandas():
         _PANDAS = lazy_import("pandas")
     return _PANDAS
 
-
 def get_openpyxl():
     """Get openpyxl module with lazy loading and caching"""
     global _OPENPYXL
@@ -96,11 +89,9 @@ def get_openpyxl():
         _OPENPYXL = lazy_import("openpyxl")
     return _OPENPYXL
 
-
 # Add Numpy caching to your imports section (after pandas caching)
 # NUMPY CACHING (not currently used, but available for future)
 _NUMPY = None
-
 
 def get_numpy():
     """Get numpy module with lazy loading and caching"""
@@ -108,6 +99,7 @@ def get_numpy():
     if _NUMPY is None:
         _NUMPY = lazy_import("numpy")
     return _NUMPY
+
 
 # ==================== CONFIGURATION DATACLASSES ====================
 
@@ -2402,29 +2394,67 @@ scoring_manager = ScoringManager()
 food_facts_client = OpenFoodFactsClient()
 brand_extraction_manager = BrandExtractionManager()
 
-# ADD THESE 3 LINES HERE:
+# Initialize in-memory caches
 USERS_DB = {}
 PURCHASE_HISTORY_DB = {}
 PRODUCT_CACHE = {}
 
-# Better: Use proper database classes or ORM
-class UserDatabase:                    # ← NO EXTRA SPACES HERE (0 spaces)
-    def __init__(self):                # ← 4 spaces
-        self.users = {}                # ← 8 spaces
-        self.history = {}              # ← 8 spaces
+# Simple user database class (optional)
+class UserDatabase:
+    def __init__(self):
+        self.users = {}
+        self.history = {}
 
-# Test user with secure password
-USERS_DB["ALB"] = {                # ← NO EXTRA SPACES HERE (0 spaces)
-    "username": "ALB",             # ← NO EXTRA SPACES HERE (0 spaces)
-    "email": "test@example.com",       # ← NO EXTRA SPACES HERE (0 spaces)
-    "password_hash": hash_password("Oranges#155"),  # ← NO EXTRA SPACES
-    "created_at": datetime.utcnow(),   # ← NO EXTRA SPACES HERE (0 spaces)
-}
-PURCHASE_HISTORY_DB["ALB"] = []    # ← NO EXTRA SPACES HERE (0 spaces)
+# ==================== PERSISTENT STORAGE SETUP ====================
 
+# JSON file for persistent storage
+USER_DATA_FILE = "user_data.json"
+
+def load_user_data():
+    """Load user data from JSON file"""
+    try:
+        if os.path.exists(USER_DATA_FILE):
+            with open(USER_DATA_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                logger.info(f"Loaded user data from {USER_DATA_FILE}")
+                return data
+    except Exception as e:
+        logger.error(f"Error loading user data: {e}")
+
+    # Return empty structure if file doesn't exist or has errors
+    return {"users": {}, "purchases": {}}
+
+def save_user_data():
+    """Save current user data to JSON file"""
+    try:
+        data = {
+            "users": USERS_DB,
+            "purchases": PURCHASE_HISTORY_DB
+        }
+        with open(USER_DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, default=str)
+        logger.info(f"Saved user data to {USER_DATA_FILE}")
+    except Exception as e:
+        logger.error(f"Error saving user data: {e}")
+
+# Load existing data or initialize
+user_data = load_user_data()
+USERS_DB.update(user_data.get("users", {}))
+PURCHASE_HISTORY_DB.update(user_data.get("purchases", {}))
+
+# Initialize ALB user if not exists
+if "ALB" not in USERS_DB:
+    USERS_DB["ALB"] = {
+        "username": "ALB",
+        "email": "test@example.com",
+        "password_hash": hash_password("Oranges#155"),
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    PURCHASE_HISTORY_DB["ALB"] = []
+    save_user_data()  # Save the new user
+    logger.info("Created ALB user")
 
 # ==================== SCRIPT EXECUTION FUNCTIONS ====================
-
 
 def run_create_excel_script() -> Dict[str, Any]:
     """Execute the create_excel.py script"""
@@ -3230,9 +3260,12 @@ async def register_user(user: UserRegistration) -> Dict[str, Any]:
         "username": user.username,
         "email": user.email,
         "password_hash": hash_password(user.password),
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.utcnow().isoformat(),
     }
     PURCHASE_HISTORY_DB[user.username] = []
+
+    # ✅ ADD THIS LINE: Save to persistent storage
+    save_user_data()
 
     logger.info(f"New user registered: {user.username}")
     return {"message": "User registered successfully", "username": user.username}
@@ -3862,6 +3895,9 @@ async def record_purchase(
         PURCHASE_HISTORY_DB[username] = []
     PURCHASE_HISTORY_DB[username].append(purchase)
 
+    # ✅ ADD THIS LINE: Save to persistent storage
+    save_user_data()
+
     logger.info(f"Purchase recorded for {username}: {product.product_name}")
     return {"message": "Purchase recorded", "purchase": purchase}
 
@@ -3898,6 +3934,22 @@ async def debug_users():
         "purchase_history_counts": {user: len(PURCHASE_HISTORY_DB.get(user, []))
                                     for user in USERS_DB.keys()}
     }
+
+@app.get("/debug/storage")
+async def debug_storage():
+    """Debug endpoint to check storage status"""
+    file_exists = os.path.exists(USER_DATA_FILE)
+    file_size = os.path.getsize(USER_DATA_FILE) if file_exists else 0
+
+    return {
+        "storage_file": USER_DATA_FILE,
+        "file_exists": file_exists,
+        "file_size_bytes": file_size,
+        "total_users": len(USERS_DB),
+        "total_purchases": sum(len(purchases) for purchases in PURCHASE_HISTORY_DB.values()),
+        "users": list(USERS_DB.keys()),
+    }
+
 
 @app.get("/product/{barcode}")
 async def get_product_info(barcode: str) -> Dict[str, Any]:
