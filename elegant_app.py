@@ -322,6 +322,7 @@ class ProductSearch(BaseModel):
     max_results: int = 10
 
 
+
 # ==================== BRAND NORMALIZER ====================
 
 
@@ -2413,13 +2414,14 @@ class UserDatabase:                    # ← NO EXTRA SPACES HERE (0 spaces)
         self.history = {}              # ← 8 spaces
 
 # Test user with secure password
-USERS_DB["Test123"] = {                # ← NO EXTRA SPACES HERE (0 spaces)
-    "username": "Test123",             # ← NO EXTRA SPACES HERE (0 spaces)
+USERS_DB["ALB"] = {                # ← NO EXTRA SPACES HERE (0 spaces)
+    "username": "ALB",             # ← NO EXTRA SPACES HERE (0 spaces)
     "email": "test@example.com",       # ← NO EXTRA SPACES HERE (0 spaces)
-    "password_hash": hash_password("Oranges"),  # ← NO EXTRA SPACES
+    "password_hash": hash_password("Oranges#155"),  # ← NO EXTRA SPACES
     "created_at": datetime.utcnow(),   # ← NO EXTRA SPACES HERE (0 spaces)
 }
-PURCHASE_HISTORY_DB["Test123"] = []    # ← NO EXTRA SPACES HERE (0 spaces)
+PURCHASE_HISTORY_DB["ALB"] = []    # ← NO EXTRA SPACES HERE (0 spaces)
+
 
 # ==================== SCRIPT EXECUTION FUNCTIONS ====================
 
@@ -3884,6 +3886,18 @@ async def get_purchase_history(username: str, limit: int = 50) -> Dict[str, Any]
         "purchases": history[-limit:],
     }
 
+
+@app.get("/debug/users")
+async def debug_users():
+    """Debug endpoint to check users"""
+    return {
+        "users": list(USERS_DB.keys()),
+        "test_user_exists": "Test123" in USERS_DB,
+        "alb_exists": "ALB" in USERS_DB,
+        "total_users": len(USERS_DB),
+        "purchase_history_counts": {user: len(PURCHASE_HISTORY_DB.get(user, []))
+                                    for user in USERS_DB.keys()}
+    }
 
 @app.get("/product/{barcode}")
 async def get_product_info(barcode: str) -> Dict[str, Any]:
