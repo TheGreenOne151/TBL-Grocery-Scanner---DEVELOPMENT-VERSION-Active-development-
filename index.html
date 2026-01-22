@@ -639,10 +639,27 @@
                 <div class="stat-label">Your Average TBL Score</div>
                 <div class="stat-value" id="avgScore">-</div>
                 <div class="stat-label" id="purchaseCount">No purchases yet</div>
+                <div style="margin-top: 15px; font-size: 12px; opacity: 0.8;">
+                    📱 Stored locally in this browser
+                </div>
             </div>
 
             <div class="card">
                 <h2 style="margin-bottom: 20px;">📋 Purchase History</h2>
+
+                <!-- EXPORT/IMPORT BUTTONS -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn btn-secondary" onclick="exportPurchases()" style="flex: 1;">
+                        📤 Export JSON
+                    </button>
+                    <button class="btn btn-secondary" onclick="showImportModal()" style="flex: 1;">
+                        📥 Import JSON
+                    </button>
+                    <button class="btn btn-danger" onclick="clearLocalHistory()" style="flex: 1;">
+                        🗑️ Clear Local
+                    </button>
+                </div>
+
                 <div id="historyList"></div>
             </div>
         </div>
@@ -849,10 +866,82 @@
             document.getElementById('registerError').classList.remove('show');
         }
 
-        // Purchase history
+        // === PURCHASE HISTORY IN LOCALSTORAGE ===
+        const STORAGE_KEY = 'tbl_purchase_history';
+        const USER_STORAGE_PREFIX = 'tbl_user_';
+
+        function getLocalStorageKey(username) {
+            return `${USER_STORAGE_PREFIX}${username}_purchases`;
+        }
+
+        function savePurchaseToLocal(username, purchase) {
+            const key = getLocalStorageKey(username);
+            let purchases = JSON.parse(localStorage.getItem(key) || '[]');
+            purchases.push(purchase);
+            localStorage.setItem(key, JSON.stringify(purchases));
+            return purchases;
+        }
+
+        function getPurchasesFromLocal(username) {
+            const key = getLocalStorageKey(username);
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        }
+
+        function clearLocalPurchases(username) {
+            const key = getLocalStorageKey(username);
+            localStorage.removeItem(key);
+        }
+
+        function exportPurchasesJSON(username) {
+            const purchases = getPurchasesFromLocal(username);
+            const dataStr = JSON.stringify(purchases, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+            const exportFileDefaultName = `tbl_purchases_${username}_${new Date().toISOString().split('T')[0]}.json`;
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        function importPurchasesJSON(username, jsonString) {
+            try {
+                const importedPurchases = JSON.parse(jsonString);
+                if (!Array.isArray(importedPurchases)) {
+                    throw new Error('Invalid format: Expected array of purchases');
+                }
+
+                const key = getLocalStorageKey(username);
+                localStorage.setItem(key, JSON.stringify(importedPurchases));
+                return { success: true, count: importedPurchases.length };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        // MODIFIED savePurchase() function
         async function savePurchase() {
             if (!currentUser || !lastSearchResult) return;
 
+            const purchase = {
+                barcode: lastSearchResult.barcode || '',
+                brand: lastSearchResult.brand || '',
+                product_name: lastSearchResult.product_name || '',
+                category: lastSearchResult.category || '',
+                timestamp: new Date().toISOString(),
+                overall_tbl_score: lastSearchResult.overall_tbl_score || 0,
+                social_score: lastSearchResult.social_score || 0,
+                environmental_score: lastSearchResult.environmental_score || 0,
+                economic_score: lastSearchResult.economic_score || 0,
+                grade: lastSearchResult.grade || 'UNKNOWN',
+                certifications: lastSearchResult.certifications || []
+            };
+
+            // Save to localStorage (PRIMARY - won't disappear on Render sleep)
+            savePurchaseToLocal(currentUser, purchase);
+
+            // Try to save to server (BACKUP - optional, works when Render is awake)
             try {
                 const response = await fetch(`${API_URL}/purchase?username=${encodeURIComponent(currentUser)}`, {
                     method: 'POST',
@@ -867,42 +956,148 @@
                 });
 
                 if (response.ok) {
-                    showSuccess('Purchase saved!');
-                    setTimeout(() => hideSuccess(), 3000);
+                    console.log('Also saved to server backup');
                 }
             } catch (error) {
-                showError('Failed to save purchase');
+                console.log('Server backup failed, but local copy saved');
             }
+
+            showSuccess('Purchase saved locally!');
+            setTimeout(() => hideSuccess(), 3000);
         }
 
+        // MODIFIED loadHistory() function
         async function loadHistory() {
             if (!currentUser) return;
 
+            // Load from localStorage (PRIMARY - survives Render sleep)
+            const localPurchases = getPurchasesFromLocal(currentUser);
+
+            // Calculate stats from local data
+            let avgScore = 0;
+            if (localPurchases.length > 0) {
+                const sum = localPurchases.reduce((total, p) => total + (p.overall_tbl_score || 0), 0);
+                avgScore = sum / localPurchases.length;
+            }
+
+            document.getElementById('avgScore').textContent = avgScore.toFixed(1);
+            document.getElementById('purchaseCount').textContent = `${localPurchases.length} purchases (local storage)`;
+
+            const historyList = document.getElementById('historyList');
+            if (localPurchases.length > 0) {
+                historyList.innerHTML = localPurchases.reverse().map(p => `
+                    <div class="purchase-item">
+                        <div class="purchase-header">
+                            <div class="purchase-brand">${p.brand}</div>
+                            <div class="purchase-score">${(p.overall_tbl_score || 0).toFixed(1)}</div>
+                        </div>
+                        <div>${p.product_name}</div>
+                        <div class="purchase-date">${new Date(p.timestamp).toLocaleDateString()}</div>
+                    </div>
+                `).join('');
+            } else {
+                historyList.innerHTML = '<p class="no-certs">No purchases yet</p>';
+            }
+
+            // Optional: Try to merge with server data (when Render is awake)
             try {
                 const response = await fetch(`${API_URL}/history/${encodeURIComponent(currentUser)}`);
-                const data = await response.json();
-
-                document.getElementById('avgScore').textContent = data.average_tbl_score.toFixed(1);
-                document.getElementById('purchaseCount').textContent = `${data.total_purchases} purchases`;
-
-                const historyList = document.getElementById('historyList');
-                if (data.purchases && data.purchases.length > 0) {
-                    historyList.innerHTML = data.purchases.reverse().map(p => `
-                        <div class="purchase-item">
-                            <div class="purchase-header">
-                                <div class="purchase-brand">${p.brand}</div>
-                                <div class="purchase-score">${p.tbl_score.toFixed(1)}</div>
-                            </div>
-                            <div>${p.product_name}</div>
-                            <div class="purchase-date">${new Date(p.timestamp).toLocaleDateString()}</div>
-                        </div>
-                    `).join('');
-                } else {
-                    historyList.innerHTML = '<p class="no-certs">No purchases yet</p>';
+                if (response.ok) {
+                    const serverData = await response.json();
+                    if (serverData.purchases && serverData.purchases.length > 0) {
+                        console.log(`Server backup has ${serverData.purchases.length} purchases`);
+                        // Could add merge logic here if desired
+                    }
                 }
             } catch (error) {
-                console.error('Failed to load history:', error);
+                // Silently fail - localStorage is primary
             }
+        }
+
+        // === IMPORT/EXPORT FUNCTIONS ===
+        function exportPurchases() {
+            if (!currentUser) {
+                showError('Please login first');
+                return;
+            }
+
+            const purchases = getPurchasesFromLocal(currentUser);
+            if (purchases.length === 0) {
+                showError('No purchases to export');
+                return;
+            }
+
+            exportPurchasesJSON(currentUser);
+            showSuccess(`Exported ${purchases.length} purchases`);
+            setTimeout(() => hideSuccess(), 3000);
+        }
+
+        function showImportModal() {
+            if (!currentUser) {
+                showError('Please login first');
+                return;
+            }
+
+            document.getElementById('importModal').style.display = 'flex';
+            document.getElementById('importJsonText').value = '';
+            document.getElementById('importResult').style.display = 'none';
+        }
+
+        function hideImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+        }
+
+        function processImport() {
+            const jsonText = document.getElementById('importJsonText').value.trim();
+            if (!jsonText) {
+                // Just show error in the result div directly
+                const resultDiv = document.getElementById('importResult');
+                resultDiv.innerHTML = `
+                    <div class="error show" style="margin: 0;">
+                        ❌ Please paste JSON content
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+                return;
+            }
+
+            const result = importPurchasesJSON(currentUser, jsonText);
+            const resultDiv = document.getElementById('importResult');
+
+            if (result.success) {
+                resultDiv.innerHTML = `
+                    <div class="success show" style="margin: 0;">
+                        ✅ Imported ${result.count} purchases successfully!
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+
+                // Reload history display
+                setTimeout(() => {
+                    loadHistory();
+                    hideImportModal();
+                    showSuccess('History imported successfully!');
+                }, 1500);
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="error show" style="margin: 0;">
+                        ❌ Import failed: ${result.error}
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+            }
+        }
+
+
+        function clearLocalHistory() {
+            if (!currentUser || !confirm('Are you sure? This will delete ALL your local purchase history and cannot be undone.')) {
+                return;
+            }
+
+            clearLocalPurchases(currentUser);
+            loadHistory();
+            showSuccess('Local history cleared');
+            setTimeout(() => hideSuccess(), 3000);
         }
 
         // Comparison
@@ -1169,7 +1364,38 @@
             if (!e.target.closest('.search-section')) {
                 document.getElementById('suggestions').classList.remove('show');
             }
+
+            // Close import modal if clicking outside
+            const modal = document.getElementById('importModal');
+            if (modal.style.display === 'flex' && e.target === modal) {
+                hideImportModal();
+            }
         });
     </script>
+
+    <!-- IMPORT MODAL -->
+    <div id="importModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-bottom: 20px;">📥 Import Purchase History</h3>
+            <p style="margin-bottom: 15px; color: var(--text-secondary);">
+                Paste your exported JSON file contents below:
+            </p>
+            <textarea id="importJsonText" placeholder="Paste JSON content here..."
+                      style="width: 100%; height: 200px; padding: 15px; border: 2px solid var(--border); border-radius: 10px; font-family: monospace; margin-bottom: 20px;"></textarea>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="btn btn-primary" onclick="processImport()" style="flex: 1;">
+                    Import
+                </button>
+                <button class="btn btn-secondary" onclick="hideImportModal()" style="flex: 1;">
+                    Cancel
+                </button>
+            </div>
+            <div id="importResult" style="display: none; padding: 15px; border-radius: 10px; margin-top: 15px;"></div>
+            <div style="font-size: 12px; color: var(--text-secondary);">
+                💡 Export your current data first as backup. Importing will replace all current local purchases.
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
