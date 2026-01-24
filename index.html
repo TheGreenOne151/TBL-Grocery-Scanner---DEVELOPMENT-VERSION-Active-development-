@@ -524,6 +524,65 @@
                 padding: 10px 5px;
             }
         }
+
+        .source-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .source-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .source-icon {
+            font-size: 28px;
+            margin-right: 15px;
+        }
+
+        .source-title {
+            font-size: 1.3rem;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .source-description {
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .source-link {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .source-link:hover {
+            background: var(--primary-dark);
+        }
+
+        .score-impact {
+            display: inline-block;
+            background: #e8f5e9;
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
     </style>
 </head>
 <body>
@@ -714,7 +773,7 @@
         <p>Version 2.3.0 | <a href="https://tbl-grocery-scanner.onrender.com/scoring-methodology" target="_blank">Methodology</a></p>
         <p>Product search via Open Food Facts API</p>
         <p>Certification verification using: B Corp, Fairtrade®, Rainforest Alliance, and Leaping Bunny databases
-           <a href="/data-sources" style="font-size: 0.9em; margin-left: 8px;">(sources)</a>
+           <a href="javascript:void(0)" onclick="showDataSources()" style="font-size: 0.9em; margin-left: 8px; text-decoration: underline; cursor: pointer;">(view sources)</a>
         </p>
     </div>
 
@@ -1374,6 +1433,33 @@
                 hideImportModal();
             }
         });
+
+        // Data Sources Modal Functions
+        function showDataSources() {
+            document.getElementById('dataSourcesModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        }
+
+        function hideDataSources() {
+            document.getElementById('dataSourcesModal').style.display = 'none';
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        }
+
+        // Close modal when clicking outside content
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('dataSourcesModal');
+            if (modal.style.display === 'flex' && e.target === modal) {
+                hideDataSources();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('dataSourcesModal').style.display === 'flex') {
+                hideDataSources();
+            }
+        });
+
     </script>
 
     <!-- IMPORT MODAL -->
@@ -1396,6 +1482,121 @@
             <div id="importResult" style="display: none; padding: 15px; border-radius: 10px; margin-top: 15px;"></div>
             <div style="font-size: 12px; color: var(--text-secondary);">
                 💡 Export your current data first as backup. Importing will replace all current local purchases.
+            </div>
+        </div>
+    </div>
+
+    <!-- DATA SOURCES MODAL -->
+    <div id="dataSourcesModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1001; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
+            <button onclick="hideDataSources()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
+
+            <h2 style="color: var(--primary); margin-bottom: 20px; padding-right: 30px;">📊 Data Sources & Certification References</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 25px;">
+                Our scoring system is based on verified third-party certifications from these trusted organizations:
+            </p>
+
+            <!-- B Corp -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #2e7d32;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🏢</div>
+                    <h3 style="color: var(--primary); margin: 0;">B Corp Certification</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">
+                    Certified B Corporations are businesses that meet the highest standards of verified social and environmental performance, public transparency, and legal accountability to balance profit and purpose.
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.bcorporation.net/en-us/find-a-b-corp/" target="_blank"
+                       style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔗 Verify on B Corp Directory
+                    </a>
+                    <span style="background: #e8f5e9; color: var(--primary); padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                        Score Impact: +1.0 to all pillars
+                    </span>
+                </div>
+            </div>
+
+            <!-- Fair Trade -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #ff9800;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">⚖️</div>
+                    <h3 style="color: var(--primary); margin: 0;">Fair Trade Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">
+                    Fair Trade certification ensures that products are made according to rigorous social, environmental, and economic standards that support safe working conditions, environmental protection, and sustainable livelihoods for farmers and workers.
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.flocert.net/fairtrade-customer-search/" target="_blank"
+                       style="background: #ff9800; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔗 Verify on FLOCERT
+                    </a>
+                    <span style="background: #fff3e0; color: #e65100; padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                        Score Impact: +1.0 social, +0.5 environmental, +0.5 economic
+                    </span>
+                </div>
+            </div>
+
+            <!-- Rainforest Alliance -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #4caf50;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🌳</div>
+                    <h3 style="color: var(--primary); margin: 0;">Rainforest Alliance Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">
+                    The Rainforest Alliance certification seal means that the product was produced using methods that support the three pillars of sustainability: social, economic, and environmental, with a focus on protecting forests, improving livelihoods, and promoting human rights.
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.rainforest-alliance.org/find-certified/" target="_blank"
+                       style="background: #4caf50; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔗 Verify on Rainforest Alliance
+                    </a>
+                    <span style="background: #e8f5e9; color: var(--primary); padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                        Score Impact: +0.5 social, +1.0 environmental, +0.5 economic
+                    </span>
+                </div>
+            </div>
+
+            <!-- Leaping Bunny -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #2196f3;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🐰</div>
+                    <h3 style="color: var(--primary); margin: 0;">Leaping Bunny Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">
+                    The Leaping Bunny Program administers a cruelty-free standard and certification for companies producing cosmetic, personal care, and household products, ensuring no new animal testing is used in any phase of product development.
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.leapingbunny.org/shopping-guide/" target="_blank"
+                       style="background: #2196f3; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔗 Verify on Leaping Bunny
+                    </a>
+                    <span style="background: #e3f2fd; color: #1565c0; padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                        Score Impact: +1.0 social, +0.5 environmental
+                    </span>
+                </div>
+            </div>
+
+            <!-- Methodology Note -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 25px; border: 2px solid var(--border);">
+                <h4 style="color: var(--primary); margin-bottom: 10px;">📈 Scoring Methodology</h4>
+                <p style="color: var(--text-primary); margin-bottom: 10px;">
+                    <strong>Base Score:</strong> All brands start with 5.0 in each pillar (Social, Environmental, Economic).
+                </p>
+                <p style="color: var(--text-primary); margin-bottom: 10px;">
+                    <strong>Certification Bonuses:</strong> Points are added only for verified third-party certifications.
+                </p>
+                <p style="color: var(--text-primary); margin-bottom: 10px;">
+                    <strong>Multi-Certification Bonus:</strong> Brands with multiple certifications receive an additional +0.5 to each pillar for each certification beyond the first.
+                </p>
+                <p style="color: var(--text-primary);">
+                    <strong>Maximum Score:</strong> All scores are capped at 10.0 per pillar.
+                </p>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="https://tbl-grocery-scanner.onrender.com/scoring-methodology" target="_blank"
+                       style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+                        📖 View Full Scoring Methodology
+                    </a>
+                </div>
             </div>
         </div>
     </div>
