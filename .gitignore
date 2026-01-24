@@ -1,3 +1,4 @@
+# Create a proper .gitignore for your Python + Excel project
 @"
 # Python
 __pycache__/
@@ -39,7 +40,7 @@ dmypy.json
 .cache/
 instance/
 
-# Excel temporary files
+# Excel temporary files (KEEP .xlsx but ignore temp files)
 ~$*.xlsx
 ~$*.xls
 *.tmp
@@ -56,6 +57,19 @@ Push_to_*
 CERT_SOURCES.txt
 License.txt
 
+# ============================================
+# ADDED: Personal developer files
+# ============================================
+TBL App Commands.txt
+*Command*.txt
+*commands*.txt
+cheat_sheet*.txt
+personal_*.txt
+dev_notes/
+
 # Our Excel data files ARE tracked (not ignored)
 # No *.xlsx line here!
-"@ | Out-File .gitignore -Encoding UTF8
+"@ | Set-Content .gitignore -Encoding UTF8
+
+# Verify
+Get-Content .gitignore | Select-Object -First 10
