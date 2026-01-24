@@ -4,7 +4,11 @@ http://192.168.0.230:8000
 
 ***********************************
 
-First: cd C:\Users\StardogChampion\tbl-grocery-app
+First: 
+
+cd C:\Users\StardogChampion\tbl-dev-workspace
+
+cd C:\Users\StardogChampion\tbl-grocery-app
 
 Second: venv\Scripts\activate
 
