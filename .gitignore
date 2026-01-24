@@ -1,6 +1,4 @@
-# Create a proper .gitignore for your Python + Excel project
-@"
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -50,7 +48,9 @@ instance/
 # Documentation/backup files
 *.env
 *_commands.txt
+# Exception: Keep Project_Structure.txt
 *_structure.txt
+!Project_Structure.txt
 *_rubric.*
 push.*
 Push_to_*
@@ -69,7 +69,3 @@ dev_notes/
 
 # Our Excel data files ARE tracked (not ignored)
 # No *.xlsx line here!
-"@ | Set-Content .gitignore -Encoding UTF8
-
-# Verify
-Get-Content .gitignore | Select-Object -First 10
