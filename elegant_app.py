@@ -2739,7 +2739,7 @@ def render_scoring_methodology() -> str:
     <body>
         <div class="container">
             <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
-            <div class="subtitle">Version 2.2 • Consistent, Transparent Certification-Based Scoring</div>
+            <div class="subtitle">Version 2.3.0 • Consistent, Transparent Certification-Based Scoring</div>
 
             <div class="section">
                 <h2>🎯 Core Principles</h2>
@@ -3237,6 +3237,13 @@ async def get_scoring_methodology():
     """Explain the scoring methodology transparently to users"""
     return HTMLResponse(content=render_scoring_methodology())
 
+# ✅ ADD THIS NEW ROUTE RIGHT HERE:
+@app.get("/data-sources", response_class=HTMLResponse)
+async def get_data_sources():
+    """Serve the data sources information page."""
+    with open("data-sources.html", "r", encoding="utf-8") as file:
+        html_content = file.read()
+    return HTMLResponse(content=html_content)
 
 @app.get("/test/scoring/{brand}")
 async def test_scoring_methodology(brand: str):
@@ -3248,7 +3255,6 @@ async def test_scoring_methodology(brand: str):
     return HTMLResponse(
         content=render_score_breakdown(brand, scores, tbl, excel_result)
     )
-
 
 @app.post("/auth/register")
 async def register_user(user: UserRegistration) -> Dict[str, Any]:
