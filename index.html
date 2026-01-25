@@ -663,6 +663,17 @@
                     <div class="certifications">
                         <h3 style="margin-bottom: 10px; font-size: 16px;">✅ Certifications</h3>
                         <div id="certBadges"></div>
+                        <div id="researchStatus" style="display: none; margin-top: 15px; padding: 10px; background: #f0f9f0; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                            <div style="display: flex; align-items: center;">
+                                <div style="background: #4CAF50; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-weight: bold;">
+                                    ✓
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; color: #2E7D32;">Research Verified</div>
+                                    <div style="font-size: 13px; color: var(--text-secondary);">All certifications have been manually verified</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="loggedInActions" style="display: none;">
@@ -769,7 +780,7 @@
         </div>
     </div>
 
-    <div class="footer"> 
+    <div class="footer">
         <p>Version 2.3.0 | <a href="https://tbl-grocery-scanner.onrender.com/scoring-methodology" target="_blank">Methodology</a></p>
         <p>Product search via Open Food Facts API</p>
         <p>Certification verification using: B Corp, Fairtrade®, Rainforest Alliance, and Leaping Bunny databases
@@ -1357,6 +1368,14 @@
                 ).join('');
             } else {
                 certBadges.innerHTML = '<p class="no-certs">No verified certifications found</p>';
+            }
+
+            // NEW: Show/hide research status
+            const researchStatus = document.getElementById('researchStatus');
+            if (data.research_complete === true) {
+                researchStatus.style.display = 'block';
+            } else {
+                researchStatus.style.display = 'none';
             }
 
             showResults();

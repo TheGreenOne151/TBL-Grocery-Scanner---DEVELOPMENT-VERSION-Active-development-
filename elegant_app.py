@@ -1330,6 +1330,7 @@ class CertificationManager:
                     cert_data[brand_normalized] = {
                         "original_brand": brand,
                         "certifications": certifications,
+                        "research_complete": certifications.get("research_complete", False),
                         "row_data": row.to_dict(),
                     }
 
@@ -1382,6 +1383,14 @@ class CertificationManager:
                 "leaping_bunny",
                 "Cruelty Free",
                 "leapingbunny",
+            ],
+            # ADD THIS NEW ENTRY:
+            "research_complete": [
+                "Research_Complete",
+                "Research Complete",
+                "research_complete",
+                "Research Done",
+                "research_done",
             ],
         }
 
@@ -1603,6 +1612,7 @@ class CertificationManager:
                 "fair_trade": False,
                 "rainforest_alliance": False,
                 "leaping_bunny": False,
+                "research_complete": False,
             },
             "details": None,
         }
@@ -3418,6 +3428,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                 "fair_trade": "Fair Trade" in certifications,
                 "rainforest_alliance": "Rainforest Alliance" in certifications,
                 "leaping_bunny": "Leaping Bunny" in certifications,
+                "research_complete": excel_result.get("certifications", {}).get("research_complete", False),
             },
             "certification_source": "Hardcoded Database (pre-calculated) + Excel Database (combined)",
             "scoring_method": getattr(scores, 'scoring_method', 'error_fallback'),
@@ -4005,6 +4016,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
             "fair_trade": "Fair Trade" in scores.certifications,
             "rainforest_alliance": "Rainforest Alliance" in scores.certifications,
             "leaping_bunny": "Leaping Bunny" in scores.certifications,
+            "research_complete": cert_result.get("certifications", {}).get("research_complete", False),
         },
         "scoring_method": scores.scoring_method,
         "notes": scores.notes,
