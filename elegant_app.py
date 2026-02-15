@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import io
 import json
@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 
+
 def safe_float(value, default=0.0):
     """Convert any value to a JSON-safe float - prevents NaN and Infinity errors"""
     try:
@@ -37,6 +38,7 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError, OverflowError):
         return default
 
+
 def sanitize_for_json(data):
     """Recursively sanitize data to be JSON-compliant"""
     if isinstance(data, dict):
@@ -51,18 +53,22 @@ def sanitize_for_json(data):
         # For any other type, convert to string
         return str(data)
 
+
 PORT = int(os.getenv("PORT", 8000))
 
 # REMOVED: import bcrypt           # Will load inside functions
 # REMOVED: import pandas as pd     # Will load inside functions
+
 
 def lazy_import(module_name: str):
     """Import modules only when needed to save memory"""
     import importlib
     return importlib.import_module(module_name)
 
+
 # Add these after the lazy_import function in your imports section
 _BCRYPT = None
+
 
 def get_bcrypt():
     """Get bcrypt module with lazy loading and caching"""
@@ -71,9 +77,11 @@ def get_bcrypt():
         _BCRYPT = lazy_import("bcrypt")
     return _BCRYPT
 
+
 # CACHED PANDAS IMPORT
 _PANDAS = None
 _OPENPYXL = None
+
 
 def get_pandas():
     """Get pandas module with lazy loading and caching"""
@@ -82,6 +90,7 @@ def get_pandas():
         _PANDAS = lazy_import("pandas")
     return _PANDAS
 
+
 def get_openpyxl():
     """Get openpyxl module with lazy loading and caching"""
     global _OPENPYXL
@@ -89,9 +98,11 @@ def get_openpyxl():
         _OPENPYXL = lazy_import("openpyxl")
     return _OPENPYXL
 
+
 # Add Numpy caching to your imports section (after pandas caching)
 # NUMPY CACHING (not currently used, but available for future)
 _NUMPY = None
+
 
 def get_numpy():
     """Get numpy module with lazy loading and caching"""
@@ -189,7 +200,8 @@ def log_execution(func):
 
     def wrapper(*args, **kwargs):
         logger = logging.getLogger(__name__)
-        logger.debug(f"Executing {func.__name__} with args={args}, kwargs={kwargs}")
+        logger.debug(
+            f"Executing {func.__name__} with args={args}, kwargs={kwargs}")
         result = func(*args, **kwargs)
         logger.debug(f"{func.__name__} returned {result}")
         return result
@@ -249,6 +261,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==================== PYDANTIC MODELS ====================
+
 
 class UserRegistration(BaseModel):
     username: str
@@ -312,7 +325,6 @@ class BrandAdd(BaseModel):
 class ProductSearch(BaseModel):
     product_name: str
     max_results: int = 10
-
 
 
 # ==================== BRAND NORMALIZER ====================
@@ -496,7 +508,7 @@ class BrandNormalizer:
         "dasani": "coca cola",
         "smartwater": "coca cola",
         "fairlife": "coca cola",
-        # Nestlé products
+        # NestlÃƒÆ’Ã‚Â© products
         "nescafe": "nestle",
         "nesquik": "nestle",
         "stouffers": "nestle",
@@ -517,7 +529,7 @@ class BrandNormalizer:
         "rexona": "unilever",
         "vaseline": "unilever",
         "lipton": "unilever",
-        # "ben jerrys": "unilever",  # ← Remove this line
+        # "ben jerrys": "unilever",  # ÃƒÂ¢Ã¢â‚¬Â Ã‚Â Remove this line
         "magnum": "unilever",
         "breyers": "unilever",
         "klondike": "unilever",
@@ -659,7 +671,7 @@ class BrandNormalizer:
         "mondelez": ["mondelez international", "kraft foods"],
         "pepsico": ["pepsi", "pepsi co", "pepsico inc"],
         "coca cola": ["coca-cola", "coke", "coca cola company"],
-        "nestle": ["nestlé", "nestle sa"],
+        "nestle": ["nestlÃƒÆ’Ã‚Â©", "nestle sa"],
         "unilever": ["unilever plc", "unilever nv"],
         "kraft heinz": ["kraft", "heinz", "kraft heinz company"],
         "mars": ["mars inc", "mars incorporated"],
@@ -1127,9 +1139,9 @@ class BrandNormalizer:
             " uk",
             " canada",
             " europe",
-            "®",
-            "™",
-            "©",
+            "Ãƒâ€šÃ‚Â®",
+            "ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢",
+            "Ãƒâ€šÃ‚Â©",
             "(",
             ")",
             "[",
@@ -1139,7 +1151,7 @@ class BrandNormalizer:
             "|",
             "\\",
             "/",
-         ]
+        ]
 
         for phrase in remove_phrases:
             normalized = normalized.replace(phrase, "")
@@ -1220,9 +1232,11 @@ class BrandNormalizer:
         return None
 
     @classmethod
-    def extract_brand_from_product_text(cls, product_name: str) -> Optional[str]:
+    def extract_brand_from_product_text(
+            cls, product_name: str) -> Optional[str]:
         """Enhanced brand extraction from product name using multiple strategies"""
-        if not product_name or product_name.lower() in ["unknown", "generic product"]:
+        if not product_name or product_name.lower() in [
+                "unknown", "generic product"]:
             return None
 
         product_lower = product_name.lower()
@@ -1263,8 +1277,7 @@ class BrandNormalizer:
                 for brand in cls.BRAND_IDENTIFICATION_DB.keys():
                     brand_normalized = cls.normalize(brand)
                     if brand_normalized == first_word or brand_normalized.startswith(
-                        first_word
-                    ):
+                            first_word):
                         logger.info(
                             f"Extracted brand '{brand}' from first word of product name"
                         )
@@ -1325,13 +1338,16 @@ class CertificationManager:
                     brand_normalized = BrandNormalizer.normalize(brand)
 
                     # Get certifications with exact column names
-                    certifications = self._extract_certifications(row, df.columns)
+                    certifications = self._extract_certifications(
+                        row, df.columns)
 
                     # Store brand data
                     cert_data[brand_normalized] = {
                         "original_brand": brand,
                         "certifications": certifications,
-                        "research_complete": certifications.get("research_complete", False),
+                        "research_complete": certifications.get(
+                            "research_complete",
+                            False),
                         "row_data": row.to_dict(),
                     }
 
@@ -1459,13 +1475,15 @@ class CertificationManager:
             common_words = search_words & stored_words
 
             # Remove generic words from consideration
-            meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
+            meaningful_common = [
+                w for w in common_words if w not in GENERIC_WORDS]
 
             # Rule 1: At least 2 meaningful words match
             if len(meaningful_common) >= 2:
                 return True
 
-            # Rule 2: For single meaningful word match, require it to be significant
+            # Rule 2: For single meaningful word match, require it to be
+            # significant
             if len(meaningful_common) == 1:
                 word = next(iter(meaningful_common))
                 # Word must be at least 4 chars and not too common
@@ -1516,7 +1534,8 @@ class CertificationManager:
             # Don't match based solely on generic words like "value"
             return False
 
-        # Also check for word overlap (for cases like "ben jerry" vs "ben and jerry")
+        # Also check for word overlap (for cases like "ben jerry" vs "ben and
+        # jerry")
         search_words = set(search_brand.split())
         stored_words = set(stored_brand.split())
         common_words = search_words & stored_words
@@ -1526,7 +1545,8 @@ class CertificationManager:
         if len(meaningful_common) >= 2:
             return True
 
-        # Rule 4: Fuzzy word matching for cases like "ben jerry" vs "ben and jerrys"
+        # Rule 4: Fuzzy word matching for cases like "ben jerry" vs "ben and
+        # jerrys"
         if len(meaningful_common) == 1:
             # Get the remaining meaningful words (excluding generic words)
             search_remaining = [
@@ -1561,12 +1581,14 @@ class CertificationManager:
 
         # Rule 5: Check if it's a known single-word brand with high similarity
         if len(search_words) == 1 and len(stored_words) == 1:
-            similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
+            similarity = SequenceMatcher(
+                None, search_brand, stored_brand).ratio()
             return similarity >= 0.8
 
         return False
 
-    def get_certifications(self, brand: str) -> Dict[str, Any]:
+    def get_certifications(
+            self, brand: str, category: str = None) -> Dict[str, Any]:
         """Get certifications for a brand from Excel data"""
         # Reload data if never loaded or if more than 5 minutes old
         if (
@@ -1578,7 +1600,8 @@ class CertificationManager:
             self.load_certification_data()
 
         if not brand or brand.lower() in ["unknown", "n/a", ""]:
-            logger.info("Empty brand requested, returning default certifications")
+            logger.info(
+                "Empty brand requested, returning default certifications")
             return self._get_default_response()
 
         brand_normalized = BrandNormalizer.normalize(brand)
@@ -1589,20 +1612,57 @@ class CertificationManager:
         # Check for exact match
         if brand_normalized in self.data:
             data = self.data[brand_normalized]
-            logger.info(f"Found exact match for '{brand}': {data['certifications']}")
+            logger.info(
+                f"Found exact match for '{brand}': {data['certifications']}")
+
+        # If category provided, try to find category-specific match
+        if category and category.strip():
+            try:
+                pd = get_pandas()
+                df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
+
+                # Filter by brand and category
+                brand_mask = df['Product_Brand'].str.contains(
+                    brand, case=False, na=False)
+                category_mask = df['Category'].str.contains(
+                    category, case=False, na=False)
+                category_specific = df[brand_mask & category_mask]
+
+                if not category_specific.empty:
+                    # Found category-specific entry
+                    row = category_specific.iloc[0]
+                    certifications = self._extract_certifications(
+                        row, df.columns)
+                    logger.info(
+                        f"Found category-specific match for '{brand}' in category '{category}'")
+
+                # Create data dict for this specific match
+                category_data = {
+                    "original_brand": row.get(
+                        'Product_Brand',
+                        brand),
+                    "certifications": certifications,
+                    "research_complete": certifications.get(
+                        "research_complete",
+                        False),
+                    "row_data": row.to_dict(),
+                }
+            except Exception as e:
+                logger.error(f"Error in category-specific lookup: {e}")
+
+            # Return the default match for this brand
             return self._format_response(True, data, brand)
 
-        # Check for partial matches with improved logic
-        for stored_brand, data in self.data.items():
-            if self._improved_partial_match(brand_normalized, stored_brand):
-                logger.info(
-                    f"Found partial match for '{brand}': stored as '{stored_brand}'"
-                )
-                return self._format_response(True, data, brand)
+            # Check for partial matches with improved logic
+            for stored_brand, data in self.data.items():
+                if self._improved_partial_match(
+                        brand_normalized, stored_brand):
+                    logger.info(f'Found partial match for ' +
+                                str(brand) + ': stored as ' + str(stored_brand))
+                    return self._format_response(True, data, brand)
+            logger.info('No match found for brand: ' + str(brand))
+            return self._get_default_response()
 
-        # No match found
-        logger.info(f"No match found for brand: '{brand}'")
-        return self._get_default_response()
 
     def _get_default_response(self) -> Dict[str, Any]:
         """Get default certification response"""
@@ -1653,7 +1713,7 @@ class ScoringManager:
     def calculate_brand_scores(brand: str) -> BrandData:
         """
         Calculate scores for a brand using priority order:
-        1. Hardcoded scores database (pre-calculated with multi-cert bonus)
+        1. Hardcoded scores database (pre-calculated w  ith multi-cert bonus)
         2. Brand synonyms mapping
         3. Parent company inheritance
         4. Dynamic calculation from certifications
@@ -1694,7 +1754,7 @@ class ScoringManager:
             if synonym_brand in BrandNormalizer.HARDCODED_SCORES_DB:
                 scores = BrandNormalizer.HARDCODED_SCORES_DB[synonym_brand]
                 logger.info(
-                    f"Using hardcoded scores via synonym for '{brand_normalized}' → '{synonym_brand}'"
+                    f"Using hardcoded scores via synonym for '{brand_normalized}' ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ '{synonym_brand}'"
                 )
                 return BrandData(
                     brand=brand,  # Add this line
@@ -1704,7 +1764,8 @@ class ScoringManager:
                     certifications=scores.get("certifications", []),
                     scoring_method="hardcoded_database_via_synonym",
                     multi_cert_applied=scores.get("multi_cert_applied", False),
-                    multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
+                    multi_cert_bonus=safe_float(
+                        scores.get("multi_cert_bonus", 0.0)),
                     notes=f"Pre-calculated score via brand synonym '{synonym_brand}'",
                 )
 
@@ -1716,7 +1777,7 @@ class ScoringManager:
             if parent_normalized in BrandNormalizer.HARDCODED_SCORES_DB:
                 scores = BrandNormalizer.HARDCODED_SCORES_DB[parent_normalized]
                 logger.info(
-                    f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'"
+                    f"Using parent company scores for '{brand_normalized}' ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ parent '{parent_normalized}'"
                 )
                 return BrandData(
                     brand=brand,
@@ -1760,7 +1821,8 @@ class ScoringManager:
 
         # Apply multi-certification bonus if applicable
         if bonus_applied and len(all_certifications) > 1:
-            multi_bonus = (len(all_certifications) - 1) * ScoringConfig.MULTI_CERT_BONUS
+            multi_bonus = (len(all_certifications) - 1) * \
+                ScoringConfig.MULTI_CERT_BONUS
             social_score += multi_bonus
             environmental_score += multi_bonus
             economic_score += multi_bonus
@@ -1856,7 +1918,8 @@ class OpenFoodFactsClient:
                         "brand_analysis": {},
                     }
         except Exception as e:
-            logger.error(f"Open Food Facts search error for '{product_name}': {e}")
+            logger.error(
+                f"Open Food Facts search error for '{product_name}': {e}")
             return {
                 "found": False,
                 "message": f"Search error: {str(e)}",
@@ -1915,13 +1978,11 @@ class OpenFoodFactsClient:
                         )
                         if normalized_brand not in brand_details:
                             brand_details[normalized_brand] = {
-                                "original_brand": field_value,
-                                "product_name": product.get("product_name", ""),
-                                "product_id": product.get("code", ""),
-                                "categories": product.get("categories", ""),
-                                "countries": product.get("countries", ""),
-                                "source_field": field,
-                            }
+                                "original_brand": field_value, "product_name": product.get(
+                                    "product_name", ""), "product_id": product.get(
+                                    "code", ""), "categories": product.get(
+                                    "categories", ""), "countries": product.get(
+                                    "countries", ""), "source_field": field, }
                         break
 
         return OpenFoodFactsClient._analyze_brand_candidates(
@@ -1955,7 +2016,10 @@ class OpenFoodFactsClient:
                 brand_percentages[brand] = round(percentage, 1)
 
         # Sort brands by frequency
-        sorted_brands = sorted(brand_counts.items(), key=lambda x: x[1], reverse=True)
+        sorted_brands = sorted(
+            brand_counts.items(),
+            key=lambda x: x[1],
+            reverse=True)
         top_brand = sorted_brands[0][0] if sorted_brands else None
 
         return {
@@ -1992,7 +2056,8 @@ class OpenFoodFactsClient:
                             barcode, product
                         )
         except Exception as e:
-            logger.error(f"Open Food Facts lookup error for barcode {barcode}: {e}")
+            logger.error(
+                f"Open Food Facts lookup error for barcode {barcode}: {e}")
 
         return {
             "barcode": barcode,
@@ -2012,7 +2077,8 @@ class OpenFoodFactsClient:
         for field in brand_fields:
             if field in product and product[field]:
                 brand_value = str(product[field]).strip()
-                if brand_value and brand_value.lower() not in ["", "unknown", "n/a"]:
+                if brand_value and brand_value.lower() not in [
+                        "", "unknown", "n/a"]:
                     brand = (
                         brand_value.split(",")[0].strip()
                         if "," in brand_value
@@ -2024,7 +2090,8 @@ class OpenFoodFactsClient:
         if brand == "Unknown":
             name = product.get("product_name", "")
             if name:
-                extracted = BrandNormalizer.extract_brand_from_product_text(name)
+                extracted = BrandNormalizer.extract_brand_from_product_text(
+                    name)
                 if extracted:
                     brand = extracted
 
@@ -2039,7 +2106,8 @@ class OpenFoodFactsClient:
         categories = product.get("categories", "")
         category = "Unknown"
         if categories:
-            category_list = [c.strip() for c in categories.split(",") if c.strip()]
+            category_list = [c.strip()
+                             for c in categories.split(",") if c.strip()]
             if category_list:
                 category = category_list[-1]
 
@@ -2078,9 +2146,11 @@ class BrandExtractionManager:
     """Manager for brand extraction from product names"""
 
     @staticmethod
-    async def extract_brand_from_product_name(product_name: str) -> Dict[str, Any]:
+    async def extract_brand_from_product_name(
+            product_name: str) -> Dict[str, Any]:
         """Main function to extract brand from product name using multiple strategies"""
-        logger.info(f"Attempting to extract brand from product name: '{product_name}'")
+        logger.info(
+            f"Attempting to extract brand from product name: '{product_name}'")
 
         # Strategy 1: Direct brand name check
         result = BrandExtractionManager._check_direct_brand_match(product_name)
@@ -2088,7 +2158,8 @@ class BrandExtractionManager:
             return result
 
         # Strategy 2: Try to extract brand directly from product name text
-        direct_brand = BrandNormalizer.extract_brand_from_product_text(product_name)
+        direct_brand = BrandNormalizer.extract_brand_from_product_text(
+            product_name)
         if direct_brand:
             logger.info(
                 f"Direct extraction found brand: '{direct_brand}' from product name"
@@ -2117,7 +2188,8 @@ class BrandExtractionManager:
 
         # Check if the input is already a known brand
         if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
-            logger.info(f"Input is already a known brand: '{brand_normalized}'")
+            logger.info(
+                f"Input is already a known brand: '{brand_normalized}'")
             return BrandExtractionManager._format_result(
                 success=True,
                 message=f"Input recognized as brand: '{brand_normalized}'",
@@ -2131,7 +2203,7 @@ class BrandExtractionManager:
         if brand_normalized in BrandNormalizer.BRAND_SYNONYMS:
             canonical_brand = BrandNormalizer.BRAND_SYNONYMS[brand_normalized]
             logger.info(
-                f"Input matches brand synonym: '{brand_normalized}' → '{canonical_brand}'"
+                f"Input matches brand synonym: '{brand_normalized}' ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ '{canonical_brand}'"
             )
             return BrandExtractionManager._format_result(
                 success=True,
@@ -2146,7 +2218,7 @@ class BrandExtractionManager:
         for alias, canonical in BrandNormalizer.BRAND_ALIASES.items():
             if alias == brand_normalized:
                 logger.info(
-                    f"Input matches brand alias: '{brand_normalized}' → '{canonical}'"
+                    f"Input matches brand alias: '{brand_normalized}' ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ '{canonical}'"
                 )
                 return BrandExtractionManager._format_result(
                     success=True,
@@ -2162,7 +2234,8 @@ class BrandExtractionManager:
             brand_key_normalized = BrandNormalizer.normalize(brand_key)
             if brand_key_normalized and len(brand_key_normalized) > 2:
                 if brand_key_normalized in brand_normalized:
-                    logger.info(f"Found brand '{brand_key}' in input: '{product_name}'")
+                    logger.info(
+                        f"Found brand '{brand_key}' in input: '{product_name}'")
                     return BrandExtractionManager._format_result(
                         success=True,
                         message=f"Brand '{brand_key}' found in input",
@@ -2295,11 +2368,11 @@ class BrandExtractionManager:
             reason=reason,
             search_results={
                 "total_products": search_result["brand_analysis"].get(
-                    "total_products", 0
-                ),
+                    "total_products",
+                    0),
                 "total_brand_candidates": search_result["brand_analysis"].get(
-                    "total_brand_candidates", 0
-                ),
+                    "total_brand_candidates",
+                    0),
             },
         )
 
@@ -2326,7 +2399,7 @@ class BrandExtractionManager:
 
         if best_match:
             logger.info(
-                f"Fuzzy match found: '{brand_normalized}' → '{best_match}' ({best_score:.1%} similarity)"
+                f"Fuzzy match found: '{brand_normalized}' ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ '{best_match}' ({best_score:.1%} similarity)"
             )
             confidence = int(best_score * 100)
             return BrandExtractionManager._format_result(
@@ -2411,6 +2484,8 @@ PURCHASE_HISTORY_DB = {}
 PRODUCT_CACHE = {}
 
 # Simple user database class (optional)
+
+
 class UserDatabase:
     def __init__(self):
         self.users = {}
@@ -2418,8 +2493,10 @@ class UserDatabase:
 
 # ==================== PERSISTENT STORAGE SETUP ====================
 
+
 # JSON file for persistent storage
 USER_DATA_FILE = "user_data.json"
+
 
 def load_user_data():
     """Load user data from JSON file"""
@@ -2435,6 +2512,7 @@ def load_user_data():
     # Return empty structure if file doesn't exist or has errors
     return {"users": {}, "purchases": {}}
 
+
 def save_user_data():
     """Save current user data to JSON file"""
     try:
@@ -2447,6 +2525,7 @@ def save_user_data():
         logger.info(f"Saved user data to {USER_DATA_FILE}")
     except Exception as e:
         logger.error(f"Error saving user data: {e}")
+
 
 # Load existing data or initialize
 user_data = load_user_data()
@@ -2466,6 +2545,7 @@ if "ALB" not in USERS_DB:
     logger.info("Created ALB user")
 
 # ==================== SCRIPT EXECUTION FUNCTIONS ====================
+
 
 def run_create_excel_script() -> Dict[str, Any]:
     """Execute the create_excel.py script"""
@@ -2501,12 +2581,12 @@ def run_create_excel_script() -> Dict[str, Any]:
             "success": True,
             "message": f"Successfully executed {FileConfig.CREATE_EXCEL_SCRIPT}",
             "output": output,
-            "excel_file_created": os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE),
+            "excel_file_created": os.path.exists(
+                FileConfig.CERTIFICATION_EXCEL_FILE),
             "excel_file_size": (
-                os.path.getsize(FileConfig.CERTIFICATION_EXCEL_FILE)
-                if os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE)
-                else 0
-            ),
+                os.path.getsize(
+                    FileConfig.CERTIFICATION_EXCEL_FILE) if os.path.exists(
+                    FileConfig.CERTIFICATION_EXCEL_FILE) else 0),
         }
     except Exception as e:
         logger.error(f"Error executing {FileConfig.CREATE_EXCEL_SCRIPT}: {e}")
@@ -2526,14 +2606,14 @@ def verify_excel_script() -> Dict[str, Any]:
         # Check if script exists
         script_exists = os.path.exists(FileConfig.CREATE_EXCEL_SCRIPT)
         script_size = (
-            os.path.getsize(FileConfig.CREATE_EXCEL_SCRIPT) if script_exists else 0
-        )
+            os.path.getsize(
+                FileConfig.CREATE_EXCEL_SCRIPT) if script_exists else 0)
 
         # Check if Excel file exists
         excel_exists = os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE)
         excel_size = (
-            os.path.getsize(FileConfig.CERTIFICATION_EXCEL_FILE) if excel_exists else 0
-        )
+            os.path.getsize(
+                FileConfig.CERTIFICATION_EXCEL_FILE) if excel_exists else 0)
 
         # Try to read Excel file
         excel_data = None
@@ -2749,11 +2829,11 @@ def render_scoring_methodology() -> str:
     </head>
     <body>
         <div class="container">
-            <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
-            <div class="subtitle">Version 2.3.0 • Consistent, Transparent Certification-Based Scoring</div>
+            <h1>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  TBL Grocery Scanner Scoring Methodology</h1>
+            <div class="subtitle">Version 2.3.0 ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Consistent, Transparent Certification-Based Scoring</div>
 
             <div class="section">
-                <h2>🎯 Core Principles</h2>
+                <h2>ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¯ Core Principles</h2>
                 <div class="principle-box">
                     <h3>Consistency First</h3>
                     <p>Every brand gets the exact same score regardless of search method (barcode, brand name, or product name).</p>
@@ -2769,21 +2849,21 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>📈 How Scores Are Calculated</h2>
+                <h2>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‹â€  How Scores Are Calculated</h2>
 
                 <div class="score-breakdown">
                     <div class="score-pillar">
-                        <div>👥 Social Score</div>
+                        <div>ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¥ Social Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
                     <div class="score-pillar">
-                        <div>🌱 Environmental Score</div>
+                        <div>ÃƒÂ°Ã…Â¸Ã…â€™Ã‚Â± Environmental Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
                     <div class="score-pillar">
-                        <div>💰 Economic Score</div>
+                        <div>ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â° Economic Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
@@ -2798,9 +2878,9 @@ def render_scoring_methodology() -> str:
                 <table>
                     <tr>
                         <th>Certification</th>
-                        <th>👥 Social Bonus</th>
-                        <th>🌱 Environmental Bonus</th>
-                        <th>💰 Economic Bonus</th>
+                        <th>ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¥ Social Bonus</th>
+                        <th>ÃƒÂ°Ã…Â¸Ã…â€™Ã‚Â± Environmental Bonus</th>
+                        <th>ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â° Economic Bonus</th>
                         <th>Focus Area</th>
                     </tr>
                     <tr>
@@ -2839,8 +2919,8 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>⭐ Grade Thresholds</h2>
-                <p>Overall TBL Score = (Social + Environmental + Economic) ÷ 3</p>
+                <h2>ÃƒÂ¢Ã‚Â­Ã‚Â Grade Thresholds</h2>
+                <p>Overall TBL Score = (Social + Environmental + Economic) ÃƒÆ’Ã‚Â· 3</p>
 
                 <div style="margin: 20px 0;">
                     <div class="grade-box excellent">EXCELLENT: {ScoringConfig.GRADE_THRESHOLDS['EXCELLENT']}+</div>
@@ -2858,15 +2938,15 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="example">
-                <h2>🧪 Example Calculation: Nespresso</h2>
+                <h2>ÃƒÂ°Ã…Â¸Ã‚Â§Ã‚Âª Example Calculation: Nespresso</h2>
                 <p><strong>Certifications:</strong> B Corp, Fair Trade, Rainforest Alliance</p>
 
                 <table>
                     <tr>
                         <th>Step</th>
-                        <th>👥 Social</th>
-                        <th>🌱 Environmental</th>
-                        <th>💰 Economic</th>
+                        <th>ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¥ Social</th>
+                        <th>ÃƒÂ°Ã…Â¸Ã…â€™Ã‚Â± Environmental</th>
+                        <th>ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â° Economic</th>
                     </tr>
                     <tr>
                         <td>Base Score</td>
@@ -2893,7 +2973,7 @@ def render_scoring_methodology() -> str:
                         <td>+0.5</td>
                     </tr>
                     <tr>
-                        <td>+ Multi-Cert Bonus (2 additional certs × {ScoringConfig.MULTI_CERT_BONUS})</td>
+                        <td>+ Multi-Cert Bonus (2 additional certs ÃƒÆ’Ã¢â‚¬â€ {ScoringConfig.MULTI_CERT_BONUS})</td>
                         <td>+1.0</td>
                         <td>+1.0</td>
                         <td>+1.0</td>
@@ -2906,12 +2986,12 @@ def render_scoring_methodology() -> str:
                     </tr>
                 </table>
 
-                <p><strong>Overall TBL Score:</strong> (8.5 + 8.5 + 8.0) ÷ 3 = <strong>8.3</strong></p>
+                <p><strong>Overall TBL Score:</strong> (8.5 + 8.5 + 8.0) ÃƒÆ’Ã‚Â· 3 = <strong>8.3</strong></p>
                 <p><strong>Grade:</strong> <span class="grade-box great">GREAT</span></p>
             </div>
 
             <div class="section">
-                <h2>🔄 Consistent Scoring Across All Search Methods</h2>
+                <h2>ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ¢â‚¬Å¾ Consistent Scoring Across All Search Methods</h2>
                 <div class="principle-box">
                     <h3>Single Source of Truth</h3>
                     <p>One function (<code>calculate_brand_scores()</code>) handles all scoring</p>
@@ -2928,9 +3008,9 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="/" class="back-button">🏠 Back to Scanner</a>
-                <a href="/health" class="back-button">❤️ Health Check</a>
-                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
+                <a href="/" class="back-button">ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â  Back to Scanner</a>
+                <a href="/health" class="back-button">ÃƒÂ¢Ã‚ÂÃ‚Â¤ÃƒÂ¯Ã‚Â¸Ã‚Â Health Check</a>
+                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">ÃƒÂ¢Ã‚Â¬Ã¢â‚¬Â¦ÃƒÂ¯Ã‚Â¸Ã‚Â Go Back</button>
             </div>
         </div>
 
@@ -2960,8 +3040,7 @@ def render_score_breakdown(
     hardcoded_certs = []
     if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
         hardcoded_certs = BrandNormalizer.BRAND_IDENTIFICATION_DB[brand_normalized].get(
-            "certifications", []
-        )
+            "certifications", [])
 
     excel_cert_list = []
     if excel_result["certifications"]["b_corp"]:
@@ -3003,7 +3082,7 @@ def render_score_breakdown(
     multi_cert_row = (
         f"""
     <div class="bonus-row">
-        <span>+ Multi-Certification Bonus ({len(all_certs)-1} additional cert{'s' if len(all_certs)-1 != 1 else ''} × {ScoringConfig.MULTI_CERT_BONUS})</span>
+        <span>+ Multi-Certification Bonus ({len(all_certs)-1} additional cert{'s' if len(all_certs)-1 != 1 else ''} ÃƒÆ’Ã¢â‚¬â€ {ScoringConfig.MULTI_CERT_BONUS})</span>
         <span>+{(len(all_certs)-1) * ScoringConfig.MULTI_CERT_BONUS:.1f} to each pillar</span>
     </div>
     """
@@ -3160,29 +3239,29 @@ def render_score_breakdown(
     </head>
     <body>
         <div class="container">
-            <h1>📊 Score Breakdown</h1>
+            <h1>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  Score Breakdown</h1>
             <div class="brand-header">
                 <h2 style="margin-top: 0;">{brand}</h2>
                 <p>Normalized as: {brand_normalized}</p>
             </div>
 
             <div class="excel-status {'excel-found' if excel_result['found'] else 'excel-notfound'}">
-                {'✓ Found in Excel Database' if excel_result['found'] else '✗ Not in Excel Database'}
+                {'ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Found in Excel Database' if excel_result['found'] else 'ÃƒÂ¢Ã…â€œÃ¢â‚¬â€ Not in Excel Database'}
             </div>
 
             <div class="score-display">
                 <div class="pillar">
-                    <div>👥 Social Impact</div>
+                    <div>ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¥ Social Impact</div>
                     <div class="pillar-score">{scores.social:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_social_bonus:.1f} bonus</div>
                 </div>
                 <div class="pillar">
-                    <div>🌱 Environmental Impact</div>
+                    <div>ÃƒÂ°Ã…Â¸Ã…â€™Ã‚Â± Environmental Impact</div>
                     <div class="pillar-score">{scores.environmental:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_env_bonus:.1f} bonus</div>
                 </div>
                 <div class="pillar">
-                    <div>💰 Economic Impact</div>
+                    <div>ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â° Economic Impact</div>
                     <div class="pillar-score">{scores.economic:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_econ_bonus:.1f} bonus</div>
                 </div>
@@ -3195,7 +3274,7 @@ def render_score_breakdown(
             </div>
 
             <div class="breakdown">
-                <h3 style="color: #e65100; margin-top: 0;">🔍 How This Score Was Calculated</h3>
+                <h3 style="color: #e65100; margin-top: 0;">ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â How This Score Was Calculated</h3>
 
                 <h4>Base Scores (All Brands Start Here)</h4>
                 <div class="bonus-row">
@@ -3222,7 +3301,7 @@ def render_score_breakdown(
             </div>
 
             <div style="margin: 30px 0;">
-                <h3>✅ Verified Certifications</h3>
+                <h3>ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Verified Certifications</h3>
                 {cert_badges}
                 <p style="font-size: 12px; color: #666; margin-top: 10px;">
                     Combined from Excel database and hardcoded database
@@ -3230,9 +3309,9 @@ def render_score_breakdown(
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="/" class="back-button">🏠 Back to Scanner</a>
-                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">📖 Full Methodology</a>
-                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
+                <a href="/" class="back-button">ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â  Back to Scanner</a>
+                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬â€œ Full Methodology</a>
+                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">ÃƒÂ¢Ã‚Â¬Ã¢â‚¬Â¦ÃƒÂ¯Ã‚Â¸Ã‚Â Go Back</button>
             </div>
         </div>
     </body>
@@ -3248,7 +3327,9 @@ async def get_scoring_methodology():
     """Explain the scoring methodology transparently to users"""
     return HTMLResponse(content=render_scoring_methodology())
 
-# ✅ ADD THIS NEW ROUTE RIGHT HERE:
+# ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ ADD THIS NEW ROUTE RIGHT HERE:
+
+
 @app.get("/data-sources", response_class=HTMLResponse)
 async def get_data_sources():
     """Serve the data sources information page."""
@@ -3256,16 +3337,21 @@ async def get_data_sources():
         html_content = file.read()
     return HTMLResponse(content=html_content)
 
+
 @app.get("/test/scoring/{brand}")
 async def test_scoring_methodology(brand: str):
     """Test the scoring methodology for a specific brand - returns HTML"""
     scores = scoring_manager.calculate_brand_scores(brand)
-    tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+    tbl = calculate_overall_score(
+        scores.social,
+        scores.environmental,
+        scores.economic)
     excel_result = certification_manager.get_certifications(brand)
 
     return HTMLResponse(
         content=render_score_breakdown(brand, scores, tbl, excel_result)
     )
+
 
 @app.post("/auth/register")
 async def register_user(user: UserRegistration) -> Dict[str, Any]:
@@ -3281,18 +3367,22 @@ async def register_user(user: UserRegistration) -> Dict[str, Any]:
     }
     PURCHASE_HISTORY_DB[user.username] = []
 
-    # ✅ ADD THIS LINE: Save to persistent storage
+    # ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ ADD THIS LINE: Save to persistent storage
     save_user_data()
 
     logger.info(f"New user registered: {user.username}")
-    return {"message": "User registered successfully", "username": user.username}
+    return {
+        "message": "User registered successfully",
+        "username": user.username}
 
 
 @app.post("/auth/login")
 async def login_user(login_data: LoginRequest) -> Dict[str, Any]:
     """Login user"""
     user = USERS_DB.get(login_data.username)
-    if not user or not verify_password(login_data.password, user["password_hash"]):
+    if not user or not verify_password(
+            login_data.password,
+            user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     logger.info(f"User logged in: {login_data.username}")
@@ -3335,36 +3425,48 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                 logger.error(f"Barcode lookup error: {e}")
                 # Continue with original values
 
-        # If brand is empty/Unknown but product_name is provided, try to extract brand
-        if (not brand or brand == "Unknown") and product_name and product_name != "Generic Product":
-            logger.info(f"Attempting to extract brand from product name: {product_name}")
+        # If brand is empty/Unknown but product_name is provided, try to
+        # extract brand
+        if (not brand or brand ==
+                "Unknown") and product_name and product_name != "Generic Product":
+            logger.info(
+                f"Attempting to extract brand from product name: {product_name}")
             try:
                 brand_extraction = await brand_extraction_manager.extract_brand_from_product_name(product_name)
 
                 if brand_extraction["success"]:
                     extracted_brand = brand_extraction["extracted_brand"]
-                    logger.info(f"Successfully extracted brand '{extracted_brand}' from product name '{product_name}'")
+                    logger.info(
+                        f"Successfully extracted brand '{extracted_brand}' from product name '{product_name}'")
 
                     brand = extracted_brand
 
                     # Update extraction info
                     brand_extraction_info = {
                         "extracted_from_name": True,
-                        "confidence": brand_extraction.get("confidence", 0.5),
-                        "method": brand_extraction.get("method", "unknown"),
+                        "confidence": brand_extraction.get(
+                            "confidence",
+                            0.5),
+                        "method": brand_extraction.get(
+                            "method",
+                            "unknown"),
                         "parent_company": brand_extraction.get("parent_company"),
                         "warning": brand_extraction.get("warning"),
-                        "alternative_brands": brand_extraction.get("alternative_brands", []),
-                        "search_results": brand_extraction.get("search_results", {}),
+                        "alternative_brands": brand_extraction.get(
+                            "alternative_brands",
+                            []),
+                        "search_results": brand_extraction.get(
+                            "search_results",
+                            {}),
                     }
                 else:
-                    logger.warning(f"Failed to extract brand from product name: {brand_extraction.get('message', 'Unknown error')}")
+                    logger.warning(
+                        f"Failed to extract brand from product name: {brand_extraction.get('message', 'Unknown error')}")
                     # Fallback: use product name as brand
                     brand = product_name
                     brand_extraction_info = {
-                        "extracted_from_name": False,
-                        "error": brand_extraction.get("message", "Brand extraction failed"),
-                    }
+                        "extracted_from_name": False, "error": brand_extraction.get(
+                            "message", "Brand extraction failed"), }
             except Exception as e:
                 logger.error(f"Brand extraction error: {e}")
                 brand = product_name if product_name != "Generic Product" else "Unknown"
@@ -3386,7 +3488,10 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             )
 
         # Calculate overall score
-        tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+        tbl = calculate_overall_score(
+            scores.social,
+            scores.environmental,
+            scores.economic)
 
         # Get certifications
         try:
@@ -3404,9 +3509,11 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         canonical_brand = cert_result.get("canonical_brand")
         if canonical_brand:
             brand = canonical_brand
-            logger.info(f"Using canonical brand: '{original_brand}' → '{brand}'")
+            logger.info(
+                f"Using canonical brand: '{original_brand}' ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ '{brand}'")
 
-        logger.info(f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
+        logger.info(
+            f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
 
         # Build response - ensure all values are not None
         # Get certifications once to avoid repeated checks
@@ -3446,7 +3553,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "brand_correction_note": f"Corrected to canonical brand: '{canonical_brand}'" if canonical_brand else "No brand correction needed",
             "success": True,
             "timestamp": datetime.utcnow().isoformat()
-            }
+        }
 
         return sanitize_for_json(response_data)
 
@@ -3455,10 +3562,38 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         error_response = {
             "success": False,
             "error": str(e),
-            "barcode": str(getattr(product, 'barcode', '')) if getattr(product, 'barcode', '') else "",
-            "brand": str(getattr(product, 'brand', 'Unknown')) if getattr(product, 'brand', 'Unknown') else "Unknown",
-            "product_name": str(getattr(product, 'product_name', 'Unknown Product')) if getattr(product, 'product_name', 'Unknown Product') else "Unknown Product",
-            "category": str(getattr(product, 'category', '')) if getattr(product, 'category', '') else "",
+            "barcode": str(
+                getattr(
+                    product,
+                    'barcode',
+                    '')) if getattr(
+                product,
+                'barcode',
+                '') else "",
+            "brand": str(
+                getattr(
+                    product,
+                    'brand',
+                    'Unknown')) if getattr(
+                product,
+                'brand',
+                'Unknown') else "Unknown",
+            "product_name": str(
+                getattr(
+                    product,
+                    'product_name',
+                    'Unknown Product')) if getattr(
+                product,
+                'product_name',
+                'Unknown Product') else "Unknown Product",
+            "category": str(
+                getattr(
+                    product,
+                    'category',
+                    '')) if getattr(
+                product,
+                'category',
+                '') else "",
             "social_score": 0.0,
             "environmental_score": 0.0,
             "economic_score": 0.0,
@@ -3474,8 +3609,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             },
             "scoring_method": "error_fallback",
             "notes": f"Error processing request: {str(e)}",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat()}
         return sanitize_for_json(error_response)
 
 
@@ -3506,6 +3640,7 @@ async def test_brand_extraction_endpoint(product_name: str):
         "normalized_product_name": BrandNormalizer.normalize(product_name),
     }
 
+
 @app.get("/search-brand")
 async def search_brand(q: str = Query(...)):
     """Search for a brand with fuzzy matching and OFF discovery fallback"""
@@ -3527,7 +3662,8 @@ async def search_brand(q: str = Query(...)):
         pd = get_pandas()  # LAZY load pandas
         # Check if Excel file exists
         if not os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE):
-            logger.warning(f"Excel file not found: {FileConfig.CERTIFICATION_EXCEL_FILE}")
+            logger.warning(
+                f"Excel file not found: {FileConfig.CERTIFICATION_EXCEL_FILE}")
             df = None
         else:
             # Read the Excel file
@@ -3537,8 +3673,10 @@ async def search_brand(q: str = Query(...)):
             if df is not None and 'Product_Brand' in df.columns:
                 for _, row in df.iterrows():
                     brand_name = str(row['Product_Brand'])
-                    # SequenceMatcher handles typos (e.g., "Kellog" -> "Kellogg's")
-                    score = SequenceMatcher(None, search_query, brand_name.lower()).ratio() * 100
+                    # SequenceMatcher handles typos (e.g., "Kellog" ->
+                    # "Kellogg's")
+                    score = SequenceMatcher(
+                        None, search_query, brand_name.lower()).ratio() * 100
 
                     if score > best_score:
                         best_score = score
@@ -3553,7 +3691,8 @@ async def search_brand(q: str = Query(...)):
 
     # 2. IF local search score is low, query OFF for discovery
     if not best_match or best_score < 60:
-        logger.info(f"Low local match score ({round(best_score, 1)}%). Discovering via OFF...")
+        logger.info(
+            f"Low local match score ({round(best_score, 1)}%). Discovering via OFF...")
 
         off_url = f"https://world.openfoodfacts.org/api/v2/search?brands_tags={quote(q)}&fields=product_name,brands,image_small_url,code&page_size=5"
 
@@ -3571,14 +3710,15 @@ async def search_brand(q: str = Query(...)):
                             "message": "Brand not found in local records. Showing web matches:",
                             "discovered_products": [
                                 {
-                                    "name": p.get("product_name", "Unknown Product"),
-                                    "brand": p.get("brands", "Unknown Brand"),
+                                    "name": p.get(
+                                        "product_name",
+                                        "Unknown Product"),
+                                    "brand": p.get(
+                                        "brands",
+                                        "Unknown Brand"),
                                     "image": p.get("image_small_url"),
-                                    "barcode": p.get("code")
-                                } for p in products
-                            ],
-                            "success": True
-                        }
+                                    "barcode": p.get("code")} for p in products],
+                            "success": True}
             except Exception as e:
                 logger.error(f"OFF Search Error: {str(e)}")
 
@@ -3588,7 +3728,10 @@ async def search_brand(q: str = Query(...)):
         target_brand = parent_company or best_match
 
         scores = scoring_manager.calculate_brand_scores(target_brand)
-        tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+        tbl = calculate_overall_score(
+            scores.social,
+            scores.environmental,
+            scores.economic)
 
         return {
             "source": "local_database",
@@ -3606,10 +3749,12 @@ async def search_brand(q: str = Query(...)):
 
     return JSONResponse(
         status_code=404,
-        content={"success": False, "message": "No matching brands found locally or on the web."}
-    )
+        content={
+            "success": False,
+            "message": "No matching brands found locally or on the web."})
 
 # ==================== EXCEL MANAGEMENT ENDPOINTS ====================
+
 
 @app.get("/certifications/status")
 async def get_certification_status():
@@ -3675,7 +3820,8 @@ async def upload_certifications(file: UploadFile = File(...)):
 
     except Exception as e:
         logger.error(f"Error uploading certification file: {e}")
-        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+        raise HTTPException(status_code=500,
+                            detail=f"Error uploading file: {str(e)}")
 
 
 @app.get("/certifications/search/{brand}")
@@ -3698,7 +3844,8 @@ async def export_certifications():
         certification_manager.load_certification_data()
 
     if certification_manager.data is None:
-        raise HTTPException(status_code=404, detail="No certification data available")
+        raise HTTPException(status_code=404,
+                            detail="No certification data available")
 
     return JSONResponse(content=certification_manager.data)
 
@@ -3733,7 +3880,10 @@ async def verify_script_status():
     """Verify the status of create_excel.py script and Excel file"""
     result = verify_excel_script()
 
-    return {"status": "success", "timestamp": datetime.utcnow().isoformat(), **result}
+    return {
+        "status": "success",
+        "timestamp": datetime.utcnow().isoformat(),
+        **result}
 
 
 @app.post("/certifications/reset")
@@ -3894,7 +4044,10 @@ async def record_purchase(
         raise HTTPException(status_code=400, detail="Product data required")
 
     scores = scoring_manager.calculate_brand_scores(product.brand)
-    tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+    tbl = calculate_overall_score(
+        scores.social,
+        scores.environmental,
+        scores.economic)
 
     purchase = {
         "barcode": product.barcode,
@@ -3913,7 +4066,7 @@ async def record_purchase(
         PURCHASE_HISTORY_DB[username] = []
     PURCHASE_HISTORY_DB[username].append(purchase)
 
-    # ✅ ADD THIS LINE: Save to persistent storage
+    # ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ ADD THIS LINE: Save to persistent storage
     save_user_data()
 
     logger.info(f"Purchase recorded for {username}: {product.product_name}")
@@ -3921,7 +4074,8 @@ async def record_purchase(
 
 
 @app.get("/history/{username}")
-async def get_purchase_history(username: str, limit: int = 50) -> Dict[str, Any]:
+async def get_purchase_history(
+        username: str, limit: int = 50) -> Dict[str, Any]:
     """Get user purchase history"""
     if username not in USERS_DB:
         raise HTTPException(status_code=404, detail="User not found")
@@ -3953,6 +4107,7 @@ async def debug_users():
                                     for user in USERS_DB.keys()}
     }
 
+
 @app.get("/debug/storage")
 async def debug_storage():
     """Debug endpoint to check storage status"""
@@ -3964,8 +4119,10 @@ async def debug_storage():
         "file_exists": file_exists,
         "file_size_bytes": file_size,
         "total_users": len(USERS_DB),
-        "total_purchases": sum(len(purchases) for purchases in PURCHASE_HISTORY_DB.values()),
-        "users": list(USERS_DB.keys()),
+        "total_purchases": sum(
+            len(purchases) for purchases in PURCHASE_HISTORY_DB.values()),
+        "users": list(
+            USERS_DB.keys()),
     }
 
 
@@ -3981,7 +4138,8 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 
     # Check if barcode looks like a common format
     if len(barcode) < 6:
-        logger.warning(f"Short barcode from ZXing-web: {barcode}. May be misread.")
+        logger.warning(
+            f"Short barcode from ZXing-web: {barcode}. May be misread.")
 
     product = await food_facts_client.lookup_barcode(barcode)
 
@@ -3996,12 +4154,17 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 
     # Use the scoring manager
     scores = scoring_manager.calculate_brand_scores(brand_name)
-    tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+    tbl = calculate_overall_score(
+        scores.social,
+        scores.environmental,
+        scores.economic)
     cert_result = certification_manager.get_certifications(brand_name)
 
     result = {
         "barcode": barcode,
-        "found": product.get("found", False),
+        "found": product.get(
+            "found",
+            False),
         "name": product.get("name"),
         "brand": brand_name,
         "category": product.get("category"),
@@ -4017,7 +4180,11 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
             "fair_trade": "Fair Trade" in scores.certifications,
             "rainforest_alliance": "Rainforest Alliance" in scores.certifications,
             "leaping_bunny": "Leaping Bunny" in scores.certifications,
-            "research_complete": cert_result.get("certifications", {}).get("research_complete", False) if cert_result.get("certifications") else False,
+            "research_complete": cert_result.get(
+                "certifications",
+                {}).get(
+                    "research_complete",
+                    False) if cert_result.get("certifications") else False,
         },
         "scoring_method": scores.scoring_method,
         "notes": scores.notes,
@@ -4075,7 +4242,7 @@ async def scanner_health():
     """Check scanner system health and compatibility"""
     return {
         "scanner_system": "ZXing-web (Browser Multi-Format Reader)",
-        "backend_integration": "✅ Ready",
+        "backend_integration": "ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Ready",
         "api_endpoints": {
             "scan": "/scan (POST) - Main scanning endpoint",
             "product_lookup": "/product/{barcode} (GET)",
@@ -4128,7 +4295,7 @@ async def health_check() -> Dict[str, Any]:
         "cache_size": len(PRODUCT_CACHE),
         "certification_system": "Hardcoded Scores + Excel-based + Hardcoded Identification Database",
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses + Multi-Cert Bonus",
-        "scoring_priority": "Hardcoded DB → Brand Synonyms → Parent Company → Dynamic Calculation",
+        "scoring_priority": "Hardcoded DB ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Brand Synonyms ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Parent Company ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Dynamic Calculation",
         "scoring_consistency": "Single scoring function ensures identical results across all search methods",
         "certification_bonuses": ScoringConfig.CERTIFICATION_BONUSES,
         "multi_cert_bonus": ScoringConfig.MULTI_CERT_BONUS,
@@ -4184,13 +4351,13 @@ async def serve_frontend():
         </head>
         <body>
             <div class="container">
-                <h1>🌿 TBL Grocery Scanner Backend</h1>
+                <h1>ÃƒÂ°Ã…Â¸Ã…â€™Ã‚Â¿ TBL Grocery Scanner Backend</h1>
                 <div class="card">
-                    <p>✅ Backend is running!</p>
+                    <p>ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Backend is running!</p>
                     <p>To use the scanner, place <code>index.html</code> in the same directory as this Python file.</p>
-                    <p>📊 <a href="/health">Health Check</a></p>
-                    <p>📖 <a href="/scoring-methodology">Scoring Methodology</a></p>
-                    <p>🛠️ <a href="/scanner/health">Scanner Health</a></p>
+                    <p>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  <a href="/health">Health Check</a></p>
+                    <p>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬â€œ <a href="/scoring-methodology">Scoring Methodology</a></p>
+                    <p>ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂºÃ‚Â ÃƒÂ¯Ã‚Â¸Ã‚Â <a href="/scanner/health">Scanner Health</a></p>
                 </div>
             </div>
         </body>
@@ -4238,7 +4405,8 @@ if __name__ == "__main__":
         "Scoring Consistency: Single scoring function with hardcoded priority ensures identical results"
     )
     logger.info("Multi-certification bonus always applied correctly")
-    logger.info(f"Certification Bonuses: {ScoringConfig.CERTIFICATION_BONUSES}")
+    logger.info(
+        f"Certification Bonuses: {ScoringConfig.CERTIFICATION_BONUSES}")
     logger.info(
         f"Multi-certification bonus: {ScoringConfig.MULTI_CERT_BONUS} per additional cert"
     )
@@ -4260,13 +4428,15 @@ if __name__ == "__main__":
     for product in test_products:
         parent = BrandNormalizer.find_parent_company(product)
         if parent:
-            logger.info(f"Test mapping: '{product}' → '{parent}'")
+            logger.info(f"Test mapping: '{product}' ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ '{parent}'")
 
-    logger.info("🎯 Scanner System: ZXing-web integrated")
-    logger.info("🌐 Open http://localhost:8000 in your browser")
-    logger.info("📱 For mobile: Use your computer's IP address with port 8000")
-    logger.info("🔧 Key endpoint: GET /scoring-methodology for complete transparency")
-    logger.info("📊 Scanner health: GET /scanner/health")
+    logger.info("ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¯ Scanner System: ZXing-web integrated")
+    logger.info("ÃƒÂ°Ã…Â¸Ã…â€™Ã‚Â Open http://localhost:8000 in your browser")
+    logger.info(
+        "ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â± For mobile: Use your computer's IP address with port 8000")
+    logger.info(
+        "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â§ Key endpoint: GET /scoring-methodology for complete transparency")
+    logger.info("ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â  Scanner health: GET /scanner/health")
 
     # Only run uvicorn directly when executing the script locally
     # This block WON'T run when gunicorn imports the module
