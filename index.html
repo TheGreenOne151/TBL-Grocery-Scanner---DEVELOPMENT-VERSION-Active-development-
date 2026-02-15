@@ -1355,12 +1355,13 @@
                     const response = await fetch(`${API_URL}/product/${encodeURIComponent(searchInput)}`);
                     data = await response.json();
                 } else {
-                    const payload = {
-                        barcode: '',
-                        brand: searchType === 'brand' ? searchInput : '',
-                        product_name: searchType === 'product' ? searchInput : '',
-                        category: searchType === 'brand' ? selectedCategory : ''
-                    };
+                  const payload = {
+                      barcode: '',
+                      brand: searchType === 'brand' ? searchInput : '',
+                      product_name: searchType === 'product' ? searchInput :
+                                   (searchType === 'brand' ? searchInput : ''),  // ← Add this
+                      category: searchType === 'brand' ? selectedCategory : ''
+                  };
 
                     const response = await fetch(`${API_URL}/scan`, {
                         method: 'POST',
