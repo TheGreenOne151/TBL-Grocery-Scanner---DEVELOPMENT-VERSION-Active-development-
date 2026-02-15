@@ -1845,7 +1845,7 @@ class ScoringManager:
         brand_normalized = BrandNormalizer.normalize(brand)
 
         # Get certifications from Excel database
-        excel_certs = certification_manager.get_certifications(brand)
+        excel_certs = certification_manager.get_certifications(brand, category)  # Need to add category parameter throughout the chain
 
         # Also check hardcoded identification database for certifications
         hardcoded_certs = []
@@ -3338,7 +3338,7 @@ async def test_scoring_methodology(brand: str):
         scores.social,
         scores.environmental,
         scores.economic)
-    excel_result = certification_manager.get_certifications(brand)
+    excel_result = certification_manager.get_certifications(brand, category)
 
     return HTMLResponse(
         content=render_score_breakdown(brand, scores, tbl, excel_result)
@@ -3487,7 +3487,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
 
         # Get certifications
         try:
-            cert_result = certification_manager.get_certifications(brand)
+            cert_result = certification_manager.get_certifications(brand, category)  # ← Category added!
         except Exception as e:
             logger.error(f"Certification lookup error: {e}")
             cert_result = {
@@ -3819,7 +3819,7 @@ async def upload_certifications(file: UploadFile = File(...)):
 @app.get("/certifications/search/{brand}")
 async def search_certifications(brand: str):
     """Search for a brand in the certification database"""
-    result = certification_manager.get_certifications(brand)
+    result = certification_manager.get_certifications(brand, category)
 
     return {
         "brand": brand,
@@ -3957,7 +3957,7 @@ async def validate_barcode_format(barcode: str):
 @app.get("/test/excel/{brand}")
 async def test_excel_lookup(brand: str):
     """Test endpoint to check Excel lookup for a specific brand"""
-    result = certification_manager.get_certifications(brand)
+    result = certification_manager.get_certifications(brand, category)
 
     # Also check all brands in Excel for debugging
     all_brands = []
@@ -3996,7 +3996,7 @@ async def compare_brands(brands: List[BrandInput]) -> Dict[str, Any]:
         tbl = calculate_overall_score(
             scores.social, scores.environmental, scores.economic
         )
-        cert_result = certification_manager.get_certifications(brand)
+        cert_result = certification_manager.get_certifications(brand, category)
 
         comparison.append(
             {
@@ -4150,7 +4150,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         scores.social,
         scores.environmental,
         scores.economic)
-    cert_result = certification_manager.get_certifications(brand_name)
+    cert_result = certification_manager.get_certifications(brand_name, product.get("category"))
 
     result = {
         "barcode": barcode,
