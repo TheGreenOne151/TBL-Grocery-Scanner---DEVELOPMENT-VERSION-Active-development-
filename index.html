@@ -828,6 +828,9 @@
         window.onload = function() {
             checkLoginStatus();
             updateCompareDisplay();
+
+            // Trigger the search type change handler to show/hide category dropdown
+            document.getElementById('searchType').dispatchEvent(new Event('change'));
         };
 
         // Tab switching
