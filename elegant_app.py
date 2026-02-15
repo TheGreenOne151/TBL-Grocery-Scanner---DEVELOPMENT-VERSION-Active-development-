@@ -1787,7 +1787,7 @@ class ScoringManager:
         logger.info(
             f"Brand '{brand_normalized}' not in hardcoded database, calculating dynamically"
         )
-        return ScoringManager._calculate_dynamic_scores(brand, categpry)
+        return ScoringManager._calculate_dynamic_scores(brand, category)
 
     @staticmethod
     def _calculate_dynamic_scores(brand: str, category: str = None) -> BrandData:
@@ -3633,7 +3633,7 @@ async def test_brand_extraction_endpoint(product_name: str):
 
 
 @app.get("/search-brand")
-async def search_brand(q: str = Query(...)):
+async def search_brand(q: str = Query(...), category: str = Query(None)):
     """Search for a brand with fuzzy matching and OFF discovery fallback"""
     # Load certification data if not already loaded
     if certification_manager.data is None:
