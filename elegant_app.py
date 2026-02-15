@@ -1587,9 +1587,8 @@ class CertificationManager:
 
         return False
 
-    def get_certifications(
-            self, brand: str, category: str = None) -> Dict[str, Any]:
-        """Get certifications for a brand from Excel data"""
+    def get_certifications(self, brand: str, category: str = None) -> Dict[str, Any]:
+        """Get certifications for a brand from Excel data, optionally filtered by category"""
         # Reload data if never loaded or if more than 5 minutes old
         if (
             self.data is None
@@ -1600,8 +1599,7 @@ class CertificationManager:
             self.load_certification_data()
 
         if not brand or brand.lower() in ["unknown", "n/a", ""]:
-            logger.info(
-                "Empty brand requested, returning default certifications")
+            logger.info("Empty brand requested, returning default certifications")
             return self._get_default_response()
 
         brand_normalized = BrandNormalizer.normalize(brand)
@@ -1612,56 +1610,50 @@ class CertificationManager:
         # Check for exact match
         if brand_normalized in self.data:
             data = self.data[brand_normalized]
-            logger.info(
-                f"Found exact match for '{brand}': {data['certifications']}")
+            logger.info(f"Found exact match for '{brand}': {data['certifications']}")
 
-        # If category provided, try to find category-specific match
-        if category and category.strip():
-            try:
-                pd = get_pandas()
-                df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
+            # If category provided, try to find category-specific match
+            if category and category.strip():
+                try:
+                    pd = get_pandas()
+                    df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
 
-                # Filter by brand and category
-                brand_mask = df['Product_Brand'].str.contains(
-                    brand, case=False, na=False)
-                category_mask = df['Category'].str.contains(
-                    category, case=False, na=False)
-                category_specific = df[brand_mask & category_mask]
+                    # Filter by brand and category
+                    brand_mask = df['Product_Brand'].str.contains(brand, case=False, na=False)
+                    category_mask = df['Category'].str.contains(category, case=False, na=False)
+                    category_specific = df[brand_mask & category_mask]
 
-                if not category_specific.empty:
-                    # Found category-specific entry
-                    row = category_specific.iloc[0]
-                    certifications = self._extract_certifications(
-                        row, df.columns)
-                    logger.info(
-                        f"Found category-specific match for '{brand}' in category '{category}'")
+                    if not category_specific.empty:
+                        # Found category-specific entry
+                        row = category_specific.iloc[0]
+                        certifications = self._extract_certifications(row, df.columns)
+                        logger.info(f"Found category-specific match for '{brand}' in category '{category}'")
 
-                # Create data dict for this specific match
-                category_data = {
-                    "original_brand": row.get(
-                        'Product_Brand',
-                        brand),
-                    "certifications": certifications,
-                    "research_complete": certifications.get(
-                        "research_complete",
-                        False),
-                    "row_data": row.to_dict(),
-                }
-            except Exception as e:
-                logger.error(f"Error in category-specific lookup: {e}")
+                        # Create data dict for this specific match
+                        category_data = {
+                            "original_brand": row.get('Product_Brand', brand),
+                            "certifications": certifications,
+                            "research_complete": certifications.get("research_complete", False),
+                            "row_data": row.to_dict(),
+                        }
+                        return self._format_response(True, category_data, brand)
+                except Exception as e:
+                    logger.error(f"Error in category-specific lookup: {e}")
 
             # Return the default match for this brand
             return self._format_response(True, data, brand)
 
-            # Check for partial matches with improved logic
-            for stored_brand, data in self.data.items():
-                if self._improved_partial_match(
-                        brand_normalized, stored_brand):
-                    logger.info(f'Found partial match for ' +
-                                str(brand) + ': stored as ' + str(stored_brand))
-                    return self._format_response(True, data, brand)
-            logger.info('No match found for brand: ' + str(brand))
-            return self._get_default_response()
+        # Check for partial matches with improved logic
+        for stored_brand, data in self.data.items():
+            if self._improved_partial_match(brand_normalized, stored_brand):
+                logger.info(
+                    f"Found partial match for '{brand}': stored as '{stored_brand}'"
+                )
+                return self._format_response(True, data, brand)
+
+        # No match found
+        logger.info(f"No match found for brand: '{brand}'")
+        return self._get_default_response()
 
 
     def _get_default_response(self) -> Dict[str, Any]:
