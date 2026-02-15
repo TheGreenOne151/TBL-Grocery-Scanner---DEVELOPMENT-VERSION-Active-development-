@@ -1394,6 +1394,13 @@
 
             lastSearchResult = data;
 
+            console.log('=== DEBUGGING CERTIFICATIONS ===');
+            console.log('Raw certifications data:', data.certifications);
+            console.log('Type:', typeof data.certifications);
+            console.log('Is array?', Array.isArray(data.certifications));
+            console.log('Length:', data.certifications ? data.certifications.length : 0);
+            console.log('certBadges element exists?', document.getElementById('certBadges') !== null);
+
             document.getElementById('brandName').textContent = data.brand || 'Unknown';
             let productDisplay = data.product_name ? `Product: ${data.product_name}` : '';
             if (data.category && data.category !== 'General' && data.category !== '') {
@@ -1411,16 +1418,28 @@
             document.getElementById('envScore').textContent = (data.environmental_score || 0).toFixed(1);
             document.getElementById('econScore').textContent = (data.economic_score || 0).toFixed(1);
 
+            // ===== REPLACE FROM HERE =====
             const certBadges = document.getElementById('certBadges');
-            const certs = data.certifications || [];
+            let certs = data.certifications || [];
+
+            // Ensure certs is an array
+            if (!Array.isArray(certs)) {
+                console.warn('Certifications is not an array:', certs);
+                certs = [];
+            }
+
+            console.log('Processing certs:', certs);
 
             if (certs.length > 0) {
                 certBadges.innerHTML = certs.map(cert =>
                     `<span class="cert-badge">${cert}</span>`
                 ).join('');
+                console.log('Added', certs.length, 'certification badges');
             } else {
                 certBadges.innerHTML = '<p class="no-certs">No verified certifications found</p>';
+                console.log('No certifications to display');
             }
+            // ===== TO HERE =====
 
             // NEW: Show/hide research status
             const researchStatus = document.getElementById('researchStatus');
