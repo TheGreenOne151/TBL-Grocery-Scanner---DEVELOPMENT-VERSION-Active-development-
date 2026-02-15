@@ -1,0 +1,78 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Databases (LARGE FILES - DO NOT COMMIT)
+*.accdb
+*.mdb
+Access/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# IDE and OS files
+.DS_Store
+.webassets-cache
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.tox/
+.hypothesis/
+.cache/
+instance/
+
+# Excel temporary files (KEEP .xlsx but ignore temp files)
+~$*.xlsx
+~$*.xls
+*.tmp
+*.temp
+.~*
+
+# Documentation/backup files
+*.env
+*_commands.txt
+# Exception: Keep Project_Structure.txt
+*_structure.txt
+!Project_Structure.txt
+*_rubric.*
+push.*
+Push_to_*
+CERT_SOURCES.txt
+License.txt
+
+# ============================================
+# ADDED: Personal developer files
+# ============================================
+TBL App Commands.txt
+*Command*.txt
+*commands*.txt
+cheat_sheet*.txt
+personal_*.txt
+dev_notes/
+
+# Our Excel data files ARE tracked (not ignored)
+# No *.xlsx line here!
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates

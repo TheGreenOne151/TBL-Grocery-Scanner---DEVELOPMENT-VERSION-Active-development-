@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TBL Grocery Scanner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2e7d32;
+            --primary-dark: #1b5e20;
+            --secondary: #ff9800;
+            --bg-gradient-start: #f5f7fa;
+            --bg-gradient-end: #c3cfe2;
+            --card-bg: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border: #e0e0e0;
+            --excellent: #4caf50;
+            --great: #2196f3;
+            --good: #ff9800;
+            --poor: #f44336;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            padding-bottom: 80px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-radius: 10px;
+            margin: 15px auto;
+            max-width: 600px;
+            padding: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .nav-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .search-section {
+            position: relative;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        input[type="text"], input[type="password"], input[type="email"], select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(46, 125, 50, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 13px;
+            width: auto;
+            display: inline-block;
+            margin: 5px;
+        }
+
+        .btn-danger {
+            background: var(--poor);
+            color: white;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+            animation: slideIn 0.4s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .score-display {
+            text-align: center;
+            padding: 25px;
+            background: linear-gradient(135deg, rgba(46, 125, 50, 0.1) 0%, rgba(27, 94, 32, 0.05) 100%);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .brand-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .overall-score {
+            font-size: 56px;
+            font-weight: bold;
+            margin: 15px 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .grade-badge {
+            display: inline-block;
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        .grade-excellent { background: var(--excellent); color: white; }
+        .grade-great { background: var(--great); color: white; }
+        .grade-good { background: var(--good); color: white; }
+        .grade-poor { background: var(--poor); color: white; }
+
+        .pillars {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .pillar {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid var(--border);
+        }
+
+        .pillar-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .pillar-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .pillar-score {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .certifications {
+            margin-top: 20px;
+        }
+
+        .cert-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--primary);
+            color: white;
+        }
+
+        .no-certs {
+            color: var(--text-secondary);
+            font-style: italic;
+            text-align: center;
+            padding: 15px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid rgba(46, 125, 50, 0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            display: none;
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #c62828;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .success {
+            display: none;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .success.show {
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .info-section {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            border-left: 4px solid var(--secondary);
+        }
+
+        .compare-item {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .compare-brand {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .compare-score {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .stat-value {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .purchase-item {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .purchase-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .purchase-brand {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .purchase-score {
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .purchase-date {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .suggestions {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            display: none;
+        }
+
+        .suggestions.show {
+            display: block;
+        }
+
+        .suggestion-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .suggestion-item:hover {
+            background: rgba(46, 125, 50, 0.05);
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-section {
+            background: rgba(46, 125, 50, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .user-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--primary);
+        }
+
+        /* High contrast for accessibility */
+        @media (prefers-contrast: high) {
+            .btn-primary {
+                background: #000;
+                color: #fff;
+            }
+
+            .overall-score {
+                -webkit-text-fill-color: #000;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .overall-score {
+                font-size: 48px;
+            }
+
+            .pillars {
+                gap: 8px;
+            }
+
+            .pillar {
+                padding: 12px 8px;
+            }
+
+            .pillar-score {
+                font-size: 24px;
+            }
+
+            .nav-tab {
+                font-size: 12px;
+                padding: 10px 5px;
+            }
+        }
+
+        .source-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .source-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .source-icon {
+            font-size: 28px;
+            margin-right: 15px;
+        }
+
+        .source-title {
+            font-size: 1.3rem;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .source-description {
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .source-link {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .source-link:hover {
+            background: var(--primary-dark);
+        }
+
+        .score-impact {
+            display: inline-block;
+            background: #e8f5e9;
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌿 TBL Grocery Scanner</h1>
+        <p>Triple Bottom Line: People, Planet, Profit</p>
+    </div>
+
+    <div class="container">
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('scan')">🔍 Scan</button>
+            <button class="nav-tab" onclick="switchTab('compare')">⚖️ Compare</button>
+            <button class="nav-tab" onclick="switchTab('history')">📊 History</button>
+            <button class="nav-tab" onclick="switchTab('account')">👤 Account</button>
+        </div>
+
+        <!-- SCAN TAB -->
+        <div id="scanTab" class="tab-content active">
+            <div class="card search-section">
+                <div class="input-group">
+                    <label for="searchType">Search By:</label>
+                    <select id="searchType">
+                        <option value="brand">Brand Name</option>
+                        <option value="product">Product Name</option>
+                        <option value="barcode">Barcode</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="searchInput" id="searchLabel">Enter Brand Name:</label>
+                    <input type="text" id="searchInput" placeholder="e.g., Coca-Cola, Nestlé, Ben & Jerry's">
+                    <div class="suggestions" id="suggestions"></div>
+                </div>
+
+                <button class="btn btn-primary" onclick="searchProduct()">
+                    🔍 Search
+                </button>
+
+                <div class="info-section">
+                    <strong>💡 Tip:</strong> Search by brand for fastest results. Product search uses AI to identify brands.
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing product...</p>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="results" id="results">
+                <div class="card">
+                    <div class="score-display">
+                        <div class="brand-name" id="brandName"></div>
+                        <div id="productName" style="color: var(--text-secondary); font-size: 14px; margin-bottom: 10px;"></div>
+                        <div class="overall-score" id="overallScore">-</div>
+                        <div class="grade-badge" id="gradeBadge">-</div>
+                    </div>
+
+                    <div class="pillars">
+                        <div class="pillar">
+                            <div class="pillar-icon">👥</div>
+                            <div class="pillar-label">SOCIAL</div>
+                            <div class="pillar-score" id="socialScore">-</div>
+                        </div>
+                        <div class="pillar">
+                            <div class="pillar-icon">🌱</div>
+                            <div class="pillar-label">ENVIRONMENTAL</div>
+                            <div class="pillar-score" id="envScore">-</div>
+                        </div>
+                        <div class="pillar">
+                            <div class="pillar-icon">💰</div>
+                            <div class="pillar-label">ECONOMIC</div>
+                            <div class="pillar-score" id="econScore">-</div>
+                        </div>
+                    </div>
+
+                    <div class="certifications">
+                        <h3 style="margin-bottom: 10px; font-size: 16px;">✅ Certifications</h3>
+                        <div id="certBadges"></div>
+                        <div id="researchStatus" style="display: none; margin-top: 15px; padding: 10px; background: #f0f9f0; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                            <div style="display: flex; align-items: center;">
+                                <div style="background: #4CAF50; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-weight: bold;">
+                                    ✓
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; color: #2E7D32;">Research Verified</div>
+                                    <div style="font-size: 13px; color: var(--text-secondary);">All certifications have been manually verified</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="loggedInActions" style="display: none;">
+                        <button class="btn btn-primary" onclick="savePurchase()">
+                            💾 Save to History
+                        </button>
+                        <button class="btn btn-secondary" onclick="addToCompare()">
+                            ➕ Add to Compare
+                        </button>
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="resetSearch()">
+                        🔄 New Search
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMPARE TAB -->
+        <div id="compareTab" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px;">⚖️ Compare Products</h2>
+                <div id="compareList"></div>
+                <button class="btn btn-primary" onclick="clearComparison()" style="margin-top: 15px;">
+                    🗑️ Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- HISTORY TAB -->
+        <div id="historyTab" class="tab-content">
+            <div class="stat-card">
+                <div class="stat-label">Your Average TBL Score</div>
+                <div class="stat-value" id="avgScore">-</div>
+                <div class="stat-label" id="purchaseCount">No purchases yet</div>
+                <div style="margin-top: 15px; font-size: 12px; opacity: 0.8;">
+                    📱 Stored locally in this browser
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-bottom: 20px;">📋 Purchase History</h2>
+
+                <!-- EXPORT/IMPORT BUTTONS -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn btn-secondary" onclick="exportPurchases()" style="flex: 1;">
+                        📤 Export JSON
+                    </button>
+                    <button class="btn btn-secondary" onclick="showImportModal()" style="flex: 1;">
+                        📥 Import JSON
+                    </button>
+                    <button class="btn btn-danger" onclick="clearLocalHistory()" style="flex: 1;">
+                        🗑️ Clear Local
+                    </button>
+                </div>
+
+                <div id="historyList"></div>
+            </div>
+        </div>
+
+        <!-- ACCOUNT TAB -->
+        <div id="accountTab" class="tab-content">
+            <div id="loginSection" class="card">
+                <h2 style="margin-bottom: 20px;">👤 Login</h2>
+                <div class="input-group">
+                    <label for="loginUsername">Username:</label>
+                    <input type="text" id="loginUsername" placeholder="Enter username">
+                </div>
+                <div class="input-group">
+                    <label for="loginPassword">Password:</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password">
+                </div>
+                <button class="btn btn-primary" onclick="login()">Login</button>
+                <button class="btn btn-secondary" onclick="showRegister()">Create Account</button>
+                <div class="error" id="loginError"></div>
+            </div>
+
+            <div id="registerSection" class="card" style="display: none;">
+                <h2 style="margin-bottom: 20px;">📝 Register</h2>
+                <div class="input-group">
+                    <label for="regUsername">Username:</label>
+                    <input type="text" id="regUsername" placeholder="Choose username">
+                </div>
+                <div class="input-group">
+                    <label for="regEmail">Email:</label>
+                    <input type="email" id="regEmail" placeholder="your@email.com">
+                </div>
+                <div class="input-group">
+                    <label for="regPassword">Password:</label>
+                    <input type="password" id="regPassword" placeholder="Min 6 characters">
+                </div>
+                <button class="btn btn-primary" onclick="register()">Register</button>
+                <button class="btn btn-secondary" onclick="showLogin()">Back to Login</button>
+                <div class="error" id="registerError"></div>
+            </div>
+
+            <div id="accountSection" class="card" style="display: none;">
+                <div class="user-section">
+                    <div class="user-name" id="displayUsername"></div>
+                    <p style="color: var(--text-secondary); margin-top: 5px;">Logged in</p>
+                </div>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Version 2.3.0 | <a href="https://tbl-grocery-scanner.onrender.com/scoring-methodology" target="_blank">Methodology</a></p>
+        <p>Product search via Open Food Facts API</p>
+        <p>Certification verification using: B Corp, Fairtrade®, Rainforest Alliance, and Leaping Bunny databases
+           <a href="javascript:void(0)" onclick="showDataSources()" style="font-size: 0.9em; margin-left: 8px; text-decoration: underline; cursor: pointer;">(view sources)</a>
+        </p>
+    </div>
+
+    <script>
+        const API_URL = 'https://tbl-grocery-scanner.onrender.com';
+        let debounceTimer;
+        let currentUser = null;
+        let lastSearchResult = null;
+        let compareList = JSON.parse(localStorage.getItem('compareList') || '[]');
+
+        // Initialize on load
+        window.onload = function() {
+            checkLoginStatus();
+            updateCompareDisplay();
+        };
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'history' && currentUser) {
+                loadHistory();
+            } else if (tabName === 'compare') {
+                updateCompareDisplay();
+            }
+        }
+
+        // Authentication
+        function checkLoginStatus() {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = savedUser;
+                showLoggedIn();
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!username || !password) {
+                showLoginError('Please enter username and password');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentUser = username;
+                    localStorage.setItem('currentUser', username);
+                    showLoggedIn();
+                    hideLoginError();
+                } else {
+                    showLoginError(data.detail || 'Login failed');
+                }
+            } catch (error) {
+                showLoginError('Login error: ' + error.message);
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('regUsername').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+
+            if (!username || !email || !password) {
+                showRegisterError('All fields required');
+                return;
+            }
+
+            if (password.length < 6) {
+                showRegisterError('Password must be at least 6 characters');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentUser = username;
+                    localStorage.setItem('currentUser', username);
+                    showLoggedIn();
+                    hideRegisterError();
+                } else {
+                    showRegisterError(data.detail || 'Registration failed');
+                }
+            } catch (error) {
+                showRegisterError('Registration error: ' + error.message);
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('accountSection').style.display = 'none';
+            document.getElementById('loggedInActions').style.display = 'none';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+        }
+
+        function showLoggedIn() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('registerSection').style.display = 'none';
+            document.getElementById('accountSection').style.display = 'block';
+            document.getElementById('displayUsername').textContent = currentUser;
+            document.getElementById('loggedInActions').style.display = 'block';
+        }
+
+        function showLogin() {
+            document.getElementById('registerSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+        }
+
+        function showRegister() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('registerSection').style.display = 'block';
+        }
+
+        function showLoginError(msg) {
+            document.getElementById('loginError').textContent = msg;
+            document.getElementById('loginError').classList.add('show');
+        }
+
+        function hideLoginError() {
+            document.getElementById('loginError').classList.remove('show');
+        }
+
+        function showRegisterError(msg) {
+            document.getElementById('registerError').textContent = msg;
+            document.getElementById('registerError').classList.add('show');
+        }
+
+        function hideRegisterError() {
+            document.getElementById('registerError').classList.remove('show');
+        }
+
+        // === PURCHASE HISTORY IN LOCALSTORAGE ===
+        const STORAGE_KEY = 'tbl_purchase_history';
+        const USER_STORAGE_PREFIX = 'tbl_user_';
+
+        function getLocalStorageKey(username) {
+            return `${USER_STORAGE_PREFIX}${username}_purchases`;
+        }
+
+        function savePurchaseToLocal(username, purchase) {
+            const key = getLocalStorageKey(username);
+            let purchases = JSON.parse(localStorage.getItem(key) || '[]');
+            purchases.push(purchase);
+            localStorage.setItem(key, JSON.stringify(purchases));
+            return purchases;
+        }
+
+        function getPurchasesFromLocal(username) {
+            const key = getLocalStorageKey(username);
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        }
+
+        function clearLocalPurchases(username) {
+            const key = getLocalStorageKey(username);
+            localStorage.removeItem(key);
+        }
+
+        function exportPurchasesJSON(username) {
+            const purchases = getPurchasesFromLocal(username);
+            const dataStr = JSON.stringify(purchases, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+            const exportFileDefaultName = `tbl_purchases_${username}_${new Date().toISOString().split('T')[0]}.json`;
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        function importPurchasesJSON(username, jsonString) {
+            try {
+                const importedPurchases = JSON.parse(jsonString);
+                if (!Array.isArray(importedPurchases)) {
+                    throw new Error('Invalid format: Expected array of purchases');
+                }
+
+                const key = getLocalStorageKey(username);
+                localStorage.setItem(key, JSON.stringify(importedPurchases));
+                return { success: true, count: importedPurchases.length };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        // MODIFIED savePurchase() function
+        async function savePurchase() {
+            if (!currentUser || !lastSearchResult) return;
+
+            const purchase = {
+                barcode: lastSearchResult.barcode || '',
+                brand: lastSearchResult.brand || '',
+                product_name: lastSearchResult.product_name || '',
+                category: lastSearchResult.category || '',
+                timestamp: new Date().toISOString(),
+                overall_tbl_score: lastSearchResult.overall_tbl_score || 0,
+                social_score: lastSearchResult.social_score || 0,
+                environmental_score: lastSearchResult.environmental_score || 0,
+                economic_score: lastSearchResult.economic_score || 0,
+                grade: lastSearchResult.grade || 'UNKNOWN',
+                certifications: lastSearchResult.certifications || []
+            };
+
+            // Save to localStorage (PRIMARY - won't disappear on Render sleep)
+            savePurchaseToLocal(currentUser, purchase);
+
+            // Try to save to server (BACKUP - optional, works when Render is awake)
+            try {
+                const response = await fetch(`${API_URL}/purchase?username=${encodeURIComponent(currentUser)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        barcode: lastSearchResult.barcode || '',
+                        brand: lastSearchResult.brand || '',
+                        product_name: lastSearchResult.product_name || '',
+                        category: lastSearchResult.category || '',
+                        price: 0
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('Also saved to server backup');
+                }
+            } catch (error) {
+                console.log('Server backup failed, but local copy saved');
+            }
+
+            showSuccess('Purchase saved locally!');
+            setTimeout(() => hideSuccess(), 3000);
+        }
+
+        // MODIFIED loadHistory() function
+        async function loadHistory() {
+            if (!currentUser) return;
+
+            // Load from localStorage (PRIMARY - survives Render sleep)
+            const localPurchases = getPurchasesFromLocal(currentUser);
+
+            // Calculate stats from local data
+            let avgScore = 0;
+            if (localPurchases.length > 0) {
+                const sum = localPurchases.reduce((total, p) => total + (p.overall_tbl_score || 0), 0);
+                avgScore = sum / localPurchases.length;
+            }
+
+            document.getElementById('avgScore').textContent = avgScore.toFixed(1);
+            document.getElementById('purchaseCount').textContent = `${localPurchases.length} purchases (local storage)`;
+
+            const historyList = document.getElementById('historyList');
+            if (localPurchases.length > 0) {
+                historyList.innerHTML = localPurchases.reverse().map(p => `
+                    <div class="purchase-item">
+                        <div class="purchase-header">
+                            <div class="purchase-brand">${p.brand}</div>
+                            <div class="purchase-score">${(p.overall_tbl_score || 0).toFixed(1)}</div>
+                        </div>
+                        <div>${p.product_name}</div>
+                        <div class="purchase-date">${new Date(p.timestamp).toLocaleDateString()}</div>
+                    </div>
+                `).join('');
+            } else {
+                historyList.innerHTML = '<p class="no-certs">No purchases yet</p>';
+            }
+
+            // Optional: Try to merge with server data (when Render is awake)
+            try {
+                const response = await fetch(`${API_URL}/history/${encodeURIComponent(currentUser)}`);
+                if (response.ok) {
+                    const serverData = await response.json();
+                    if (serverData.purchases && serverData.purchases.length > 0) {
+                        console.log(`Server backup has ${serverData.purchases.length} purchases`);
+                        // Could add merge logic here if desired
+                    }
+                }
+            } catch (error) {
+                // Silently fail - localStorage is primary
+            }
+        }
+
+        // === IMPORT/EXPORT FUNCTIONS ===
+        function exportPurchases() {
+            if (!currentUser) {
+                showError('Please login first');
+                return;
+            }
+
+            const purchases = getPurchasesFromLocal(currentUser);
+            if (purchases.length === 0) {
+                showError('No purchases to export');
+                return;
+            }
+
+            exportPurchasesJSON(currentUser);
+            showSuccess(`Exported ${purchases.length} purchases`);
+            setTimeout(() => hideSuccess(), 3000);
+        }
+
+        function showImportModal() {
+            if (!currentUser) {
+                showError('Please login first');
+                return;
+            }
+
+            document.getElementById('importModal').style.display = 'flex';
+            document.getElementById('importJsonText').value = '';
+            document.getElementById('importResult').style.display = 'none';
+        }
+
+        function hideImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+        }
+
+        function processImport() {
+            const jsonText = document.getElementById('importJsonText').value.trim();
+            if (!jsonText) {
+                // Just show error in the result div directly
+                const resultDiv = document.getElementById('importResult');
+                resultDiv.innerHTML = `
+                    <div class="error show" style="margin: 0;">
+                        ❌ Please paste JSON content
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+                return;
+            }
+
+            const result = importPurchasesJSON(currentUser, jsonText);
+            const resultDiv = document.getElementById('importResult');
+
+            if (result.success) {
+                resultDiv.innerHTML = `
+                    <div class="success show" style="margin: 0;">
+                        ✅ Imported ${result.count} purchases successfully!
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+
+                // Reload history display
+                setTimeout(() => {
+                    loadHistory();
+                    hideImportModal();
+                    showSuccess('History imported successfully!');
+                }, 1500);
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="error show" style="margin: 0;">
+                        ❌ Import failed: ${result.error}
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+            }
+        }
+
+
+        function clearLocalHistory() {
+            if (!currentUser || !confirm('Are you sure? This will delete ALL your local purchase history and cannot be undone.')) {
+                return;
+            }
+
+            clearLocalPurchases(currentUser);
+            loadHistory();
+            showSuccess('Local history cleared');
+            setTimeout(() => hideSuccess(), 3000);
+        }
+
+        // Comparison
+        function addToCompare() {
+            if (!lastSearchResult) return;
+
+            const item = {
+                brand: lastSearchResult.brand,
+                score: lastSearchResult.overall_tbl_score,
+                social: lastSearchResult.social_score,
+                environmental: lastSearchResult.environmental_score,
+                economic: lastSearchResult.economic_score,
+                grade: lastSearchResult.grade,
+                certifications: lastSearchResult.certifications || []
+            };
+
+            // Check if already in list
+            if (!compareList.find(i => i.brand === item.brand)) {
+                compareList.push(item);
+                localStorage.setItem('compareList', JSON.stringify(compareList));
+                updateCompareDisplay();
+                showSuccess('Added to comparison!');
+                setTimeout(() => hideSuccess(), 2000);
+            }
+        }
+
+        function updateCompareDisplay() {
+            const compareDiv = document.getElementById('compareList');
+
+            if (compareList.length === 0) {
+                compareDiv.innerHTML = '<p class="no-certs">No products to compare. Add products from the Scan tab.</p>';
+                return;
+            }
+
+            compareList.sort((a, b) => b.score - a.score);
+
+            compareDiv.innerHTML = compareList.map((item, index) => `
+                <div class="compare-item">
+                    <div>
+                        <div class="compare-brand">${index + 1}. ${item.brand}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 5px;">
+                            Social: ${item.social.toFixed(1)} | Env: ${item.environmental.toFixed(1)} | Econ: ${item.economic.toFixed(1)}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="compare-score">${item.score.toFixed(1)}</div>
+                        <button class="btn btn-small btn-danger" onclick="removeFromCompare(${index})">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function removeFromCompare(index) {
+            compareList.splice(index, 1);
+            localStorage.setItem('compareList', JSON.stringify(compareList));
+            updateCompareDisplay();
+        }
+
+        function clearComparison() {
+            compareList = [];
+            localStorage.setItem('compareList', JSON.stringify(compareList));
+            updateCompareDisplay();
+        }
+
+        // Search functionality
+        document.getElementById('searchType').addEventListener('change', function() {
+            const type = this.value;
+            const label = document.getElementById('searchLabel');
+            const input = document.getElementById('searchInput');
+
+            if (type === 'brand') {
+                label.textContent = 'Enter Brand Name:';
+                input.placeholder = 'e.g., Coca-Cola, Nestlé, Ben & Jerry\'s';
+            } else if (type === 'product') {
+                label.textContent = 'Enter Product Name:';
+                input.placeholder = 'e.g., Cheerios, Oreo Cookies, Dove Soap';
+            } else {
+                label.textContent = 'Enter Barcode:';
+                input.placeholder = 'e.g., 012345678905';
+            }
+        });
+
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value.trim();
+
+            if (query.length < 2 || document.getElementById('searchType').value !== 'brand') {
+                document.getElementById('suggestions').classList.remove('show');
+                return;
+            }
+
+            debounceTimer = setTimeout(() => searchSuggestions(query), 300);
+        });
+
+        async function searchSuggestions(query) {
+            try {
+                const response = await fetch(`${API_URL}/search-brand?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                const suggestionsDiv = document.getElementById('suggestions');
+
+                if (data.success && data.brand) {
+                    suggestionsDiv.innerHTML = `
+                        <div class="suggestion-item" onclick="selectSuggestion('${data.brand}')">
+                            <strong>${data.brand}</strong>
+                            ${data.parent_company ? `<br><small>Parent: ${data.parent_company}</small>` : ''}
+                        </div>
+                    `;
+                    suggestionsDiv.classList.add('show');
+                } else {
+                    suggestionsDiv.classList.remove('show');
+                }
+            } catch (error) {
+                console.error('Suggestion error:', error);
+            }
+        }
+
+        function selectSuggestion(brand) {
+            document.getElementById('searchInput').value = brand;
+            document.getElementById('suggestions').classList.remove('show');
+            searchProduct();
+        }
+
+        async function searchProduct() {
+            const searchType = document.getElementById('searchType').value;
+            const searchInput = document.getElementById('searchInput').value.trim();
+
+            if (!searchInput) {
+                showError('Please enter a search term');
+                return;
+            }
+
+            hideError();
+            showLoading();
+            hideResults();
+
+            try {
+                let data;
+
+                if (searchType === 'barcode') {
+                    const response = await fetch(`${API_URL}/product/${encodeURIComponent(searchInput)}`);
+                    data = await response.json();
+                } else {
+                    const payload = {
+                        barcode: '',
+                        brand: searchType === 'brand' ? searchInput : '',
+                        product_name: searchType === 'product' ? searchInput : '',
+                        category: ''
+                    };
+
+                    const response = await fetch(`${API_URL}/scan`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    data = await response.json();
+                }
+
+                hideLoading();
+                displayResults(data);
+
+            } catch (error) {
+                hideLoading();
+                showError(`Search failed: ${error.message}`);
+            }
+        }
+
+        function displayResults(data) {
+            if (!data || data.grade === 'ERROR') {
+                showError(data?.notes || 'Unable to find product information');
+                return;
+            }
+
+            lastSearchResult = data;
+
+            document.getElementById('brandName').textContent = data.brand || 'Unknown';
+            document.getElementById('productName').textContent = data.product_name ? `Product: ${data.product_name}` : '';
+            document.getElementById('overallScore').textContent = (data.overall_tbl_score || 0).toFixed(1);
+
+            const grade = data.grade || 'UNKNOWN';
+            const gradeBadge = document.getElementById('gradeBadge');
+            gradeBadge.textContent = grade;
+            gradeBadge.className = 'grade-badge grade-' + grade.toLowerCase();
+
+            document.getElementById('socialScore').textContent = (data.social_score || 0).toFixed(1);
+            document.getElementById('envScore').textContent = (data.environmental_score || 0).toFixed(1);
+            document.getElementById('econScore').textContent = (data.economic_score || 0).toFixed(1);
+
+            const certBadges = document.getElementById('certBadges');
+            const certs = data.certifications || [];
+
+            if (certs.length > 0) {
+                certBadges.innerHTML = certs.map(cert =>
+                    `<span class="cert-badge">${cert}</span>`
+                ).join('');
+            } else {
+                certBadges.innerHTML = '<p class="no-certs">No verified certifications found</p>';
+            }
+
+            // NEW: Show/hide research status
+            const researchStatus = document.getElementById('researchStatus');
+            if (data.research_complete === true) {
+                researchStatus.style.display = 'block';
+            } else {
+                researchStatus.style.display = 'none';
+            }
+
+            showResults();
+        }
+
+        function showLoading() {
+            document.getElementById('loading').classList.add('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        function showResults() {
+            document.getElementById('results').classList.add('show');
+        }
+
+        function hideResults() {
+            document.getElementById('results').classList.remove('show');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.remove('show');
+        }
+
+        function showSuccess(message) {
+            let successDiv = document.getElementById('success');
+            if (!successDiv) {
+                successDiv = document.createElement('div');
+                successDiv.id = 'success';
+                successDiv.className = 'success';
+                document.querySelector('.container').prepend(successDiv);
+            }
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+        }
+
+        function hideSuccess() {
+            const successDiv = document.getElementById('success');
+            if (successDiv) {
+                successDiv.classList.remove('show');
+            }
+        }
+
+        function resetSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('suggestions').classList.remove('show');
+            hideResults();
+            hideError();
+            lastSearchResult = null;
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('suggestions').classList.remove('show');
+                searchProduct();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-section')) {
+                document.getElementById('suggestions').classList.remove('show');
+            }
+
+            // Close import modal if clicking outside
+            const modal = document.getElementById('importModal');
+            if (modal.style.display === 'flex' && e.target === modal) {
+                hideImportModal();
+            }
+        });
+
+        // Data Sources Modal Functions
+        function showDataSources() {
+            document.getElementById('dataSourcesModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        }
+
+        function hideDataSources() {
+            document.getElementById('dataSourcesModal').style.display = 'none';
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        }
+
+        // Close modal when clicking outside content
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('dataSourcesModal');
+            if (modal.style.display === 'flex' && e.target === modal) {
+                hideDataSources();
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('dataSourcesModal').style.display === 'flex') {
+                hideDataSources();
+            }
+        });
+
+    </script>
+
+    <!-- IMPORT MODAL -->
+    <div id="importModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-bottom: 20px;">📥 Import Purchase History</h3>
+            <p style="margin-bottom: 15px; color: var(--text-secondary);">
+                Paste your exported JSON file contents below:
+            </p>
+            <textarea id="importJsonText" placeholder="Paste JSON content here..."
+                      style="width: 100%; height: 200px; padding: 15px; border: 2px solid var(--border); border-radius: 10px; font-family: monospace; margin-bottom: 20px;"></textarea>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="btn btn-primary" onclick="processImport()" style="flex: 1;">
+                    Import
+                </button>
+                <button class="btn btn-secondary" onclick="hideImportModal()" style="flex: 1;">
+                    Cancel
+                </button>
+            </div>
+            <div id="importResult" style="display: none; padding: 15px; border-radius: 10px; margin-top: 15px;"></div>
+            <div style="font-size: 12px; color: var(--text-secondary);">
+                💡 Export your current data first as backup. Importing will replace all current local purchases.
+            </div>
+        </div>
+    </div>
+
+    <!-- DATA SOURCES MODAL -->
+    <div id="dataSourcesModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1001; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
+            <button onclick="hideDataSources()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
+
+            <h2 style="color: var(--primary); margin-bottom: 20px; padding-right: 30px;">📊 Data Sources & Certification References</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 25px;">
+                Our scoring system is based on verified third-party certifications from these trusted organizations:
+            </p>
+
+            <!-- B Corp -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #2e7d32;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🏢</div>
+                    <h3 style="color: var(--primary); margin: 0;">B Corp Certification</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">
+                    Certified B Corporations are businesses that meet the highest standards of verified social and environmental performance, public transparency, and legal accountability to balance profit and purpose.
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.bcorporation.net/en-us/find-a-b-corp/" target="_blank"
+                       style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔗 Verify on B Corp Directory
+                    </a>
+                    <span style="background: #e8f5e9; color: var(--primary); padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                        Score Impact: +1.0 to all pillars
+                    </span>
+                </div>
+            </div>
+
+            <!-- Fair Trade -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #ff9800;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">⚖️</div>
+                    <h3 style="color: var(--primary); margin: 0;">Fair Trade Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">
+                    Fair Trade certification ensures that products are made according to rigorous social, environmental, and economic standards that support safe working conditions, environmental protection, and sustainable livelihoods for farmers and workers.
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.flocert.net/fairtrade-customer-search/" target="_blank"
+                       style="background: #ff9800; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔗 Verify on FLOCERT
+                    </a>
+                    <span style="background: #fff3e0; color: #e65100; padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                        Score Impact: +1.0 social, +0.5 environmental, +0.5 economic
+                    </span>
+                </div>
+            </div>
+
+            <!-- Rainforest Alliance -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #4caf50;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🌳</div>
+                    <h3 style="color: var(--primary); margin: 0;">Rainforest Alliance Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">
+                    The Rainforest Alliance certification seal means that the product was produced using methods that support the three pillars of sustainability: social, economic, and environmental, with a focus on protecting forests, improving livelihoods, and promoting human rights.
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.rainforest-alliance.org/find-certified/" target="_blank"
+                       style="background: #4caf50; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔗 Verify on Rainforest Alliance
+                    </a>
+                    <span style="background: #e8f5e9; color: var(--primary); padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                        Score Impact: +0.5 social, +1.0 environmental, +0.5 economic
+                    </span>
+                </div>
+            </div>
+
+            <!-- Leaping Bunny -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #2196f3;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🐰</div>
+                    <h3 style="color: var(--primary); margin: 0;">Leaping Bunny Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">
+                    The Leaping Bunny Program administers a cruelty-free standard and certification for companies producing cosmetic, personal care, and household products, ensuring no new animal testing is used in any phase of product development.
+                </p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.leapingbunny.org/shopping-guide/" target="_blank"
+                       style="background: #2196f3; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        🔗 Verify on Leaping Bunny
+                    </a>
+                    <span style="background: #e3f2fd; color: #1565c0; padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
+                        Score Impact: +1.0 social, +0.5 environmental
+                    </span>
+                </div>
+            </div>
+
+            <!-- Methodology Note -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 25px; border: 2px solid var(--border);">
+                <h4 style="color: var(--primary); margin-bottom: 10px;">📈 Scoring Methodology</h4>
+                <p style="color: var(--text-primary); margin-bottom: 10px;">
+                    <strong>Base Score:</strong> All brands start with 5.0 in each pillar (Social, Environmental, Economic).
+                </p>
+                <p style="color: var(--text-primary); margin-bottom: 10px;">
+                    <strong>Certification Bonuses:</strong> Points are added only for verified third-party certifications.
+                </p>
+                <p style="color: var(--text-primary); margin-bottom: 10px;">
+                    <strong>Multi-Certification Bonus:</strong> Brands with multiple certifications receive an additional +0.5 to each pillar for each certification beyond the first.
+                </p>
+                <p style="color: var(--text-primary);">
+                    <strong>Maximum Score:</strong> All scores are capped at 10.0 per pillar.
+                </p>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="https://tbl-grocery-scanner.onrender.com/scoring-methodology" target="_blank"
+                       style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+                        📖 View Full Scoring Methodology
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

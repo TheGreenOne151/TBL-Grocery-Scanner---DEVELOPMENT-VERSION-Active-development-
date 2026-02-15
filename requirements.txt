@@ -1,0 +1,29 @@
+# Build essentials FIRST
+setuptools==69.0.3
+wheel==0.42.0
+
+# Core FastAPI stack
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# HTTP and web
+httpx==0.25.2
+python-multipart==0.0.6
+
+# Data processing
+pandas==2.0.3
+numpy==1.24.3
+openpyxl==3.1.2
+
+# Security
+bcrypt==4.1.2
+
+# CORS middleware
+starlette==0.27.0
+
+# For async operations
+asyncio==3.4.3
+
+# Gunicorn for production
+gunicorn==21.2.0
