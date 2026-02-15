@@ -611,6 +611,35 @@
                     </select>
                 </div>
 
+                <div class="input-group" id="categoryGroup" style="display: none;">
+                    <label for="categorySelect">Product Category (optional):</label>
+                    <select id="categorySelect">
+                    <option value="">-- Select category (optional) --</option>
+                    <option value="Baby Food">Baby Food</option>
+                    <option value="Baking & Cooking">Baking & Cooking</option>
+                    <option value="Beverages">Beverages</option>
+                    <option value="Breakfast Cereals">Breakfast Cereals</option>
+                    <option value="Breakfast Foods">Breakfast Foods</option>
+                    <option value="Candy & Chocolate">Candy & Chocolate</option>
+                    <option value="Canned & Packaged Goods">Canned & Packaged Goods</option>
+                    <option value="Cleaning & Household">Cleaning & Household</option>
+                    <option value="Coffee, Tea and Coco">Coffee, Tea and Coco</option>
+                    <option value="Condiments & Sauces">Condiments & Sauces</option>
+                    <option value="Cookies & Crackers">Cookies & Crackers</option>
+                    <option value="Cosmetics & Personal Care">Cosmetics & Personal Care</option>
+                    <option value="Dairy & Eggs">Dairy & Eggs</option>
+                    <option value="Frozen Foods">Frozen Foods</option>
+                    <option value="Health & Nutrition">Health & Nutrition</option>
+                    <option value="Natural & Organic">Natural & Organic</option>
+                    <option value="Pet Food">Pet Food</option>
+                    <option value="Snacks">Snacks</option>
+                </select>
+              </div>
+
+              <div class="info-section" id="categoryInfo" style="display: none; margin-top: 10px; font-size: 12px;">
+                  <strong>💡 Tip:</strong> Selecting a category helps show certifications specific to that product type (e.g., Skinnygirl coffee vs. other products).
+              </div>
+
                 <div class="input-group">
                     <label for="searchInput" id="searchLabel">Enter Brand Name:</label>
                     <input type="text" id="searchInput" placeholder="e.g., Coca-Cola, Nestlé, Ben & Jerry's">
@@ -1240,16 +1269,24 @@
             const type = this.value;
             const label = document.getElementById('searchLabel');
             const input = document.getElementById('searchInput');
+            const categoryGroup = document.getElementById('categoryGroup');
+            const categoryInfo = document.getElementById('categoryInfo');
 
             if (type === 'brand') {
                 label.textContent = 'Enter Brand Name:';
                 input.placeholder = 'e.g., Coca-Cola, Nestlé, Ben & Jerry\'s';
+                categoryGroup.style.display = 'block';
+                categoryInfo.style.display = 'block';
             } else if (type === 'product') {
                 label.textContent = 'Enter Product Name:';
                 input.placeholder = 'e.g., Cheerios, Oreo Cookies, Dove Soap';
-            } else {
+                categoryGroup.style.display = 'none';
+                categoryInfo.style.display = 'none';
+            } else { // barcode
                 label.textContent = 'Enter Barcode:';
                 input.placeholder = 'e.g., 012345678905';
+                categoryGroup.style.display = 'none';
+                categoryInfo.style.display = 'none';
             }
         });
 
@@ -1297,6 +1334,7 @@
         async function searchProduct() {
             const searchType = document.getElementById('searchType').value;
             const searchInput = document.getElementById('searchInput').value.trim();
+            const selectedCategory = document.getElementById('categorySelect').value;
 
             if (!searchInput) {
                 showError('Please enter a search term');
@@ -1318,7 +1356,7 @@
                         barcode: '',
                         brand: searchType === 'brand' ? searchInput : '',
                         product_name: searchType === 'product' ? searchInput : '',
-                        category: ''
+                        category: searchType === 'brand' ? selectedCategory : ''
                     };
 
                     const response = await fetch(`${API_URL}/scan`, {
@@ -1331,6 +1369,12 @@
 
                 hideLoading();
                 displayResults(data);
+
+                // Show a message if category was used
+                if (searchType === 'brand' && selectedCategory) {
+                    showSuccess(`Showing certifications for ${selectedCategory} products from this brand`);
+                    setTimeout(() => hideSuccess(), 3000);
+                }
 
             } catch (error) {
                 hideLoading();
