@@ -1395,7 +1395,11 @@
             lastSearchResult = data;
 
             document.getElementById('brandName').textContent = data.brand || 'Unknown';
-            document.getElementById('productName').textContent = data.product_name ? `Product: ${data.product_name}` : '';
+            let productDisplay = data.product_name ? `Product: ${data.product_name}` : '';
+            if (data.category && data.category !== 'General' && data.category !== '') {
+                productDisplay += ` (${data.category})`;
+            }
+            document.getElementById('productName').textContent = productDisplay;
             document.getElementById('overallScore').textContent = (data.overall_tbl_score || 0).toFixed(1);
 
             const grade = data.grade || 'UNKNOWN';
