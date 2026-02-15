@@ -1702,10 +1702,10 @@ class ScoringManager:
     """Manage all scoring-related operations"""
 
     @staticmethod
-    def calculate_brand_scores(brand: str) -> BrandData:
+    def calculate_brand_scores(brand: str, category: str = None) -> BrandData:
         """
         Calculate scores for a brand using priority order:
-        1. Hardcoded scores database (pre-calculated w  ith multi-cert bonus)
+        1. Hardcoded scores database (pre-calculated with multi-cert bonus)
         2. Brand synonyms mapping
         3. Parent company inheritance
         4. Dynamic calculation from certifications
@@ -1783,15 +1783,14 @@ class ScoringManager:
                     notes=f"Inherited score from parent company '{parent_company}'",
                 )
 
-        # Step 4: Dynamic calculation from certifications (fallback for unknown
-        # brands)
+        # Step 4: Dynamic calculation from certifications - PASS THE CATEGORY
         logger.info(
             f"Brand '{brand_normalized}' not in hardcoded database, calculating dynamically"
         )
-        return ScoringManager._calculate_dynamic_scores(brand)
+        return ScoringManager._calculate_dynamic_scores(brand, categpry)
 
     @staticmethod
-    def _calculate_dynamic_scores(brand: str) -> BrandData:
+    def _calculate_dynamic_scores(brand: str, category: str = None) -> BrandData:
         """Calculate scores dynamically from certifications"""
         # Start with base score
         social_score = ScoringConfig.BASE_SCORE
@@ -1799,7 +1798,7 @@ class ScoringManager:
         economic_score = ScoringConfig.BASE_SCORE
 
         # Get all certifications from combined sources
-        all_certifications = ScoringManager._get_all_certifications(brand)
+        all_certifications = ScoringManager._get_all_certifications(brand, category)
 
         # Apply certification bonuses
         bonus_applied = False
@@ -1840,7 +1839,7 @@ class ScoringManager:
         )
 
     @staticmethod
-    def _get_all_certifications(brand: str) -> List[str]:
+    def _get_all_certifications(brand: str, category: str = None) -> List[str]:
         """Get all certifications from combined sources"""
         brand_normalized = BrandNormalizer.normalize(brand)
 
@@ -3719,7 +3718,7 @@ async def search_brand(q: str = Query(...)):
         parent_company = BrandNormalizer.find_parent_company(best_match)
         target_brand = parent_company or best_match
 
-        scores = scoring_manager.calculate_brand_scores(target_brand)
+        scores = scoring_manager.calculate_brand_scores(target_brand, category)  # Pass category if availabl
         tbl = calculate_overall_score(
             scores.social,
             scores.environmental,
