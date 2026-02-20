@@ -3518,6 +3518,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         response_data = {
             "barcode": barcode or "",
             "brand": brand or "Unknown",
+            "brand_display": f"{brand} ({category})" if category else brand,  # ADD THIS LINE
             "product_name": product_name or "Unknown Product",
             "category": category or "",
             "social_score": safe_float(getattr(scores, 'social', 0.0)),

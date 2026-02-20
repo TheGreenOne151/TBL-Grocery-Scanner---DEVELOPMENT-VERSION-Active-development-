@@ -1401,11 +1401,9 @@
             console.log('Length:', data.certifications ? data.certifications.length : 0);
             console.log('certBadges element exists?', document.getElementById('certBadges') !== null);
 
-            document.getElementById('brandName').textContent = data.brand || 'Unknown';
+            document.getElementById('brandName').textContent = data.brand_display || data.brand || 'Unknown';
             let productDisplay = data.product_name ? `Product: ${data.product_name}` : '';
-            if (data.category && data.category !== 'General' && data.category !== '') {
-                productDisplay += ` (${data.category})`;
-            }
+
             document.getElementById('productName').textContent = productDisplay;
             document.getElementById('overallScore').textContent = (data.overall_tbl_score || 0).toFixed(1);
 
