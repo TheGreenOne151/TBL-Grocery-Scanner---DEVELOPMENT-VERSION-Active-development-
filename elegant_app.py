@@ -1772,8 +1772,8 @@ class ScoringManager:
                 scores = BrandNormalizer.HARDCODED_SCORES_DB[parent_normalized]
                 # ADD THIS ONE LINE - Skip inheritance if brand has its own entry
                 if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
-                logger.info(f"Brand {brand} has own entry, skipping parent inheritance")
-                # Fall through to dynamic calculation
+                    logger.info(f"Brand {brand} has own entry, skipping parent inheritance")
+                    # Fall through to dynamic calculation
             else:
                 logger.info(f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'")
                 return BrandData(
