@@ -972,7 +972,7 @@ class BrandNormalizer:
         "365 everyday value": {
             "certifications": ["Fair Trade", "Rainforest Alliance", "Leaping Bunny"]
         },
-        "activia": {"certifications": ["B Corp"]},
+        "activia": {"certifications": ["B Corp"]}, # Danone inheritance
         "annies homegrown": {"certifications": []},
         "aquafina": {"certifications": []},
         "banquet": {"certifications": []},
@@ -985,7 +985,7 @@ class BrandNormalizer:
         "blue buffalo": {"certifications": []},
         "breyers": {"certifications": []},
         "butterfinger": {"certifications": []},
-        "cadbury": {"certifications": ["Fair Trade"]},
+        "cadbury": {"certifications": []},
         "campbells": {"certifications": []},
         "capri sun": {"certifications": []},
         "cheerios": {"certifications": []},
@@ -993,7 +993,7 @@ class BrandNormalizer:
         "cheez it": {"certifications": []},
         "chex": {"certifications": []},
         "chips ahoy": {"certifications": []},
-        "coca cola": {"certifications": ["Rainforest Alliance"]},
+        "coca cola": {"certifications": []},
         "colgate palmolive": {"certifications": []},
         "corn flakes": {"certifications": []},
         "crunch": {"certifications": []},
@@ -1002,11 +1002,11 @@ class BrandNormalizer:
         "dentyne": {"certifications": []},
         "digiorno": {"certifications": []},
         "doritos": {"certifications": []},
-        "dove": {"certifications": ["Leaping Bunny"]},
+        "dove": {"certifications": []},
         "duncan hines": {"certifications": []},
-        "dunkin": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
+        "dunkin": {"certifications": ["Rainforest Alliance"]},
         "eggo": {"certifications": []},
-        "evian": {"certifications": ["B Corp"]},
+        "evian": {"certifications": ["B Corp"]}, # Danone inheritance
         "fanta": {"certifications": []},
         "fiber one": {"certifications": []},
         "fritos": {"certifications": []},
@@ -1056,7 +1056,7 @@ class BrandNormalizer:
         },
         "nestle": {"certifications": ["Rainforest Alliance"]},
         "nutri grain": {"certifications": []},
-        "oikos": {"certifications": ["B Corp"]},
+        "oikos": {"certifications": ["B Corp"]}, # Danone inheritance
         "oreo": {"certifications": []},
         "oscar mayer": {"certifications": []},
         "pedigree": {"certifications": []},
@@ -1088,6 +1088,7 @@ class BrandNormalizer:
         "sprite": {"certifications": []},
         "starbucks": {"certifications": ["Fair Trade"]},
         "starburst": {"certifications": []},
+        "stonyfield": {"certifications": ["B Corp"]}, # Lactalis inheritance
         "stouffers": {"certifications": []},
         "sunchips": {"certifications": []},
         "swanson": {"certifications": []},
@@ -1102,9 +1103,9 @@ class BrandNormalizer:
         "v8": {"certifications": []},
         "velveeta": {"certifications": []},
         "vitaminwater": {"certifications": []},
-        "volvic": {"certifications": ["B Corp"]},
+        "volvic": {"certifications": ["B Corp"]}, # Danone inheritance
         "whiskas": {"certifications": []},
-        "yoplait": {"certifications": []},
+        "yoplait": {"certifications": ["B Corp"]}, #Lactalis inheritance
     }
 
     @classmethod
@@ -1769,9 +1770,12 @@ class ScoringManager:
             parent_normalized = BrandNormalizer.normalize(parent_company)
             if parent_normalized in BrandNormalizer.HARDCODED_SCORES_DB:
                 scores = BrandNormalizer.HARDCODED_SCORES_DB[parent_normalized]
-                logger.info(
-                    f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'"
-                )
+                # ADD THIS ONE LINE - Skip inheritance if brand has its own entry
+                if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
+                logger.info(f"Brand {brand} has own entry, skipping parent inheritance")
+                # Fall through to dynamic calculation
+            else:
+                logger.info(f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'")
                 return BrandData(
                     brand=brand,
                     social=safe_float(scores["social"]),
