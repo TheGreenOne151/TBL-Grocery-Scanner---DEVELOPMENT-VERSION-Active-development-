@@ -1350,7 +1350,7 @@ class CertificationManager:
             f"Looking up certifications for brand: '{brand}' (normalized: '{brand_normalized}')"
         )
 
-        logger.info(f"Looking for '{brand_normalized}' in keys: {list(self.data.keys())[:20]}")
+        logger.info(f"Looking for '{brand_normalized}'. Contains? {brand_normalized in self.data}")
 
         # Check for exact match
         if brand_normalized in self.data:
