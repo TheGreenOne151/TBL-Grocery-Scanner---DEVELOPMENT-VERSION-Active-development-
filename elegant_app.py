@@ -1774,30 +1774,33 @@ class ScoringManager:
                     notes=f"Pre-calculated score via brand synonym '{synonym_brand}'",
                 )
 
-        # Step 3: Check if this is a product that should inherit parent company
-        # scores
+        # Step 3: Check if this is a product that should inherit parent company scores
         parent_company = BrandNormalizer.find_parent_company(brand)
         if parent_company:
             parent_normalized = BrandNormalizer.normalize(parent_company)
             if parent_normalized in BrandNormalizer.HARDCODED_SCORES_DB:
                 scores = BrandNormalizer.HARDCODED_SCORES_DB[parent_normalized]
-                # ADD THIS ONE LINE - Skip inheritance if brand has its own entry
-                if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
-                    logger.info(f"Brand {brand} has own entry, skipping parent inheritance")
+
+                # Only skip inheritance for specific brands that should NOT inherit
+                # (like Digiorno, which has its own empty entry)
+                non_inheriting_brands = ["digiorno", "bai", "nestle pure life"]
+
+                if brand_normalized in non_inheriting_brands:
+                    logger.info(f"Brand {brand} in non-inheriting list, skipping parent inheritance")
                     # Fall through to dynamic calculation
-            else:
-                logger.info(f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'")
-                return BrandData(
-                    brand=brand,
-                    social=safe_float(scores["social"]),
-                    environmental=safe_float(scores["environmental"]),
-                    economic=safe_float(scores["economic"]),
-                    certifications=scores.get("certifications", []),
-                    scoring_method="parent_company_inheritance",
-                    multi_cert_applied=scores.get("multi_cert_applied", False),
-                    multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
-                    notes=f"Inherited score from parent company '{parent_company}'",
-                )
+                else:
+                    logger.info(f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'")
+                    return BrandData(
+                        brand=brand,
+                        social=safe_float(scores["social"]),
+                        environmental=safe_float(scores["environmental"]),
+                        economic=safe_float(scores["economic"]),
+                        certifications=scores.get("certifications", []),
+                        scoring_method="parent_company_inheritance",
+                        multi_cert_applied=scores.get("multi_cert_applied", False),
+                        multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
+                        notes=f"Inherited score from parent company '{parent_company}'",
+                    )
 
         # Step 4: Dynamic calculation from certifications - PASS THE CATEGORY
         logger.info(
