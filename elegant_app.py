@@ -3712,6 +3712,7 @@ async def test_excel_lookup(brand: str):
 # ==================== OTHER ENDPOINTS ====================
 
 
+
 @app.post("/compare")
 async def compare_brands(brands: List[BrandInput]) -> Dict[str, Any]:
     """Compare multiple brands with verified certifications"""
@@ -3952,6 +3953,52 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
     )
     return sanitize_for_json(result)
 
+
+@app.get("/scoring-methodology", response_class=HTMLResponse)
+async def scoring_methodology():
+    """Serve the scoring methodology page"""
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Scoring Methodology - TBL Grocery Scanner</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+            h1 { color: #2e7d32; }
+            .methodology-card { background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        </style>
+    </head>
+    <body>
+        <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
+        <div class="methodology-card">
+            <h2>Base Score: 5.0</h2>
+            <p>Every brand starts with 5.0 in Social, Environmental, and Economic pillars.</p>
+
+            <h2>Certification Bonuses</h2>
+            <ul>
+                <li><strong>B Corp:</strong> +1.0 to all pillars</li>
+                <li><strong>Fair Trade:</strong> +1.0 social, +0.5 environmental, +0.5 economic</li>
+                <li><strong>Rainforest Alliance:</strong> +0.5 social, +1.0 environmental, +0.5 economic</li>
+                <li><strong>Leaping Bunny:</strong> +1.0 social, +0.5 environmental</li>
+            </ul>
+
+            <h2>Multi-Certification Bonus</h2>
+            <p>Brands with multiple certifications get an additional +0.5 to each pillar for each certification beyond the first.</p>
+
+            <h2>Grade Thresholds</h2>
+            <ul>
+                <li><strong>EXCELLENT:</strong> 8.5+</li>
+                <li><strong>GREAT:</strong> 7.0 - 8.4</li>
+                <li><strong>GOOD:</strong> 5.0 - 6.9</li>
+                <li><strong>POOR:</strong> Below 5.0</li>
+            </ul>
+        </div>
+        <p><a href="/">← Back to Scanner</a></p>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
 
 # ==================== SCANNER HEALTH ENDPOINT ====================
 

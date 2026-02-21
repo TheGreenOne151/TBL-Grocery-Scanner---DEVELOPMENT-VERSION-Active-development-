@@ -692,12 +692,14 @@
                   <strong>💡 Tip:</strong> Select a category to see certifications specific to that product type (e.g., Skinnygirl coffee). Without a category, you'll see the brand's overall profile - which may not apply to all products (e.g., Skinnygirl non-coffee items).
               </div>
 
-              <div class="input-group">
-                  <label for="searchInput" id="searchLabel">Enter Brand Name:</label>
-                  <input type="text" id="searchInput" placeholder="e.g., Coca-Cola, Nestlé, Ben & Jerry's">
-                  <div class="suggestions" id="suggestions"></div>
-                  <div class="suggestions-overlay" onclick="document.getElementById('suggestions').classList.remove('show')"></div>
+              <div class="input-group" style="display: flex; align-items: center;">
+                  <input type="text" id="searchInput" placeholder="e.g., Coca-Cola, Nestlé, Ben & Jerry's" style="flex: 1; padding: 12px 15px; border: 2px solid var(--border); border-radius: 10px 0 0 10px; font-size: 16px; border-right: none;">
+                  <button id="cameraButton" onclick="openGoogleLens()" style="background: white; color: var(--primary); border: 2px solid var(--border); border-left: none; padding: 12px 15px; border-radius: 0 10px 10px 0; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'">
+                      📷
+                  </button>
               </div>
+              <div class="suggestions" id="suggestions"></div>
+              <div class="suggestions-overlay" onclick="document.getElementById('suggestions').classList.remove('show')"></div>
 
                 <button class="btn btn-primary" onclick="searchProduct()">
                     🔍 Search
@@ -885,6 +887,26 @@
             // Trigger the search type change handler to show/hide category dropdown
             document.getElementById('searchType').dispatchEvent(new Event('change'));
         };
+
+        // Open Google Lens for barcode scanning
+        function openGoogleLens() {
+          // Try to open Google Lens app on Android
+          window.location.href = 'intent://lens/#Intent;package=com.google.android.apps.lens;scheme=google;end;';
+
+        // Fallback for iOS or if Lens not installed
+        setTimeout(() => {
+          window.location.href = 'https://lens.google.com';
+        }, 500);
+
+        // Show helpful message using your existing success notification
+        showSuccess('📷 Google Lens opened. Scan the barcode, copy it, then paste here and click Search!');
+        setTimeout(() => hideSuccess(), 4000);
+
+        // Optional: Switch to barcode mode for convenience
+        document.getElementById('searchType').value = 'barcode';
+        document.getElementById('searchLabel').textContent = 'Enter Barcode:';
+        document.getElementById('searchInput').placeholder = 'e.g., 012345678905';
+    }
 
         // Tab switching
         function switchTab(tabName) {
