@@ -645,10 +645,10 @@
 
     <div class="container">
         <div class="nav-tabs">
-            <button class="nav-tab active" onclick="switchTab('scan')">🔍 Scan</button>
-            <button class="nav-tab" onclick="switchTab('compare')">⚖️ Compare</button>
-            <button class="nav-tab" onclick="switchTab('history')">📊 History</button>
-            <button class="nav-tab" onclick="switchTab('account')">👤 Account</button>
+            <button class="nav-tab active" onclick="switchTab('scan', event)">🔍 Scan</button>
+            <button class="nav-tab" onclick="switchTab('compare', event)">⚖️ Compare</button>
+            <button class="nav-tab" onclick="switchTab('history', event)">📊 History</button>
+            <button class="nav-tab" onclick="switchTab('account', event)">👤 Account</button>
         </div>
 
         <!-- SCAN TAB -->
@@ -675,7 +675,7 @@
                     <option value="Candy & Chocolate">Candy & Chocolate</option>
                     <option value="Canned & Packaged Goods">Canned & Packaged Goods</option>
                     <option value="Cleaning & Household">Cleaning & Household</option>
-                    <option value="Coffee, Tea and Coco">Coffee, Tea and Coco</option>
+                    <option value="Coffee, Tea and Cocoa">Coffee, Tea and Coco</option>
                     <option value="Condiments & Sauces">Condiments & Sauces</option>
                     <option value="Cookies & Crackers">Cookies & Crackers</option>
                     <option value="Cosmetics & Personal Care">Cosmetics & Personal Care</option>
@@ -699,11 +699,13 @@
                   </button>
               </div>
               <div class="suggestions" id="suggestions"></div>
-              <div class="suggestions-overlay" onclick="document.getElementById('suggestions').classList.remove('show')"></div>
+              <div class="suggestions-overlay"
+                  onclick="(el => el && el.classList.remove('show'))(document.getElementById('suggestions'))">
+              </div>
 
-                <button class="btn btn-primary" onclick="searchProduct()">
-                    🔍 Search
-                </button>
+              <button type="button" class="btn btn-primary" onclick="searchProduct()">
+                  🔍 Search
+              </button>
 
                 <div class="info-section">
                     <strong>💡 Tip:</strong> Search by brand for fastest results. Product search uses AI to identify brands.
@@ -914,20 +916,24 @@
             document.getElementById('searchInput').placeholder = 'e.g., 012345678905';
         }
 
-        // Tab switching
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
 
-            document.getElementById(tabName + 'Tab').classList.add('active');
-            event.target.classList.add('active');
+        // Make sure your function accepts the event parameter
+        function switchTab(tabName, e) {
+          document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+          document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
 
-            if (tabName === 'history' && currentUser) {
-                loadHistory();
-            } else if (tabName === 'compare') {
-                updateCompareDisplay();
-            }
-        }
+          const targetTab = document.getElementById(tabName + 'Tab');
+          if (targetTab) targetTab.classList.add('active');
+
+          e.currentTarget.classList.add('active');
+
+          if (tabName === 'history' && currentUser) {
+              loadHistory();
+          } else if (tabName === 'compare') {
+              updateCompareDisplay();
+          }
+      }
+
 
         // Authentication
         function checkLoginStatus() {
