@@ -890,33 +890,8 @@
 
         // Open Google Lens for barcode scanning
         function openGoogleLens() {
-            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-            const isAndroid = /Android/i.test(navigator.userAgent);
-
-            if (isIOS) {
-                // iOS: Try to open in Google app first
-                window.location.href = 'google://lens';
-
-                // Fallback to website after delay
-                setTimeout(() => {
-                    window.open('https://lens.google.com', '_blank');
-                }, 1000);
-            }
-            else if (isAndroid) {
-                // Android: Try intent first
-                window.location.href = 'intent://lens/#Intent;package=com.google.android.apps.lens;scheme=google;end;';
-
-                // Fallback: Ask user what they want
-                setTimeout(() => {
-                    if (confirm('Google Lens app not responding. Open in browser?')) {
-                        window.location.href = 'https://lens.google.com';
-                    }
-                }, 800);
-            }
-            else {
-                // Desktop: Open in new tab
-                window.open('https://lens.google.com', '_blank');
-            }
+            // Open Google Lens website in a new tab
+            window.open('https://lens.google.com', '_blank');
 
             // Show helpful message
             showSuccess('📷 Google Lens opened. Scan the barcode, copy it, then paste here!');
