@@ -1368,14 +1368,12 @@
                 const suggestionsDiv = document.getElementById('suggestions');
 
                 if (data.success && data.suggestions && data.suggestions.length > 0) {
-                  suggestionsDiv.innerHTML = data.suggestions.map(suggestion => `
-                      <div class="suggestion-item"
-                           onclick="selectSuggestion('${suggestion.brand}')"
-                           ontouchstart="selectSuggestion('${suggestion.brand}')">
-                          <strong>${suggestion.brand}</strong>
-                          ${suggestion.category ? `<br><small>Category: ${suggestion.category}</small>` : ''}
-                      </div>
-                  `).join('');
+                    suggestionsDiv.innerHTML = data.suggestions.map(suggestion => `
+                        <div class="suggestion-item" data-brand="${suggestion.brand}">
+                            <strong>${suggestion.brand}</strong>
+                            ${suggestion.category ? `<br><small>Category: ${suggestion.category}</small>` : ''}
+                        </div>
+                    `).join('');
                     suggestionsDiv.classList.add('show');
                 } else {
                     suggestionsDiv.classList.remove('show');
@@ -1384,6 +1382,25 @@
                 console.error('Suggestion error:', error);
             }
         }
+
+        // Event delegation for suggestions (works on mobile)
+        document.getElementById('suggestions').addEventListener('click', function(e) {
+            const suggestionItem = e.target.closest('.suggestion-item');
+            if (suggestionItem) {
+                const brand = suggestionItem.dataset.brand;
+                selectSuggestion(brand);
+            }
+        });
+
+        // Also add touch event for faster response on mobile
+        document.getElementById('suggestions').addEventListener('touchstart', function(e) {
+            const suggestionItem = e.target.closest('.suggestion-item');
+            if (suggestionItem) {
+                e.preventDefault(); // Prevent any default touch behavior
+                const brand = suggestionItem.dataset.brand;
+                selectSuggestion(brand);
+            }
+        });
 
         function selectSuggestion(brand) {
             document.getElementById('searchInput').value = brand;
