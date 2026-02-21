@@ -1350,6 +1350,8 @@ class CertificationManager:
             f"Looking up certifications for brand: '{brand}' (normalized: '{brand_normalized}')"
         )
 
+        logger.info(f"Looking for '{brand_normalized}' in keys: {list(self.data.keys())[:20]}")
+
         # Check for exact match
         if brand_normalized in self.data:
             data = self.data[brand_normalized]
@@ -4108,6 +4110,9 @@ if __name__ == "__main__":
 
     logger.info(
         f"Brand identification database has {len(BrandNormalizer.BRAND_IDENTIFICATION_DB)} brands"
+    )
+    logger.info(
+        "Scoring Consistency: Single scoring function with hardcoded priority ensures identical results"
     )
     logger.info("Multi-certification bonus always applied correctly")
     logger.info(
