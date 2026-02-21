@@ -3653,35 +3653,47 @@ async def search_brand(q: str = Query(...), category: str = Query(None)):
     best_score = 0
     search_query = q.lower().strip()
 
-    # 1. Try local Excel search using fuzzy matching
-    # FIRST: Read the Excel file to get the DataFrame
+    if len(search_query) < 2:
+        return {"suggestions": [], "source": "local", "query": q}
+
+    # 1. Try local Excel search for auto-suggest
     try:
-        pd = get_pandas()  # LAZY load pandas
-        # Check if Excel file exists
+        pd = get_pandas()
         if not os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE):
-            logger.warning(
-                f"Excel file not found: {FileConfig.CERTIFICATION_EXCEL_FILE}")
+            logger.warning(f"Excel file not found: {FileConfig.CERTIFICATION_EXCEL_FILE}")
             df = None
         else:
-            # Read the Excel file
             df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
 
-            # Only proceed if we have data and the right column
             if df is not None and 'Product_Brand' in df.columns:
+                matches = []
+                seen_brands = set()
+
                 for _, row in df.iterrows():
                     brand_name = str(row['Product_Brand'])
-                    # SequenceMatcher handles typos (e.g., "Kellog" ->
-                    # "Kellogg's")
-                    score = SequenceMatcher(
-                        None, search_query, brand_name.lower()).ratio() * 100
+                    brand_lower = brand_name.lower()
 
-                    if score > best_score:
-                        best_score = score
-                        best_match = brand_name
+                    # Simple starts-with check for auto-suggest
+                    if brand_lower.startswith(search_query):
+                        if brand_name not in seen_brands:
+                            seen_brands.add(brand_name)
+                            matches.append({
+                                "brand": brand_name,
+                                "category": row.get('Category', ''),
+                                "confidence": 100
+                            })
 
-                    # Optimization: If we find a 100% match, stop looking
-                    if best_score == 100:
+                    # Limit results for performance
+                    if len(matches) >= 10:
                         break
+
+                if matches:
+                    return {
+                        "suggestions": matches,
+                        "source": "local_database",
+                        "query": q,
+                        "success": True
+                    }
     except Exception as e:
         logger.error(f"Error reading Excel file for search: {e}")
         df = None
