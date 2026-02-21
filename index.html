@@ -892,19 +892,29 @@
 
         // Open Google Lens for barcode scanning
         function openGoogleLens() {
-            // Open in same tab (no popup blockers)
-            window.location.href = 'https://lens.google.com/upload';
+            const isAndroid = /Android/i.test(navigator.userAgent);
+
+            if (isAndroid) {
+                // Try to open in Google app first
+                window.location.href = 'google://lens';
+
+                // Fallback to web uploader
+                setTimeout(() => {
+                    window.location.href = 'https://lens.google.com/focus?hl=en';
+                }, 800);
+            } else {
+                // iOS/others: use web uploader
+                window.location.href = 'https://lens.google.com/focus?hl=en';
+            }
 
             showSuccess('📷 Scan → Copy → Return → Paste → Search');
             setTimeout(() => hideSuccess(), 6000);
 
-            // Auto-focus when user returns
             window.addEventListener('focus', function onFocus() {
                 document.getElementById('searchInput').focus();
                 window.removeEventListener('focus', onFocus);
             }, { once: true });
 
-            // Switch to barcode mode with numeric keyboard
             document.getElementById('searchType').value = 'barcode';
             document.getElementById('searchLabel').textContent = 'Enter Barcode:';
             document.getElementById('searchInput').placeholder = 'Paste barcode here';
