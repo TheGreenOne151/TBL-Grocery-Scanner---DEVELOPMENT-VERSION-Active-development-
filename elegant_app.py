@@ -1347,7 +1347,7 @@ class CertificationManager:
 
         brand_normalized = BrandNormalizer.normalize(brand)
         logger.info(
-            f"Looking up certifications for brand: '{brand}' (normalized: '{brand_normalized}')"
+            logger.info(f"Looking for 'nestle'. Keys containing 'nestle': {[k for k in self.data.keys() if 'nestle' in k]}")
         )
 
         logger.info(f"Looking for '{brand_normalized}'. Contains? {brand_normalized in self.data}")
