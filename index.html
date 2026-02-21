@@ -1368,12 +1368,14 @@
                 const suggestionsDiv = document.getElementById('suggestions');
 
                 if (data.success && data.suggestions && data.suggestions.length > 0) {
-                    suggestionsDiv.innerHTML = data.suggestions.map(suggestion => `
-                        <div class="suggestion-item" onclick="selectSuggestion('${suggestion.brand}')">
-                            <strong>${suggestion.brand}</strong>
-                            ${suggestion.category ? `<br><small>Category: ${suggestion.category}</small>` : ''}
-                        </div>
-                    `).join('');
+                  suggestionsDiv.innerHTML = data.suggestions.map(suggestion => `
+                      <div class="suggestion-item"
+                           onclick="selectSuggestion('${suggestion.brand}')"
+                           ontouchstart="selectSuggestion('${suggestion.brand}')">
+                          <strong>${suggestion.brand}</strong>
+                          ${suggestion.category ? `<br><small>Category: ${suggestion.category}</small>` : ''}
+                      </div>
+                  `).join('');
                     suggestionsDiv.classList.add('show');
                 } else {
                     suggestionsDiv.classList.remove('show');
