@@ -811,6 +811,7 @@ class BrandNormalizer:
         "prego": {"certifications": []},
         "pringles": {"certifications": []},
         "procter gamble": {"certifications": []},
+        "purelife": {"certifications": []},
         "purina": {"certifications": []},
         "quaker oats": {"certifications": []},
         "reddi wip": {"certifications": []},
