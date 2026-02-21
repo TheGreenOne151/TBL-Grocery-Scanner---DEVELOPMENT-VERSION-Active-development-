@@ -1310,6 +1310,8 @@
                 const response = await fetch(`${API_URL}/search-brand?q=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
+                console.log('Suggestions data:', data);
+
                 const suggestionsDiv = document.getElementById('suggestions');
 
                 if (data.success && data.suggestions && data.suggestions.length > 0) {
