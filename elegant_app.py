@@ -856,6 +856,10 @@ class BrandNormalizer:
         if not brand:
             return ""
 
+        # ADD THIS: Normalize accents (é → e, etc.)
+        import unicodedata
+        brand = unicodedata.normalize('NFKD', brand).encode('ASCII', 'ignore').decode('ASCII')
+
         normalized = brand.strip().lower()
 
         # Remove common prefixes and suffixes
