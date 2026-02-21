@@ -3665,7 +3665,7 @@ async def search_brand(q: str = Query(...), category: str = Query(None)):
     search_query = q.lower().strip()
 
     if len(search_query) < 2:
-
+        return {"suggestions": [], "source": "local", "query": q}
 
     # 1. Try local Excel search for auto-suggest
     try:
