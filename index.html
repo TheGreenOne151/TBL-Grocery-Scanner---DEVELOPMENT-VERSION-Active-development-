@@ -471,6 +471,58 @@
             border-bottom: none;
         }
 
+        /* ===== ADD MOBILE FIXES HERE ===== */
+        @media (max-width: 768px) {
+            .suggestions {
+                position: fixed;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                max-height: 40vh;
+                margin: 0;
+                border-radius: 15px 15px 0 0;
+                border: 2px solid var(--primary);
+                border-bottom: none;
+                box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+                z-index: 10000;
+                background: white;
+                overflow-y: auto;
+            }
+
+            .suggestion-item {
+                padding: 15px 20px;
+                font-size: 16px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .suggestions::before {
+                content: '';
+                display: block;
+                width: 40px;
+                height: 5px;
+                background: #ccc;
+                border-radius: 3px;
+                margin: 8px auto;
+            }
+        }
+
+        .suggestions-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 9999;
+        }
+
+        .suggestions.show + .suggestions-overlay {
+            display: block;
+        }
+        /* ===== END MOBILE FIXES ===== */
+
         .user-section {
             background: rgba(46, 125, 50, 0.1);
             padding: 15px;
@@ -640,11 +692,12 @@
                   <strong>💡 Tip:</strong> Select a category to see certifications specific to that product type (e.g., Skinnygirl coffee). Without a category, you'll see the brand's overall profile - which may not apply to all products (e.g., Skinnygirl non-coffee items).
               </div>
 
-                <div class="input-group">
-                    <label for="searchInput" id="searchLabel">Enter Brand Name:</label>
-                    <input type="text" id="searchInput" placeholder="e.g., Coca-Cola, Nestlé, Ben & Jerry's">
-                    <div class="suggestions" id="suggestions"></div>
-                </div>
+              <div class="input-group">
+                  <label for="searchInput" id="searchLabel">Enter Brand Name:</label>
+                  <input type="text" id="searchInput" placeholder="e.g., Coca-Cola, Nestlé, Ben & Jerry's">
+                  <div class="suggestions" id="suggestions"></div>
+                  <div class="suggestions-overlay" onclick="document.getElementById('suggestions').classList.remove('show')"></div>
+              </div>
 
                 <button class="btn btn-primary" onclick="searchProduct()">
                     🔍 Search
