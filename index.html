@@ -890,23 +890,40 @@
 
         // Open Google Lens for barcode scanning
         function openGoogleLens() {
-          // Try to open Google Lens app on Android
-          window.location.href = 'intent://lens/#Intent;package=com.google.android.apps.lens;scheme=google;end;';
+            // Detect if mobile
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        // Fallback for iOS or if Lens not installed
-        setTimeout(() => {
-          window.location.href = 'https://lens.google.com';
-        }, 500);
+            if (isIOS) {
+                // iOS: Try to open Lens app if installed, otherwise go to website
+                window.location.href = 'google-lens://';
 
-        // Show helpful message using your existing success notification
-        showSuccess('📷 Google Lens opened. Scan the barcode, copy it, then paste here and click Search!');
-        setTimeout(() => hideSuccess(), 4000);
+                // Fallback to website if app not installed - longer timeout for slow devices
+                setTimeout(() => {
+                    window.location.href = 'https://lens.google.com';
+                }, 1000); // Increased from 500ms to 1000ms
+            } else if (/Android/i.test(navigator.userAgent)) {
+                // Android: Use intent
+                window.location.href = 'intent://lens/#Intent;package=com.google.android.apps.lens;scheme=google;end;';
 
-        // Optional: Switch to barcode mode for convenience
-        document.getElementById('searchType').value = 'barcode';
-        document.getElementById('searchLabel').textContent = 'Enter Barcode:';
-        document.getElementById('searchInput').placeholder = 'e.g., 012345678905';
-    }
+                // Fallback
+                setTimeout(() => {
+                    window.location.href = 'https://lens.google.com';
+                }, 500);
+            } else {
+                // Desktop: Just open website
+                window.location.href = 'https://lens.google.com';
+            }
+
+            // Show helpful message
+            showSuccess('📷 Google Lens opened. Scan the barcode, copy it, then paste here and click Search!');
+            setTimeout(() => hideSuccess(), 4000);
+
+            // Switch to barcode mode
+            document.getElementById('searchType').value = 'barcode';
+            document.getElementById('searchLabel').textContent = 'Enter Barcode:';
+            document.getElementById('searchInput').placeholder = 'e.g., 012345678905';
+        }
 
         // Tab switching
         function switchTab(tabName) {
