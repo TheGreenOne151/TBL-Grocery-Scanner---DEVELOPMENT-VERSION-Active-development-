@@ -1459,10 +1459,8 @@ class ScoringManager:
     def calculate_brand_scores(brand: str, category: str = None) -> BrandData:
         """
         Calculate scores for a brand using priority order:
-        1. Hardcoded scores database (pre-calculated with multi-cert bonus)
-        2. Brand synonyms mapping
-        3. Parent company inheritance
-        4. Dynamic calculation from certifications
+        1. Parent company identification (for product search)
+        2. Dynamic calculation from certifications (Excel + BRAND_IDENTIFICATION_DB)
         """
         # Handle empty/unknown brand
         if not brand or brand == "Unknown":
@@ -1478,74 +1476,25 @@ class ScoringManager:
 
         brand_normalized = BrandNormalizer.normalize(brand)
 
-        # Step 1: Check hardcoded scores database FIRST
-        if brand_normalized in BrandNormalizer.HARDCODED_SCORES_DB:
-            scores = BrandNormalizer.HARDCODED_SCORES_DB[brand_normalized]
-            logger.info(f"Using hardcoded scores for '{brand_normalized}'")
-            return BrandData(
-                brand=brand,
-                social=safe_float(scores["social"]),
-                environmental=safe_float(scores["environmental"]),
-                economic=safe_float(scores["economic"]),
-                certifications=scores.get("certifications", []),
-                scoring_method="hardcoded_database",
-                multi_cert_applied=scores.get("multi_cert_applied", False),
-                multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
-                notes="Pre-calculated score from hardcoded database (includes multi-cert bonus if applicable)",
-            )
-
-        # Step 2: Check brand synonyms
-        if brand_normalized in BrandNormalizer.BRAND_SYNONYMS:
-            synonym_brand = BrandNormalizer.BRAND_SYNONYMS[brand_normalized]
-            if synonym_brand in BrandNormalizer.HARDCODED_SCORES_DB:
-                scores = BrandNormalizer.HARDCODED_SCORES_DB[synonym_brand]
-                logger.info(
-                    f"Using hardcoded scores via synonym for '{brand_normalized}' → '{synonym_brand}'"
-                )
-                return BrandData(
-                    brand=brand,  # Add this line
-                    social=safe_float(scores["social"]),
-                    environmental=safe_float(scores["environmental"]),
-                    economic=safe_float(scores["economic"]),
-                    certifications=scores.get("certifications", []),
-                    scoring_method="hardcoded_database_via_synonym",
-                    multi_cert_applied=scores.get("multi_cert_applied", False),
-                    multi_cert_bonus=safe_float(
-                        scores.get("multi_cert_bonus", 0.0)),
-                    notes=f"Pre-calculated score via brand synonym '{synonym_brand}'",
-                )
-
-        # Step 3: Check if this is a product that should inherit parent company scores
+        # Step 1: Check if this is a product that should inherit parent company scores
         parent_company = BrandNormalizer.find_parent_company(brand)
         if parent_company:
             parent_normalized = BrandNormalizer.normalize(parent_company)
-            if parent_normalized in BrandNormalizer.HARDCODED_SCORES_DB:
-                scores = BrandNormalizer.HARDCODED_SCORES_DB[parent_normalized]
 
-                # Only skip inheritance for specific brands that should NOT inherit
-                # (like Digiorno, which has its own empty entry)
-                non_inheriting_brands = ["digiorno", "bai", "nestle pure life"]
+            # Only skip inheritance for specific brands that should NOT inherit
+            # (like Digiorno, which has its own empty entry)
+            non_inheriting_brands = ["digiorno", "bai", "nestle pure life", "pure life"]
 
-                if brand_normalized in non_inheriting_brands:
-                    logger.info(f"Brand {brand} in non-inheriting list, skipping parent inheritance")
-                    # Fall through to dynamic calculation
-                else:
-                    logger.info(f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'")
-                    return BrandData(
-                        brand=brand,
-                        social=safe_float(scores["social"]),
-                        environmental=safe_float(scores["environmental"]),
-                        economic=safe_float(scores["economic"]),
-                        certifications=scores.get("certifications", []),
-                        scoring_method="parent_company_inheritance",
-                        multi_cert_applied=scores.get("multi_cert_applied", False),
-                        multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
-                        notes=f"Inherited score from parent company '{parent_company}'",
-                    )
+            if brand_normalized in non_inheriting_brands:
+                logger.info(f"Brand {brand} in non-inheriting list, skipping parent inheritance")
+                # Fall through to dynamic calculation
+            else:
+                logger.info(f"Found parent company '{parent_company}' for '{brand}' - will use dynamic calculation")
+                # Fall through to dynamic calculation
 
-        # Step 4: Dynamic calculation from certifications - PASS THE CATEGORY
+        # Step 2: Dynamic calculation from certifications - PASS THE CATEGORY
         logger.info(
-            f"Brand '{brand_normalized}' not in hardcoded database, calculating dynamically"
+            f"Brand '{brand_normalized}' calculating dynamically"
         )
         return ScoringManager._calculate_dynamic_scores(brand, category)
 
@@ -4054,12 +4003,10 @@ async def health_check() -> Dict[str, Any]:
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "total_brands": len(BrandNormalizer.BRAND_IDENTIFICATION_DB),
-        "hardcoded_scores": len(BrandNormalizer.HARDCODED_SCORES_DB),
-        "total_users": len(USERS_DB),
+                "total_users": len(USERS_DB),
         "cache_size": len(PRODUCT_CACHE),
-        "certification_system": "Hardcoded Scores + Excel-based + Hardcoded Identification Database",
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses + Multi-Cert Bonus",
-        "scoring_priority": "Hardcoded DB → Brand Synonyms → Parent Company → Dynamic Calculation",
+        "scoring_priority": "Brand Synonyms → Parent Company → Dynamic Calculation",
         "scoring_consistency": "Single scoring function ensures identical results across all search methods",
         "certification_bonuses": ScoringConfig.CERTIFICATION_BONUSES,
         "multi_cert_bonus": ScoringConfig.MULTI_CERT_BONUS,
@@ -4083,7 +4030,7 @@ async def health_check() -> Dict[str, Any]:
         "brand_synonyms": len(BrandNormalizer.BRAND_SYNONYMS),
         "scoring_methodology_endpoint": "/scoring-methodology (HTML)",
         "version": "2.3.0",
-        "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Hardcoded + Dynamic)",
+        "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Excel + Dynamic)",
     }
 
 
@@ -4161,12 +4108,6 @@ if __name__ == "__main__":
 
     logger.info(
         f"Brand identification database has {len(BrandNormalizer.BRAND_IDENTIFICATION_DB)} brands"
-    )
-    logger.info(
-        f"Hardcoded scores database has {len(BrandNormalizer.HARDCODED_SCORES_DB)} pre-calculated scores"
-    )
-    logger.info(
-        "Scoring Consistency: Single scoring function with hardcoded priority ensures identical results"
     )
     logger.info("Multi-certification bonus always applied correctly")
     logger.info(
