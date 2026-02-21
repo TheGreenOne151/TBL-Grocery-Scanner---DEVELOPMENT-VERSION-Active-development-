@@ -872,43 +872,47 @@
         </p>
     </div>
 
-    // Open Google Lens for barcode scanning
-    function openGoogleLens() {
-        const isAndroid = /Android/i.test(navigator.userAgent);
+    <script>
+        const API_URL = 'https://tbl-grocery-scanner.onrender.com';
+        let debounceTimer;
+        let currentUser = null;
+        let lastSearchResult = null;
+        let compareList = JSON.parse(localStorage.getItem('compareList') || '[]');
 
-        console.log('Device detected:', isAndroid ? 'Android' : 'Other');
+        // Initialize on load
+        window.onload = function() {
+            checkLoginStatus();
+            updateCompareDisplay();
 
-        if (isAndroid) {
-            console.log('Attempting Lens intent...');
+            // Trigger the search type change handler to show/hide category dropdown
+            document.getElementById('searchType').dispatchEvent(new Event('change'));
+        };
 
-            // Try multiple intent variations
-            const intents = [
-                'intent://lens/#Intent;package=com.google.android.apps.lens;scheme=google;end;',
-                'intent://scan/#Intent;package=com.google.android.apps.lens;scheme=google;end;',
-                'google://lens'
-            ];
+        // Open Google Lens for barcode scanning
+        function openGoogleLens() {
+            const isAndroid = /Android/i.test(navigator.userAgent);
 
-            // Try first intent
-            window.location.href = intents[0];
+            if (isAndroid) {
+                // Try to open Lens app directly
+                window.location.href = 'intent://lens/#Intent;package=com.google.android.apps.lens;scheme=google;end;';
 
-            // Fallback to upload version
-            setTimeout(() => {
-                console.log('Intent failed, falling back to upload');
+                // If app not installed, use upload version
+                setTimeout(() => {
+                    window.open('https://lens.google.com/upload', '_blank');
+                }, 800);
+            } else {
+                // iOS and others: use upload version
                 window.open('https://lens.google.com/upload', '_blank');
-            }, 1000);
-        } else {
-            // iOS and others: use upload version
-            window.open('https://lens.google.com/upload', '_blank');
+            }
+
+            showSuccess('📷 Scan the barcode, copy it, then paste here!');
+            setTimeout(() => hideSuccess(), 4000);
+
+            // Switch to barcode mode
+            document.getElementById('searchType').value = 'barcode';
+            document.getElementById('searchLabel').textContent = 'Enter Barcode:';
+            document.getElementById('searchInput').placeholder = 'e.g., 012345678905';
         }
-
-        showSuccess('📷 Take/upload a photo with a barcode, then copy the text and paste here!');
-        setTimeout(() => hideSuccess(), 6000);
-
-        // Switch to barcode mode
-        document.getElementById('searchType').value = 'barcode';
-        document.getElementById('searchLabel').textContent = 'Enter Barcode:';
-        document.getElementById('searchInput').placeholder = 'e.g., 012345678905';
-    }
 
         // Tab switching
         function switchTab(tabName) {
