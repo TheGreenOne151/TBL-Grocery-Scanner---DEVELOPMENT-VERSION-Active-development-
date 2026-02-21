@@ -1645,6 +1645,17 @@ class CertificationManager:
             # Return the default match for this brand
             return self._format_response(True, data, brand)
 
+        # ===== ADD THIS NEW SECTION =====
+        # Check if this brand has a parent company with certifications
+        parent_company = BrandNormalizer.find_parent_company(brand)
+        if parent_company:
+            parent_normalized = BrandNormalizer.normalize(parent_company)
+            if parent_normalized in self.data:
+                logger.info(f"Using parent company '{parent_company}' for '{brand}'")
+                data = self.data[parent_normalized]
+                return self._format_response(True, data, brand)
+        # ===== END NEW SECTION =====
+
         # Check for partial matches with improved logic
         for stored_brand, data in self.data.items():
             if self._improved_partial_match(brand_normalized, stored_brand):
@@ -3654,7 +3665,7 @@ async def search_brand(q: str = Query(...), category: str = Query(None)):
     search_query = q.lower().strip()
 
     if len(search_query) < 2:
-        return {"suggestions": [], "source": "local", "query": q}
+
 
     # 1. Try local Excel search for auto-suggest
     try:
