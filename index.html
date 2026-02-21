@@ -895,15 +895,19 @@
             const isAndroid = /Android/i.test(navigator.userAgent);
 
             if (isAndroid) {
-                // Try to open in Google app first
+                // Try to open in Google app
                 window.location.href = 'google://lens';
 
-                // Fallback to web uploader
+                // Check if we're still here after a short delay
                 setTimeout(() => {
-                    window.location.href = 'https://lens.google.com/focus?hl=en';
-                }, 800);
+                    // If page is still visible, intent failed
+                    if (document.visibilityState === 'visible') {
+                        console.log('Intent failed, falling back to web');
+                        window.location.href = 'https://lens.google.com/focus?hl=en';
+                    }
+                }, 500);
             } else {
-                // iOS/others: use web uploader
+                // iOS/others: use web uploader immediately
                 window.location.href = 'https://lens.google.com/focus?hl=en';
             }
 
