@@ -896,17 +896,13 @@
                 // Try to open Lens app directly
                 window.location.href = 'intent://lens/#Intent;package=com.google.android.apps.lens;scheme=google;end;';
 
-                // If app not installed, open Play Store or website
+                // If app not installed, use upload version
                 setTimeout(() => {
-                    if (confirm('Google Lens app not found. Open in browser or install from Play Store?')) {
-                        window.location.href = 'https://lens.google.com';
-                    } else {
-                        window.location.href = 'market://details?id=com.google.android.apps.lens';
-                    }
+                    window.open('https://lens.google.com/upload', '_blank');
                 }, 800);
             } else {
-                // Non-Android: just open website
-                window.open('https://lens.google.com', '_blank');
+                // iOS and others: use upload version
+                window.open('https://lens.google.com/upload', '_blank');
             }
 
             showSuccess('📷 Scan the barcode, copy it, then paste here!');
