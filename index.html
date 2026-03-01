@@ -1681,37 +1681,20 @@
                     target: document.getElementById('scanner-feed'),
                     constraints: {
                         facingMode: "environment", // Use back camera
-                        width: { min: 1280, ideal: 1920, max: 2560 },
-                        height: { min: 720, ideal: 1080, max: 1440 },
-                        aspectRatio: { min: 1.33, max: 1.78 }
-                    },
-                    area: {
-                        top: "10%",    // Expanded scan area
-                        right: "5%",
-                        left: "5%",
-                        bottom: "10%"
+                        width: 640,
+                        height: 480,
+                        aspectRatio: 4/3
                     }
                 },
                 decoder: {
                     readers: [
                         "ean_reader", "ean_8_reader", "upc_reader",
-                        "upc_e_reader", "code_128_reader", "code_39_reader",
-                        "code_93_reader", "codabar_reader"
-                    ],
-                    debug: {
-                        drawBoundingBox: true,
-                        showFrequency: true,
-                        drawScanline: true,
-                        showPattern: true
-                    }
-                },
-                locator: {
-                    patchSize: "large",      // Better for small barcodes
-                    halfSample: false         // More accurate detection
+                        "upc_e_reader", "code_128_reader", "code_39_reader"
+                    ]
                 },
                 locate: true,
-                numOfWorkers: Math.min(4, navigator.hardwareConcurrency || 2),
-                frequency: 15                  // Check more frequently
+                numOfWorkers: 2,
+                frequency: 10
             }, function(err) {
                 if (err) {
                     console.error('Scanner init error:', err);
@@ -1732,13 +1715,11 @@
                     return;
                 }
 
-                // Get camera track for torch control (handle both Promise and non-Promise versions)
+                // Get camera track for torch control
                 try {
                     const trackResult = Quagga.CameraAccess.getActiveTrack();
 
-                    // Handle both Promise and direct object returns
                     if (trackResult && typeof trackResult.then === 'function') {
-                        // It's a Promise (newer Quagga versions)
                         trackResult
                             .then(track => {
                                 cameraTrack = track;
@@ -1750,9 +1731,8 @@
                                     }
                                 }
                             })
-                            .catch(e => console.log('Torch detection failed (async):', e));
+                            .catch(e => console.log('Torch detection failed:', e));
                     } else {
-                        // It's a direct object (older Quagga versions)
                         cameraTrack = trackResult;
                         if (cameraTrack && cameraTrack.getCapabilities) {
                             const caps = cameraTrack.getCapabilities();
@@ -1763,62 +1743,42 @@
                         }
                     }
                 } catch (e) {
-                    console.log('Torch detection failed (non-critical):', e);
-                    // Torch not supported - continue without it
+                    console.log('Torch detection failed:', e);
                 }
 
                 Quagga.start();
                 scannerActive = true;
                 updateScannerStatus('📷 Camera active - align barcode with frame');
 
-                // Visual debugging - draw boxes around detected barcodes
+                // Simple visual feedback
                 Quagga.onProcessed(function(result) {
                     var drawingCtx = Quagga.canvas.ctx.overlay,
                         drawingCanvas = Quagga.canvas.dom.overlay;
 
-                    if (result) {
-                        // Clear previous drawings
-                        if (drawingCtx) {
-                            drawingCtx.clearRect(0, 0,
-                                parseInt(drawingCanvas?.getAttribute('width') || 640),
-                                parseInt(drawingCanvas?.getAttribute('height') || 480));
-                        }
+                    if (result && drawingCtx) {
+                        drawingCtx.clearRect(0, 0,
+                            parseInt(drawingCanvas.getAttribute('width')),
+                            parseInt(drawingCanvas.getAttribute('height')));
 
-                        // Draw all potential barcode locations in green
                         if (result.boxes) {
-                            result.boxes.filter(function(box) {
-                                return box !== result.box;
-                            }).forEach(function(box) {
-                                if (drawingCtx) {
-                                    Quagga.ImageDebug.drawPath(box, {x: 0, y: 1}, drawingCtx, {
-                                        color: 'green',
-                                        lineWidth: 2
-                                    });
-                                }
+                            result.boxes.forEach(function(box) {
+                                Quagga.ImageDebug.drawPath(box, {x: 0, y: 1}, drawingCtx, {
+                                    color: 'green',
+                                    lineWidth: 2
+                                });
                             });
                         }
 
-                        // Draw the best candidate in blue
-                        if (result.box && drawingCtx) {
+                        if (result.box) {
                             Quagga.ImageDebug.drawPath(result.box, {x: 0, y: 1}, drawingCtx, {
-                                color: '#00F',
+                                color: 'blue',
                                 lineWidth: 3
                             });
-                        }
-
-                        // Draw decoded barcode in red text
-                        if (result.codeResult && result.codeResult.code && drawingCtx) {
-                            drawingCtx.font = "bold 24px Arial";
-                            drawingCtx.fillStyle = "red";
-                            drawingCtx.fillText(result.codeResult.code, 20, 50);
-
-                            // Also log it
-                            console.log('✅ Decoded:', result.codeResult.code);
                         }
                     }
                 });
 
-                // Handle successful scan (primary detection)
+                // Handle successful scan
                 Quagga.onDetected(function(result) {
                     if (!scannerActive || !result || !result.codeResult) return;
 
@@ -1827,26 +1787,18 @@
 
                     console.log('✅ BARCODE DETECTED:', barcode);
 
-                    // Vibrate feedback if supported
                     if (navigator.vibrate) navigator.vibrate(200);
-
                     updateScannerStatus(`✅ Barcode: ${barcode}`);
-
-                    // Close scanner
                     closeScanner();
 
-                    // Update search field and trigger search
                     document.getElementById('searchInput').value = barcode;
                     document.getElementById('searchType').value = 'barcode';
                     document.getElementById('searchType').dispatchEvent(new Event('change'));
 
-                    // Small delay then search (searchProduct handles its own errors)
-                    setTimeout(() => {
-                        searchProduct();
-                    }, 400);
+                    setTimeout(() => searchProduct(), 400);
                 });
 
-                // Auto-stop after 30 seconds to save battery
+                // Auto-stop after 30 seconds
                 scanTimeout = setTimeout(() => {
                     if (scannerActive) {
                         updateScannerStatus('⏰ Scanner timeout - please try again');
@@ -1854,7 +1806,7 @@
                     }
                 }, 30000);
             });
-        }
+        } // ← THIS WAS MISSING!
 
         // Close scanner and clean up
         function closeScanner() {
@@ -1954,7 +1906,6 @@
                 cameraBtn.style.display = 'none';
             }
         });
-
     </script>
 
     <!-- IMPORT MODAL -->
