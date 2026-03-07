@@ -1668,7 +1668,7 @@
             try {
                 // Get camera stream
                 videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment", width: 640, height: 480 }
+                    video: { facingMode: "environment", width: 1280, height: 720 }
                 });
 
                 const video = document.createElement('video');
@@ -1685,8 +1685,8 @@
 
                 // Create canvas for frame capture
                 const canvas = document.createElement('canvas');
-                canvas.width = 640;
-                canvas.height = 480;
+                canvas.width = 1280;
+                canvas.height = 720;
                 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
                 // Scan frames continuously
