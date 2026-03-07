@@ -1695,15 +1695,15 @@
 
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+                    // Get image data BEFORE drawing the red dot
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                    // Now draw the red dot (for visual feedback only)
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(canvas.width/2 - 5, canvas.height/2 - 5, 10, 10);
+
                     try {
-                        // Draw a red dot in the center
-                        ctx.fillStyle = 'red';
-                        ctx.fillRect(canvas.width/2 - 5, canvas.height/2 - 5, 10, 10);
-
-                        // Get image data
-                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-                        // DEBUG: Sample the center pixel every 30 frames
+                        // Sample center pixel (should now show camera feed)
                         if (Math.random() < 0.03) {
                             const centerIndex = (Math.floor(canvas.height/2) * canvas.width + Math.floor(canvas.width/2)) * 4;
                             console.log('📸 Center pixel RGB:',
@@ -1715,12 +1715,10 @@
 
                         console.log('🔄 Scanning frame...');
 
-                        // Try with simplified formats and tryInvert
                         const results = await ZXingWASM.readBarcodes(imageData, {
-                            formats: ["EAN-13", "UPC-A", "CODE-128"],
+                            formats: ["EAN-13", "UPC-A", "CODE-128", "EAN-8"],
                             tryHarder: true,
-                            tryRotate: true,
-                            tryInvert: true  // Try inverted colors (some barcodes are light-on-dark)
+                            tryRotate: true
                         });
 
                         if (results && results.length > 0) {
