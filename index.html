@@ -1666,9 +1666,9 @@
             if (scannerActive) return;
 
             try {
-                // Get camera stream
+                // Get camera stream - BACK TO 640x480 which worked
                 videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment", width: 1280, height: 720 }
+                    video: { facingMode: "environment", width: 640, height: 480 }
                 });
 
                 const video = document.createElement('video');
@@ -1683,10 +1683,10 @@
                 scannerActive = true;
                 updateScannerStatus('📷 Camera active - scanning...');
 
-                // Create canvas for frame capture
+                // Create canvas for frame capture - BACK TO 640x480
                 const canvas = document.createElement('canvas');
-                canvas.width = 1280;
-                canvas.height = 720;
+                canvas.width = 640;
+                canvas.height = 480;
                 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
                 // Scan frames continuously
@@ -1718,7 +1718,8 @@
                         const results = await ZXingWASM.readBarcodes(imageData, {
                             formats: ["EAN-13", "UPC-A", "CODE-128", "EAN-8"],
                             tryHarder: true,
-                            tryRotate: true
+                            tryRotate: true,
+                            tryInvert: true
                         });
 
                         if (results && results.length > 0) {
