@@ -1,11 +1,11 @@
 tbl-grocery-app/
-├── elegant_app.py                          # Main FastAPI application (UPDATED for Quagga2)
+├── elegant_app.py                          # Main FastAPI application (UPDATED for zxing-wasm)
 ├── requirements.txt                        # Python dependencies
 ├── runtime.txt                            # python-3.10.0
 ├── Procfile                               # Gunicorn with 2 workers
 ├── .gitignore                             # Git ignore rules
 ├── render.yaml                            # Render deployment config
-├── index.html                             # Frontend HTML interface (UPDATED with Quagga2 scanner)
+├── index.html                             # Frontend HTML interface (UPDATED with zxing-wasm scanner)
 ├── comprehensive_grocery_certifications.xlsx  # Certification database (896 brands)
 ├── brand_maintenance.py                    # Brand consistency checker
 ├── MAINTENANCE.md                          # Brand maintenance guide
@@ -13,11 +13,18 @@ tbl-grocery-app/
 ├── README.md                               # Project documentation
 └── create_excel.py                         # Excel creation script (optional)
 
-# New Features Added:
-# ├── Quagga2 Barcode Scanner               # Camera-based barcode scanning
-# ├── Scanner Modal with Visual Guide       # Full-screen camera overlay
+# 🆕 New Features Added (March 2025):
+# ├── zxing-wasm Barcode Scanner            # Actively maintained C++ port via WebAssembly
+# ├── Scanner Modal with Visual Guide       # Full-screen camera overlay with corner markers
 # ├── Auto-search on Scan                   # Automatically searches after successful scan
-# └── Torch/Flashlight Support              # For low-light conditions
+# ├── 30 FPS continuous frame scanning      # Fast, real-time barcode detection
+# ├── Support for 14+ barcode formats       # EAN, UPC, Code 128, QR, Data Matrix, PDF417, etc.
+# └── WASM-powered performance              # Near-native speed in the browser
+
+# Previous scanner history:
+# ├── ZXing-web (original, working)         # Replaced due to maintenance status
+# ├── Quagga2 (attempted)                   # Replaced due to detection issues
+# └── zxing-wasm (current)                  ✓ Actively maintained, fast, accurate
 
 # Auto-created files:
 # └── user_data.json                       # Persistent user purchase data

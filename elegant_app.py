@@ -3646,8 +3646,8 @@ async def reset_excel_file():
 
 @app.get("/validate/barcode/{barcode}")
 async def validate_barcode_format(barcode: str):
-    """Validate barcode format and provide compatibility info for Quagga2"""
-    # Quagga2 supported formats
+    """Validate barcode format and provide compatibility info for zxing-wasm"""
+    # zxing-wasm supported formats (based on ZXing-CPP)
     patterns = {
         "EAN-13": r"^\d{13}$",
         "EAN-8": r"^\d{8}$",
@@ -3657,7 +3657,10 @@ async def validate_barcode_format(barcode: str):
         "Code 39": r"^[A-Z0-9\-\.\ \$\/\+\%]+$",
         "Code 93": r"^[A-Z0-9\-\.\ \$\/\+\%]+$",
         "Codabar": r"^[0-9\-\$\:\.\+\/]+$",
-        "Interleaved 2 of 5": r"^\d+$",
+        "ITF": r"^\d+$",  # Interleaved 2 of 5
+        "PDF417": r"^.+$",
+        "Data Matrix": r"^.+$",
+        "QR Code": r"^.+$",
     }
 
     detected_formats = []
@@ -3670,11 +3673,12 @@ async def validate_barcode_format(barcode: str):
         "length": len(barcode),
         "detected_formats": detected_formats,
         "is_numeric": barcode.isdigit(),
-        "quagga2_compatible": len(detected_formats) > 0,
+        "zxing_wasm_compatible": len(detected_formats) > 0,
+        "library": "zxing-wasm (ZXing C++ port)",
         "suggested_action": (
-            "✓ Compatible with Quagga2 scanner"
+            "✓ Compatible with zxing-wasm scanner"
             if detected_formats
-            else "⚠️ This format may not be supported by Quagga2. Try manual entry."
+            else "⚠️ This format may not be supported. Try manual entry."
         ),
     }
 
@@ -3865,7 +3869,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 
     # Enhanced logging for debugging scanner issues
     logger.info(
-        f"ZXing-web scan -> Barcode: {barcode}, Length: {len(barcode)}, Found in OFF: {product.get('found', False)}"
+        f"zxing-wasm scan -> Barcode: {barcode}, Length: {len(barcode)}, Found in OFF: {product.get('found', False)}"
     )
 
     brand_name = product.get("brand", "Unknown")
@@ -3917,7 +3921,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         "certification_sources": FileConfig.CERT_SOURCES,
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses Only + Multi-Cert Bonus",
         "methodology_explanation": "See /scoring-methodology for detailed breakdown",
-        "scanner_notes": "Scanned with Quagga2. For best results, ensure good lighting and hold the camera steady.",
+        "scanner_notes": "Scanned with zxing-wasm (ZXing C++ port). Fast, accurate, and actively maintained.",
     }
 
     # Include Open Food Facts data if product was found
@@ -3949,7 +3953,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         }
 
     logger.info(
-        f"Quagga2 product lookup for barcode: {barcode} - Found: {product.get('found', False)}"
+        f"zxing-wasm product lookup for barcode: {barcode} - Found: {product.get('found', False)}"
     )
     return sanitize_for_json(result)
 
@@ -3961,8 +3965,9 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 async def scanner_health():
     """Check scanner system health and compatibility"""
     return {
-        "scanner_system": "Quagga2 (Multi-Format Barcode Scanner)",
+        "scanner_system": "zxing-wasm (ZXing C++ port via WebAssembly)",
         "backend_integration": "✓ Ready",
+        "library": "zxing-wasm v2.0.0 - actively maintained",
         "api_endpoints": {
             "scan": "/scan (POST) - Main scanning endpoint",
             "product_lookup": "/product/{barcode} (GET)",
@@ -3970,19 +3975,24 @@ async def scanner_health():
             "health": "/scanner/health (GET)",
         },
         "supported_formats": [
-            "EAN-13 (13-digit)",
-            "EAN-8 (8-digit)",
-            "UPC-A (12-digit)",
-            "UPC-E (6-8 digit)",
+            "EAN-13",
+            "EAN-8",
+            "UPC-A",
+            "UPC-E",
             "Code 128",
             "Code 39",
             "Code 93",
             "Codabar",
-            "Interleaved 2 of 5",
+            "ITF (Interleaved 2 of 5)",
+            "PDF417",
+            "Data Matrix",
+            "QR Code",
+            "Aztec",
+            "MaxiCode"
         ],
         "camera_requirements": "User media permission required",
         "mobile_compatible": "Yes - optimized for Android and iOS",
-        "https_required": "Recommended for camera access",
+        "https_required": "Required for camera access on most browsers",
         "fallback_methods": [
             "Manual barcode entry",
             "Brand name search via /extract-brand",
@@ -3992,6 +4002,7 @@ async def scanner_health():
             "no_camera": "Check browser permissions and ensure HTTPS",
             "poor_scanning": "Ensure good lighting and hold steady",
             "small_barcodes": "Move camera closer to small barcodes",
+            "performance": "WASM provides near-native speed",
         },
     }
 
