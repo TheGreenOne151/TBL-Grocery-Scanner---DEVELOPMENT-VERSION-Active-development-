@@ -5,8 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TBL Grocery Scanner</title>
 
-    <!-- Add Html5Qrcode library FIRST -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+    <!-- Html5Qrcode library from CDNJS (more reliable) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
+    <script>
+      // Verify library loaded
+      window.onload = function() {
+        console.log('Html5Qrcode loaded:', typeof Html5Qrcode !== 'undefined');
+        if (typeof Html5Qrcode === 'undefined') {
+              console.error('Html5Qrcode failed to load - check network tab');
+            }
+        };
+    </script>
 
     <style>
         * {
