@@ -637,8 +637,7 @@
 
     </style>
 
-            <!-- Try unpkg CDN instead of jsdelivr -->
-            <script src="https://unpkg.com/zxing-wasm@1.2.0/dist/iife/reader/index.js"></script>
+            <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
 
 </head>
 <body>
@@ -1769,17 +1768,13 @@
 
                         console.log('🔄 Scanning frame...');
 
-                        const results = await ZXingWASM.readBarcodesFromImageData(processedImageData, {
-                            formats: ["EAN-13", "UPC-A", "CODE-128", "EAN-8"],
-                            tryHarder: true,
-                            tryRotate: true,
-                            tryInvert: true
-                        });
+                        // Use Html5Qrcode to decode the processed image
+                        const html5Decoder = new Html5Qrcode("scanner-feed");
+                        const decodedText = await html5Decoder.scanFile(processedImageData, true);
 
-                        if (results && results.length > 0) {
-                            console.log('✅ RESULTS FOUND:', results);
-                            const barcode = results[0].text;
-                            console.log('✅ Scanned:', barcode);
+                        if (decodedText) {
+                            console.log('✅ RESULTS FOUND:', decodedText);
+                            const barcode = decodedText;
 
                             if (navigator.vibrate) navigator.vibrate(200);
                             updateScannerStatus(`✅ ${barcode}`);
