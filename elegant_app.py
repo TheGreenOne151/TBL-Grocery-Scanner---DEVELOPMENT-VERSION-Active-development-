@@ -3022,6 +3022,7 @@ def render_score_breakdown(
         </div>
     </body>
     </html>
+
     """
 
 
