@@ -1677,123 +1677,87 @@
             if (scannerActive) return;
 
             try {
-                // Get camera stream - BACK TO 640x480 which worked
-                videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment", width: 640, height: 480 }
-                });
-
-                const video = document.createElement('video');
-                video.srcObject = videoStream;
-                video.setAttribute('playsinline', 'true'); // Required for iOS
-                video.play();
-
-                // Show video in scanner feed
-                document.getElementById('scanner-feed').innerHTML = '';
-                document.getElementById('scanner-feed').appendChild(video);
-
                 scannerActive = true;
+                updateScannerStatus('📷 Initializing scanner...');
+
+                // Clear any existing content
+                document.getElementById('scanner-feed').innerHTML = '';
+
+                // Create the scanner instance
+                const html5Scanner = new Html5Qrcode("scanner-feed");
+
+                // Success callback
+                const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                    console.log('✅ RESULTS FOUND:', decodedText);
+
+                    if (navigator.vibrate) navigator.vibrate(200);
+                    updateScannerStatus(`✅ ${decodedText}`);
+
+                    // Stop scanning and close
+                    html5Scanner.stop().then(() => {
+                        closeScanner();
+                        document.getElementById('searchInput').value = decodedText;
+                        document.getElementById('searchType').value = 'barcode';
+                        document.getElementById('searchType').dispatchEvent(new Event('change'));
+                        setTimeout(() => searchProduct(), 400);
+                    }).catch(err => {
+                        console.error('Error stopping scanner:', err);
+                        closeScanner();
+                    });
+                };
+
+                // Configuration
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 150 },
+                    aspectRatio: 1.0,
+                    videoConstraints: {
+                        facingMode: "environment",
+                        width: { min: 640, ideal: 1280, max: 1920 },
+                        height: { min: 480, ideal: 720, max: 1080 }
+                    }
+                };
+
+                // Start scanning
+                await html5Scanner.start(
+                    { facingMode: "environment" },
+                    config,
+                    qrCodeSuccessCallback,
+                    (errorMessage) => {
+                        // Silent fail for continuous scanning errors
+                        // Only log occasionally to avoid console spam
+                        if (Math.random() < 0.01) {
+                            console.log('Scanning...');
+                        }
+                    }
+                );
+
                 updateScannerStatus('📷 Camera active - scanning...');
-
-                // Create canvas for frame capture - BACK TO 640x480
-                const canvas = document.createElement('canvas');
-                canvas.width = 640;
-                canvas.height = 480;
-                const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-                // Create ONE Html5Qrcode instance for the entire scan session
-                // WITH all refinement options
-                const html5Decoder = new Html5Qrcode("scanner-feed", {
-                    verbose: false,
-                    useBarCodeDetectorIfSupported: true,
-                    experimentalFeatures: {
-                        useBarCodeDetector: true
-                    }
-                });
-
-                // Scan frames continuously
-                async function scanFrame() {
-                    if (!scannerActive) return;
-
-                    // Draw video to canvas
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                    // Get image data (RAW, no preprocessing)
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-                    // Draw the red dot (for visual feedback only)
-                    ctx.fillStyle = 'red';
-                    ctx.fillRect(canvas.width/2 - 5, canvas.height/2 - 5, 10, 10);
-
-                    try {
-                        // Sample center pixel occasionally for debugging
-                        if (Math.random() < 0.03) {
-                            const centerIndex = (Math.floor(canvas.height/2) * canvas.width + Math.floor(canvas.width/2)) * 4;
-                            console.log('📸 Center pixel RGB:',
-                                imageData.data[centerIndex],
-                                imageData.data[centerIndex+1],
-                                imageData.data[centerIndex+2]
-                            );
-                        }
-
-                        console.log('🔄 Scanning frame...');
-
-                        // Convert canvas directly to blob/File for Html5Qrcode
-                        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
-                        const file = new File([blob], "frame.jpg", { type: "image/jpeg" });
-
-                        // scanFile automatically applies the configured options
-                        const decodedText = await html5Decoder.scanFile(file, true);
-
-                        if (decodedText) {
-                            console.log('✅ RESULTS FOUND:', decodedText);
-                            const barcode = decodedText;
-
-                            if (navigator.vibrate) navigator.vibrate(200);
-                            updateScannerStatus(`✅ ${barcode}`);
-
-                            closeScanner();
-                            document.getElementById('searchInput').value = barcode;
-                            document.getElementById('searchType').value = 'barcode';
-                            document.getElementById('searchType').dispatchEvent(new Event('change'));
-                            setTimeout(() => searchProduct(), 400);
-
-                            return;
-                        }
-                    } catch (e) {
-                        console.error('Scanning error:', e);
-                    }
-
-                    animationFrame = requestAnimationFrame(scanFrame);
-                }
-
-                // ⚠️ IMPORTANT: Start the scanning loop!
-                scanFrame();
 
                 // Auto-stop after 30 seconds
                 scanTimeout = setTimeout(() => {
-                    if (scannerActive) closeScanner();
+                    if (scannerActive) {
+                        html5Scanner.stop().then(() => {
+                            closeScanner();
+                        }).catch(() => {});
+                    }
                 }, 30000);
 
             } catch (error) {
                 console.error('Camera error:', error);
-                updateScannerStatus('❌ Camera failed');
+                updateScannerStatus('❌ Camera failed: ' + (error.message || 'Unknown error'));
                 setTimeout(() => closeScanner(), 2000);
             }
         }
 
         function closeScanner() {
             if (scanTimeout) clearTimeout(scanTimeout);
-            if (animationFrame) cancelAnimationFrame(animationFrame);
-
-            if (videoStream) {
-                videoStream.getTracks().forEach(track => track.stop());
-                videoStream = null;
-            }
 
             scannerActive = false;
             document.getElementById('scannerModal').style.display = 'none';
             document.body.style.overflow = 'auto';
-            document.getElementById('scanner-feed').innerHTML = ''; // Clear video
+            document.getElementById('scanner-feed').innerHTML = ''; // Clear content
+            updateScannerStatus('📷 Initializing camera...');
         }
 
         function updateScannerStatus(msg) {
