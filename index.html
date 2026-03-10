@@ -1705,14 +1705,13 @@
                 const html5Decoder = new Html5Qrcode("scanner-feed", {
                     verbose: false,
                     formatsToSupport: [
-                        Html5QrcodeScannerFormats.EAN_13,
-                        Html5QrcodeScannerFormats.EAN_8,
-                        Html5QrcodeScannerFormats.UPC_A,
-                        Html5QrcodeScannerFormats.UPC_E,
-                        Html5QrcodeScannerFormats.CODE_128,
-                        Html5QrcodeScannerFormats.CODE_39
+                        Html5Qrcode.constants.EAN_13,
+                        Html5Qrcode.constants.EAN_8,
+                        Html5Qrcode.constants.UPC_A,
+                        Html5Qrcode.constants.UPC_E,
+                        Html5Qrcode.constants.CODE_128,
+                        Html5Qrcode.constants.CODE_39
                     ],
-                    // These are the key refinement options:
                     useBarCodeDetectorIfSupported: true,
                     experimentalFeatures: {
                         useBarCodeDetector: true
