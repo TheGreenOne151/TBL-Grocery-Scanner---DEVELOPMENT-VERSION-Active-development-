@@ -509,7 +509,7 @@ class BrandNormalizer:
         "dasani": "coca cola",
         "smartwater": "coca cola",
         "fairlife": "coca cola",
-        # Nestlé products
+        # NestlÃ© products
         "nescafe": "nestle",
         "nesquik": "nestle",
         "stouffers": "nestle",
@@ -530,7 +530,7 @@ class BrandNormalizer:
         "rexona": "unilever",
         "vaseline": "unilever",
         "lipton": "unilever",
-        # "ben jerrys": "unilever",  # ← Remove this line
+        # "ben jerrys": "unilever",  # â† Remove this line
         "magnum": "unilever",
         "breyers": "unilever",
         "klondike": "unilever",
@@ -672,7 +672,7 @@ class BrandNormalizer:
         "mondelez": ["mondelez international", "kraft foods"],
         "pepsico": ["pepsi", "pepsi co", "pepsico inc"],
         "coca cola": ["coca-cola", "coke", "coca cola company"],
-        "nestle": ["nestlé", "nestle sa"],
+        "nestle": ["nestlÃ©", "nestle sa"],
         "unilever": ["unilever plc", "unilever nv"],
         "kraft heinz": ["kraft", "heinz", "kraft heinz company"],
         "mars": ["mars inc", "mars incorporated"],
@@ -856,7 +856,7 @@ class BrandNormalizer:
         if not brand:
             return ""
 
-        # ADD THIS: Normalize accents (é → e, etc.)
+        # ADD THIS: Normalize accents (Ã© â†’ e, etc.)
         import unicodedata
         brand = unicodedata.normalize('NFKD', brand).encode('ASCII', 'ignore').decode('ASCII')
 
@@ -886,9 +886,9 @@ class BrandNormalizer:
             " uk",
             " canada",
             " europe",
-            "®",
-            "™",
-            "©",
+            "Â®",
+            "â„¢",
+            "Â©",
             "(",
             ")",
             "[",
@@ -1909,7 +1909,7 @@ class BrandExtractionManager:
         if brand_normalized in BrandNormalizer.BRAND_SYNONYMS:
             canonical_brand = BrandNormalizer.BRAND_SYNONYMS[brand_normalized]
             logger.info(
-                f"Input matches brand synonym: '{brand_normalized}' → '{canonical_brand}'"
+                f"Input matches brand synonym: '{brand_normalized}' â†’ '{canonical_brand}'"
             )
             return BrandExtractionManager._format_result(
                 success=True,
@@ -1924,7 +1924,7 @@ class BrandExtractionManager:
         for alias, canonical in BrandNormalizer.BRAND_ALIASES.items():
             if alias == brand_normalized:
                 logger.info(
-                    f"Input matches brand alias: '{brand_normalized}' → '{canonical}'"
+                    f"Input matches brand alias: '{brand_normalized}' â†’ '{canonical}'"
                 )
                 return BrandExtractionManager._format_result(
                     success=True,
@@ -2105,7 +2105,7 @@ class BrandExtractionManager:
 
         if best_match:
             logger.info(
-                f"Fuzzy match found: '{brand_normalized}' → '{best_match}' ({best_score:.1%} similarity)"
+                f"Fuzzy match found: '{brand_normalized}' â†’ '{best_match}' ({best_score:.1%} similarity)"
             )
             confidence = int(best_score * 100)
             return BrandExtractionManager._format_result(
@@ -2535,11 +2535,11 @@ def render_scoring_methodology() -> str:
     </head>
     <body>
         <div class="container">
-            <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
-            <div class="subtitle">Version 2.3.0 • Consistent, Transparent Certification-Based Scoring</div>
+            <h1>ðŸ“Š TBL Grocery Scanner Scoring Methodology</h1>
+            <div class="subtitle">Version 2.3.0 â€¢ Consistent, Transparent Certification-Based Scoring</div>
 
             <div class="section">
-                <h2>🎯 Core Principles</h2>
+                <h2>ðŸŽ¯ Core Principles</h2>
                 <div class="principle-box">
                     <h3>Consistency First</h3>
                     <p>Every brand gets the exact same score regardless of search method (barcode, brand name, or product name).</p>
@@ -2555,21 +2555,21 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>📈 How Scores Are Calculated</h2>
+                <h2>ðŸ“ˆ How Scores Are Calculated</h2>
 
                 <div class="score-breakdown">
                     <div class="score-pillar">
-                        <div>👥 Social Score</div>
+                        <div>ðŸ‘¥ Social Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
                     <div class="score-pillar">
-                        <div>🌱 Environmental Score</div>
+                        <div>ðŸŒ± Environmental Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
                     <div class="score-pillar">
-                        <div>💰 Economic Score</div>
+                        <div>ðŸ’° Economic Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
@@ -2584,9 +2584,9 @@ def render_scoring_methodology() -> str:
                 <table>
                     <tr>
                         <th>Certification</th>
-                        <th>👥 Social Bonus</th>
-                        <th>🌱 Environmental Bonus</th>
-                        <th>💰 Economic Bonus</th>
+                        <th>ðŸ‘¥ Social Bonus</th>
+                        <th>ðŸŒ± Environmental Bonus</th>
+                        <th>ðŸ’° Economic Bonus</th>
                         <th>Focus Area</th>
                     </tr>
                     <tr>
@@ -2625,8 +2625,8 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>⭐ Grade Thresholds</h2>
-                <p>Overall TBL Score = (Social + Environmental + Economic) ÷ 3</p>
+                <h2>â­ Grade Thresholds</h2>
+                <p>Overall TBL Score = (Social + Environmental + Economic) Ã· 3</p>
 
                 <div style="margin: 20px 0;">
                     <div class="grade-box excellent">EXCELLENT: {ScoringConfig.GRADE_THRESHOLDS['EXCELLENT']}+</div>
@@ -2644,15 +2644,15 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="example">
-                <h2>🧪 Example Calculation: Nespresso</h2>
+                <h2>ðŸ§ª Example Calculation: Nespresso</h2>
                 <p><strong>Certifications:</strong> B Corp, Fair Trade, Rainforest Alliance</p>
 
                 <table>
                     <tr>
                         <th>Step</th>
-                        <th>👥 Social</th>
-                        <th>🌱 Environmental</th>
-                        <th>💰 Economic</th>
+                        <th>ðŸ‘¥ Social</th>
+                        <th>ðŸŒ± Environmental</th>
+                        <th>ðŸ’° Economic</th>
                     </tr>
                     <tr>
                         <td>Base Score</td>
@@ -2679,7 +2679,7 @@ def render_scoring_methodology() -> str:
                         <td>+0.5</td>
                     </tr>
                     <tr>
-                        <td>+ Multi-Cert Bonus (2 additional certs × {ScoringConfig.MULTI_CERT_BONUS})</td>
+                        <td>+ Multi-Cert Bonus (2 additional certs Ã— {ScoringConfig.MULTI_CERT_BONUS})</td>
                         <td>+1.0</td>
                         <td>+1.0</td>
                         <td>+1.0</td>
@@ -2692,12 +2692,12 @@ def render_scoring_methodology() -> str:
                     </tr>
                 </table>
 
-                <p><strong>Overall TBL Score:</strong> (8.5 + 8.5 + 8.0) ÷ 3 = <strong>8.3</strong></p>
+                <p><strong>Overall TBL Score:</strong> (8.5 + 8.5 + 8.0) Ã· 3 = <strong>8.3</strong></p>
                 <p><strong>Grade:</strong> <span class="grade-box great">GREAT</span></p>
             </div>
 
             <div class="section">
-                <h2>🔄 Consistent Scoring Across All Search Methods</h2>
+                <h2>ðŸ”„ Consistent Scoring Across All Search Methods</h2>
                 <div class="principle-box">
                     <h3>Single Source of Truth</h3>
                     <p>One function (<code>calculate_brand_scores()</code>) handles all scoring</p>
@@ -2714,9 +2714,9 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="/" class="back-button">🏠 Back to Scanner</a>
-                <a href="/health" class="back-button">❤️ Health Check</a>
-                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
+                <a href="/" class="back-button">ðŸ  Back to Scanner</a>
+                <a href="/health" class="back-button">â¤ï¸ Health Check</a>
+                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">â¬…ï¸ Go Back</button>
             </div>
         </div>
 
@@ -2945,29 +2945,29 @@ def render_score_breakdown(
     </head>
     <body>
         <div class="container">
-            <h1>📊 Score Breakdown</h1>
+            <h1>ðŸ“Š Score Breakdown</h1>
             <div class="brand-header">
                 <h2 style="margin-top: 0;">{brand}</h2>
                 <p>Normalized as: {brand_normalized}</p>
             </div>
 
             <div class="excel-status {'excel-found' if excel_result['found'] else 'excel-notfound'}">
-                {'✓ Found in Excel Database' if excel_result['found'] else '✗ Not in Excel Database'}
+                {'âœ“ Found in Excel Database' if excel_result['found'] else 'âœ— Not in Excel Database'}
             </div>
 
             <div class="score-display">
                 <div class="pillar">
-                    <div>👥 Social Impact</div>
+                    <div>ðŸ‘¥ Social Impact</div>
                     <div class="pillar-score">{scores.social:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_social_bonus:.1f} bonus</div>
                 </div>
                 <div class="pillar">
-                    <div>🌱 Environmental Impact</div>
+                    <div>ðŸŒ± Environmental Impact</div>
                     <div class="pillar-score">{scores.environmental:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_env_bonus:.1f} bonus</div>
                 </div>
                 <div class="pillar">
-                    <div>💰 Economic Impact</div>
+                    <div>ðŸ’° Economic Impact</div>
                     <div class="pillar-score">{scores.economic:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_econ_bonus:.1f} bonus</div>
                 </div>
@@ -2980,7 +2980,7 @@ def render_score_breakdown(
             </div>
 
             <div class="breakdown">
-                <h3 style="color: #e65100; margin-top: 0;">🔍 How This Score Was Calculated</h3>
+                <h3 style="color: #e65100; margin-top: 0;">ðŸ” How This Score Was Calculated</h3>
 
                 <h4>Base Scores (All Brands Start Here)</h4>
                 <div class="bonus-row">
@@ -3007,7 +3007,7 @@ def render_score_breakdown(
             </div>
 
             <div style="margin: 30px 0;">
-                <h3>✅ Verified Certifications</h3>
+                <h3>âœ… Verified Certifications</h3>
                 {cert_badges}
                 <p style="font-size: 12px; color: #666; margin-top: 10px;">
                     Combined from Excel database and hardcoded database
@@ -3015,9 +3015,9 @@ def render_score_breakdown(
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="/" class="back-button">🏠 Back to Scanner</a>
-                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">📚 Full Methodology</a>
-                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
+                <a href="/" class="back-button">ðŸ  Back to Scanner</a>
+                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">ðŸ“š Full Methodology</a>
+                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">â¬…ï¸ Go Back</button>
             </div>
         </div>
     </body>
@@ -3033,7 +3033,7 @@ async def get_scoring_methodology():
     """Explain the scoring methodology transparently to users"""
     return HTMLResponse(content=render_scoring_methodology())
 
-# ✅ ADD THIS NEW ROUTE RIGHT HERE:
+# âœ… ADD THIS NEW ROUTE RIGHT HERE:
 
 
 @app.get("/data-sources", response_class=HTMLResponse)
@@ -3073,7 +3073,7 @@ async def register_user(user: UserRegistration) -> Dict[str, Any]:
     }
     PURCHASE_HISTORY_DB[user.username] = []
 
-    # ✅ ADD THIS LINE: Save to persistent storage
+    # âœ… ADD THIS LINE: Save to persistent storage
     save_user_data()
 
     logger.info(f"New user registered: {user.username}")
@@ -3201,7 +3201,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
 
         # Get certifications
         try:
-            cert_result = certification_manager.get_certifications(brand, category)  # ← Category added!
+            cert_result = certification_manager.get_certifications(brand, category)  # â† Category added!
         except Exception as e:
             logger.error(f"Certification lookup error: {e}")
             cert_result = {
@@ -3216,7 +3216,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         if canonical_brand:
             brand = canonical_brand
             logger.info(
-                f"Using canonical brand: '{original_brand}' → '{brand}'")
+                f"Using canonical brand: '{original_brand}' â†’ '{brand}'")
 
         logger.info(
             f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
@@ -3676,9 +3676,9 @@ async def validate_barcode_format(barcode: str):
         "html5qrcode_compatible": len(detected_formats) > 0,
         "library": "Html5Qrcode v2.3.8",
         "suggested_action": (
-            "✓ Compatible with Html5Qrcode scanner"
+            "âœ“ Compatible with Html5Qrcode scanner"
             if detected_formats
-            else "⚠️ This format may not be supported. Try manual entry."
+            else "âš ï¸ This format may not be supported. Try manual entry."
         ),
     }
 
@@ -3790,7 +3790,7 @@ async def record_purchase(
         PURCHASE_HISTORY_DB[username] = []
     PURCHASE_HISTORY_DB[username].append(purchase)
 
-    # ✅ ADD THIS LINE: Save to persistent storage
+    # âœ… ADD THIS LINE: Save to persistent storage
     save_user_data()
 
     logger.info(f"Purchase recorded for {username}: {product.product_name}")
@@ -3966,7 +3966,7 @@ async def scanner_health():
     """Check scanner system health and compatibility"""
     return {
         "scanner_system": "Html5Qrcode (Lightweight JavaScript Scanner)",
-        "backend_integration": "✓ Ready",
+        "backend_integration": "âœ“ Ready",
         "library": "Html5Qrcode v2.3.8 - actively maintained",
         "api_endpoints": {
             "scan": "/scan (POST) - Main scanning endpoint",
@@ -4026,7 +4026,7 @@ async def health_check() -> Dict[str, Any]:
                 "total_users": len(USERS_DB),
         "cache_size": len(PRODUCT_CACHE),
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses + Multi-Cert Bonus",
-        "scoring_priority": "Brand Synonyms → Parent Company → Dynamic Calculation",
+        "scoring_priority": "Brand Synonyms â†’ Parent Company â†’ Dynamic Calculation",
         "scoring_consistency": "Single scoring function ensures identical results across all search methods",
         "certification_bonuses": ScoringConfig.CERTIFICATION_BONUSES,
         "multi_cert_bonus": ScoringConfig.MULTI_CERT_BONUS,
@@ -4082,13 +4082,13 @@ async def serve_frontend():
         </head>
         <body>
             <div class="container">
-                <h1>🌿 TBL Grocery Scanner Backend</h1>
+                <h1>ðŸŒ¿ TBL Grocery Scanner Backend</h1>
                 <div class="card">
-                    <p>✓ Backend is running!</p>
+                    <p>âœ“ Backend is running!</p>
                     <p>To use the scanner, place <code>index.html</code> in the same directory as this Python file.</p>
-                    <p>📊 <a href="/health">Health Check</a></p>
-                    <p>📚 <a href="/scoring-methodology">Scoring Methodology</a></p>
-                    <p>🛠️ <a href="/scanner/health">Scanner Health</a></p>
+                    <p>ðŸ“Š <a href="/health">Health Check</a></p>
+                    <p>ðŸ“š <a href="/scoring-methodology">Scoring Methodology</a></p>
+                    <p>ðŸ› ï¸ <a href="/scanner/health">Scanner Health</a></p>
                 </div>
             </div>
         </body>
@@ -4156,15 +4156,15 @@ if __name__ == "__main__":
     for product in test_products:
         parent = BrandNormalizer.find_parent_company(product)
         if parent:
-            logger.info(f"Test mapping: '{product}' → '{parent}'")
+            logger.info(f"Test mapping: '{product}' â†’ '{parent}'")
 
-    logger.info("🎯 Scanner System: Html5Qrcode integrated")
-    logger.info("🌐 Open http://localhost:8000 in your browser")
+    logger.info("ðŸŽ¯ Scanner System: Html5Qrcode integrated")
+    logger.info("ðŸŒ Open http://localhost:8000 in your browser")
     logger.info(
-        "📱 For mobile: Use your computer's IP address with port 8000")
+        "ðŸ“± For mobile: Use your computer's IP address with port 8000")
     logger.info(
-        "🔧 Key endpoint: GET /scoring-methodology for complete transparency")
-    logger.info("📊 Scanner health: GET /scanner/health")
+        "ðŸ”§ Key endpoint: GET /scoring-methodology for complete transparency")
+    logger.info("ðŸ“Š Scanner health: GET /scanner/health")
 
     # Only run uvicorn directly when executing the script locally
     # This block WON'T run when gunicorn imports the module
