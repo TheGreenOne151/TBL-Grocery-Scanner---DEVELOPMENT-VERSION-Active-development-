@@ -1730,25 +1730,20 @@
                     }
                     tempCtx.putImageData(grayImageData, 0, 0);
 
-                    // Apply adaptive thresholding to reduce glare
+                    // Apply gentler contrast enhancement (preserves bar patterns)
                     const enhancedImageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
                     const enhancedData = enhancedImageData.data;
 
-                    // Calculate average brightness for adaptive threshold
-                    let sum = 0;
+                    // Apply mild contrast stretch (not binary threshold)
                     for (let i = 0; i < enhancedData.length; i += 4) {
-                        sum += enhancedData[i];
-                    }
-                    const avgBrightness = sum / (enhancedData.length / 4);
-
-                    // Apply adaptive threshold (reduces glare by normalizing brightness)
-                    for (let i = 0; i < enhancedData.length; i += 4) {
+                        // Simple contrast enhancement - stretches the range
                         const val = enhancedData[i];
-                        // Adaptive threshold based on average brightness
-                        const threshold = val > avgBrightness ? 255 : 0;
-                        enhancedData[i] = threshold;
-                        enhancedData[i+1] = threshold;
-                        enhancedData[i+2] = threshold;
+                        // Stretch contrast: darken darks, lighten lights (but preserve grayscale)
+                        const enhanced = val < 100 ? Math.max(0, val - 20) :
+                                        (val > 155 ? Math.min(255, val + 20) : val);
+                        enhancedData[i] = enhanced;
+                        enhancedData[i+1] = enhanced;
+                        enhancedData[i+2] = enhanced;
                     }
                     tempCtx.putImageData(enhancedImageData, 0, 0);
 
