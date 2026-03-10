@@ -3022,9 +3022,7 @@ def render_score_breakdown(
         </div>
     </body>
     </html>
-
     """
-
 
 # ==================== API ENDPOINTS ====================
 
@@ -3647,7 +3645,7 @@ async def reset_excel_file():
 
 @app.get("/validate/barcode/{barcode}")
 async def validate_barcode_format(barcode: str):
-    """Validate barcode format and provide compatibility info for Html5Qrcode""
+    """Validate barcode format and provide compatibility info for Html5Qrcode"""
     # Html5Qrcode supported formats
     patterns = {
         "EAN-13": r"^\d{13}$",
