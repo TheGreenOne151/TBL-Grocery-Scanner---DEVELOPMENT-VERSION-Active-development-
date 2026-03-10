@@ -1700,6 +1700,9 @@
                 canvas.height = 480;
                 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
+                // Create ONE Html5Qrcode instance for the entire scan session
+                const html5Decoder = new Html5Qrcode("scanner-feed");
+
                 // Scan frames continuously
                 async function scanFrame() {
                     if (!scannerActive) return;
@@ -1774,9 +1777,6 @@
                         }
 
                         console.log('🔄 Scanning frame...');
-
-                        // Use Html5Qrcode with the correct method
-                        const html5Decoder = new Html5Qrcode("scanner-feed");
 
                         // Convert canvas to blob/File for Html5Qrcode
                         const blob = await new Promise(resolve => tempCanvas.toBlob(resolve, 'image/jpeg'));
