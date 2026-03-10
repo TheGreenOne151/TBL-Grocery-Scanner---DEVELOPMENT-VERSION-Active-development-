@@ -1658,6 +1658,7 @@
         let scanTimeout = null;
         let videoStream = null;
         let animationFrame = null;
+        let html5Scanner = null;
 
         function isCameraSupported() {
             return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -1683,8 +1684,8 @@
                 // Clear any existing content
                 document.getElementById('scanner-feed').innerHTML = '';
 
-                // Create the scanner instance
-                const html5Scanner = new Html5Qrcode("scanner-feed");
+                // Create the scanner instance and store globally
+                html5Scanner = new Html5Qrcode("scanner-feed");
 
                 // Success callback
                 const qrCodeSuccessCallback = (decodedText, decodedResult) => {
@@ -1694,16 +1695,18 @@
                     updateScannerStatus(`✅ ${decodedText}`);
 
                     // Stop scanning and close
-                    html5Scanner.stop().then(() => {
-                        closeScanner();
-                        document.getElementById('searchInput').value = decodedText;
-                        document.getElementById('searchType').value = 'barcode';
-                        document.getElementById('searchType').dispatchEvent(new Event('change'));
-                        setTimeout(() => searchProduct(), 400);
-                    }).catch(err => {
-                        console.error('Error stopping scanner:', err);
-                        closeScanner();
-                    });
+                    if (html5Scanner) {
+                        html5Scanner.stop().then(() => {
+                            closeScanner();
+                            document.getElementById('searchInput').value = decodedText;
+                            document.getElementById('searchType').value = 'barcode';
+                            document.getElementById('searchType').dispatchEvent(new Event('change'));
+                            setTimeout(() => searchProduct(), 400);
+                        }).catch(err => {
+                            console.error('Error stopping scanner:', err);
+                            closeScanner();
+                        });
+                    }
                 };
 
                 // Configuration
@@ -1736,7 +1739,7 @@
 
                 // Auto-stop after 30 seconds
                 scanTimeout = setTimeout(() => {
-                    if (scannerActive) {
+                    if (scannerActive && html5Scanner) {
                         html5Scanner.stop().then(() => {
                             closeScanner();
                         }).catch(() => {});
@@ -1746,12 +1749,35 @@
             } catch (error) {
                 console.error('Camera error:', error);
                 updateScannerStatus('❌ Camera failed: ' + (error.message || 'Unknown error'));
-                setTimeout(() => closeScanner(), 2000);
+
+                // Stop scanner if it was created
+                if (html5Scanner) {
+                    html5Scanner.stop().then(() => {
+                        closeScanner();
+                    }).catch(() => {
+                        closeScanner();
+                    });
+                } else {
+                    setTimeout(() => closeScanner(), 2000);
+                }
             }
         }
 
         function closeScanner() {
             if (scanTimeout) clearTimeout(scanTimeout);
+
+            // Stop the scanner if it exists
+            if (html5Scanner) {
+                try {
+                    html5Scanner.stop().catch(e => {
+                        // Ignore errors on stop
+                        console.log('Scanner stop error (ignored):', e);
+                    });
+                } catch (e) {
+                    // Ignore any other errors
+                }
+                html5Scanner = null; // Clear the reference
+            }
 
             scannerActive = false;
             document.getElementById('scannerModal').style.display = 'none';
