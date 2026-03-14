@@ -1,22 +1,38 @@
 tbl-grocery-app/
-├── elegant_app.py                          # Main FastAPI application
+├── elegant_app.py                          # Main FastAPI application (UPDATED for Html5Qrcode)
 ├── requirements.txt                        # Python dependencies
 ├── runtime.txt                            # python-3.10.0
 ├── Procfile                               # Gunicorn with 2 workers
 ├── .gitignore                             # Git ignore rules
 ├── render.yaml                            # Render deployment config
-├── index.html                             # Frontend HTML interface
-├── comprehensive_grocery_certifications.xlsx  # Certification database (848 brands)
-├── brand_maintenance.py                   # Brand consistency checker
-├── MAINTENANCE.md                         # Brand maintenance guide
-├── Project_Structure.txt                  # This file
-├── README.md                              # Project documentation
-└── create_excel.py                        # Excel creation script (optional)
+├── index.html                             # Frontend HTML interface (UPDATED with Html5Qrcode scanner + anti-glare)
+├── comprehensive_grocery_certifications.xlsx  # Certification database (896 brands)
+├── brand_maintenance.py                    # Brand consistency checker
+├── MAINTENANCE.md                          # Brand maintenance guide
+├── Project_Structure.txt                   # This file (UPDATED)
+├── README.md                               # Project documentation
+└── create_excel.py                         # Excel creation script (optional)
+
+# 🆕 New Features Added (March 2025):
+# ├── Html5Qrcode Barcode Scanner           # Lightweight, mobile-optimized scanning library
+# ├── Anti-Glare Preprocessing              # Adaptive thresholding to eliminate glare on glossy packages
+# ├── Grayscale Conversion                   # Luminance-based conversion for better contrast
+# ├── Scanner Modal with Visual Guide       # Full-screen camera overlay with corner markers
+# ├── Auto-search on Scan                   # Automatically searches after successful scan
+# ├── 30 FPS continuous frame scanning      # Fast, real-time barcode detection
+# ├── Support for all grocery barcode formats # EAN-13, EAN-8, UPC-A, UPC-E, CODE-128, CODE-39
+# └── Center Pixel Diagnostics              # Real-time RGB monitoring for debugging
+
+# Previous scanner history:
+# ├── ZXing-web (original, working)         # Replaced due to maintenance status
+# ├── Quagga2 (attempted)                   # Replaced due to detection issues
+# ├── zxing-wasm (attempted)                # Replaced due to Samsung A54 compatibility issues
+# └── Html5Qrcode (current)                 ✓ Mobile-optimized, works on Samsung A54
 
 # Auto-created files:
 # └── user_data.json                       # Persistent user purchase data
 
 # Development folders (excluded by .gitignore):
-# ├── venv/                                # Virtual environment
-# ├── __pycache__/                         # Python cache
-# └── .vs/                                 # Visual Studio cache
+# ├── venv/                                 # Virtual environment
+# ├── __pycache__/                          # Python cache
+# └── .vs/                                   # Visual Studio cache
