@@ -1490,6 +1490,10 @@
                     // Show the error/warning message
                     showError(data.note);
 
+                    // Clear any previous results
+                    document.getElementById('certBadges').innerHTML = '';
+                    document.getElementById('overallScore').textContent = '-';
+
                     // Remove highlight after 3 seconds
                     setTimeout(() => {
                         categorySelect.classList.remove('category-highlight');
