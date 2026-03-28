@@ -2596,7 +2596,7 @@ def render_scoring_methodology() -> str:
     <body>
         <div class="container">
             <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
-            <div class="subtitle">Version 2.3.0 â€¢ Consistent, Transparent Certification-Based Scoring</div>
+            <div class="subtitle">Version 2.3.0 • Consistent, Transparent Certification-Based Scoring</div>
 
             <div class="section">
                 <h2>🎯 Core Principles</h2>
@@ -2686,7 +2686,7 @@ def render_scoring_methodology() -> str:
 
             <div class="section">
                 <h2>⭐ Grade Thresholds</h2>
-                <p>Overall TBL Score = (Social + Environmental + Economic) Ã· 3</p>
+                <p>Overall TBL Score = (Social + Environmental + Economic) ÷ 3</p>
 
                 <div style="margin: 20px 0;">
                     <div class="grade-box excellent">EXCELLENT: {ScoringConfig.GRADE_THRESHOLDS['EXCELLENT']}+</div>
@@ -2739,7 +2739,7 @@ def render_scoring_methodology() -> str:
                         <td>+0.5</td>
                     </tr>
                     <tr>
-                        <td>+ Multi-Cert Bonus (2 additional certs Ã— {ScoringConfig.MULTI_CERT_BONUS})</td>
+                        <td>+ Multi-Cert Bonus (2 additional certs × {ScoringConfig.MULTI_CERT_BONUS})</td>
                         <td>+1.0</td>
                         <td>+1.0</td>
                         <td>+1.0</td>
@@ -2752,7 +2752,7 @@ def render_scoring_methodology() -> str:
                     </tr>
                 </table>
 
-                <p><strong>Overall TBL Score:</strong> (8.5 + 8.5 + 8.0) Ã· 3 = <strong>8.3</strong></p>
+                <p><strong>Overall TBL Score:</strong> (8.5 + 8.5 + 8.0) ÷ 3 = <strong>8.3</strong></p>
                 <p><strong>Grade:</strong> <span class="grade-box great">GREAT</span></p>
             </div>
 
@@ -3040,7 +3040,7 @@ def render_score_breakdown(
             </div>
 
             <div class="breakdown">
-                <h3 style="color: #e65100; margin-top: 0;">ðŸ” How This Score Was Calculated</h3>
+                <h3 style="color: #e65100; margin-top: 0;">🔍 How This Score Was Calculated</h3>
 
                 <h4>Base Scores (All Brands Start Here)</h4>
                 <div class="bonus-row">
