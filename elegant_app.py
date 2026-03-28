@@ -2595,11 +2595,11 @@ def render_scoring_methodology() -> str:
     </head>
     <body>
         <div class="container">
-            <h1>ðŸ“Š TBL Grocery Scanner Scoring Methodology</h1>
+            <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
             <div class="subtitle">Version 2.3.0 â€¢ Consistent, Transparent Certification-Based Scoring</div>
 
             <div class="section">
-                <h2>ðŸŽ¯ Core Principles</h2>
+                <h2>🎯 Core Principles</h2>
                 <div class="principle-box">
                     <h3>Consistency First</h3>
                     <p>Every brand gets the exact same score regardless of search method (barcode, brand name, or product name).</p>
@@ -2615,21 +2615,21 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>ðŸ“ˆ How Scores Are Calculated</h2>
+                <h2>📈 How Scores Are Calculated</h2>
 
                 <div class="score-breakdown">
                     <div class="score-pillar">
-                        <div>ðŸ‘¥ Social Score</div>
+                        <div>👥 Social Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
                     <div class="score-pillar">
-                        <div>ðŸŒ± Environmental Score</div>
+                        <div>🌱 Environmental Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
                     <div class="score-pillar">
-                        <div>ðŸ’° Economic Score</div>
+                        <div>💰 Economic Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
@@ -2644,9 +2644,9 @@ def render_scoring_methodology() -> str:
                 <table>
                     <tr>
                         <th>Certification</th>
-                        <th>ðŸ‘¥ Social Bonus</th>
-                        <th>ðŸŒ± Environmental Bonus</th>
-                        <th>ðŸ’° Economic Bonus</th>
+                        <th>👥 Social Bonus</th>
+                        <th>🌱 Environmental Bonus</th>
+                        <th>💰 Economic Bonus</th>
                         <th>Focus Area</th>
                     </tr>
                     <tr>
@@ -2685,7 +2685,7 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>â­ Grade Thresholds</h2>
+                <h2>⭐ Grade Thresholds</h2>
                 <p>Overall TBL Score = (Social + Environmental + Economic) Ã· 3</p>
 
                 <div style="margin: 20px 0;">
@@ -2704,15 +2704,15 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="example">
-                <h2>ðŸ§ª Example Calculation: Nespresso</h2>
+                <h2>🧪 Example Calculation: Nespresso</h2>
                 <p><strong>Certifications:</strong> B Corp, Fair Trade, Rainforest Alliance</p>
 
                 <table>
                     <tr>
                         <th>Step</th>
-                        <th>ðŸ‘¥ Social</th>
-                        <th>ðŸŒ± Environmental</th>
-                        <th>ðŸ’° Economic</th>
+                        <th>👥 Social</th>
+                        <th>🌱 Environmental</th>
+                        <th>💰 Economic</th>
                     </tr>
                     <tr>
                         <td>Base Score</td>
@@ -2757,7 +2757,7 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>ðŸ”„ Consistent Scoring Across All Search Methods</h2>
+                <h2>🔍 Consistent Scoring Across All Search Methods</h2>
                 <div class="principle-box">
                     <h3>Single Source of Truth</h3>
                     <p>One function (<code>calculate_brand_scores()</code>) handles all scoring</p>
@@ -2774,9 +2774,9 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="/" class="back-button">ðŸ  Back to Scanner</a>
-                <a href="/health" class="back-button">â¤ï¸ Health Check</a>
-                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">â¬…ï¸ Go Back</button>
+                <a href="/" class="back-button">🏠 Back to Scanner</a>
+                <a href="/health" class="back-button">❤️ Health Check</a>
+                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
             </div>
         </div>
 
@@ -3005,29 +3005,29 @@ def render_score_breakdown(
     </head>
     <body>
         <div class="container">
-            <h1>ðŸ“Š Score Breakdown</h1>
+            <h1>📊 Score Breakdown</h1>
             <div class="brand-header">
                 <h2 style="margin-top: 0;">{brand}</h2>
                 <p>Normalized as: {brand_normalized}</p>
             </div>
 
             <div class="excel-status {'excel-found' if excel_result['found'] else 'excel-notfound'}">
-                {'âœ“ Found in Excel Database' if excel_result['found'] else 'âœ— Not in Excel Database'}
+                {'âœ“ Found in Excel Database' if excel_result['found'] else '❌ Not in Excel Database'}
             </div>
 
             <div class="score-display">
                 <div class="pillar">
-                    <div>ðŸ‘¥ Social Impact</div>
+                    <div>👥 Social Impact</div>
                     <div class="pillar-score">{scores.social:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_social_bonus:.1f} bonus</div>
                 </div>
                 <div class="pillar">
-                    <div>ðŸŒ± Environmental Impact</div>
+                    <div>🌱 Environmental Impact</div>
                     <div class="pillar-score">{scores.environmental:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_env_bonus:.1f} bonus</div>
                 </div>
                 <div class="pillar">
-                    <div>ðŸ’° Economic Impact</div>
+                    <div>💰 Economic Impact</div>
                     <div class="pillar-score">{scores.economic:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_econ_bonus:.1f} bonus</div>
                 </div>
@@ -3067,7 +3067,7 @@ def render_score_breakdown(
             </div>
 
             <div style="margin: 30px 0;">
-                <h3>âœ… Verified Certifications</h3>
+                <h3>✅ Verified Certifications</h3>
                 {cert_badges}
                 <p style="font-size: 12px; color: #666; margin-top: 10px;">
                     Combined from Excel database and hardcoded database
@@ -3075,9 +3075,9 @@ def render_score_breakdown(
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="/" class="back-button">ðŸ  Back to Scanner</a>
+                <a href="/" class="back-button">🏠 Back to Scanner</a>
                 <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">ðŸ“š Full Methodology</a>
-                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">â¬…ï¸ Go Back</button>
+                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
             </div>
         </div>
     </body>
@@ -3092,7 +3092,7 @@ async def get_scoring_methodology():
     """Explain the scoring methodology transparently to users"""
     return HTMLResponse(content=render_scoring_methodology())
 
-# âœ… ADD THIS NEW ROUTE RIGHT HERE:
+# ✅ ADD THIS NEW ROUTE RIGHT HERE:
 
 
 @app.get("/data-sources", response_class=HTMLResponse)
@@ -3132,7 +3132,7 @@ async def register_user(user: UserRegistration) -> Dict[str, Any]:
     }
     PURCHASE_HISTORY_DB[user.username] = []
 
-    # âœ… ADD THIS LINE: Save to persistent storage
+    # ✅ ADD THIS LINE: Save to persistent storage
     save_user_data()
 
     logger.info(f"New user registered: {user.username}")
@@ -3849,7 +3849,7 @@ async def record_purchase(
         PURCHASE_HISTORY_DB[username] = []
     PURCHASE_HISTORY_DB[username].append(purchase)
 
-    # âœ… ADD THIS LINE: Save to persistent storage
+    # ✅ ADD THIS LINE: Save to persistent storage
     save_user_data()
 
     logger.info(f"Purchase recorded for {username}: {product.product_name}")
@@ -4199,13 +4199,13 @@ if __name__ == "__main__":
         if parent:
             logger.info(f"Test mapping: '{product}' â†’ '{parent}'")
 
-    logger.info("ðŸŽ¯ Scanner System: Html5Qrcode integrated")
+    logger.info("🎯 Scanner System: Html5Qrcode integrated")
     logger.info("ðŸŒ Open http://localhost:8000 in your browser")
     logger.info(
-        "ðŸ“± For mobile: Use your computer's IP address with port 8000")
+        "📱 For mobile: Use your computer's IP address with port 8000")
     logger.info(
-        "ðŸ”§ Key endpoint: GET /scoring-methodology for complete transparency")
-    logger.info("ðŸ“Š Scanner health: GET /scanner/health")
+        "🔧 Key endpoint: GET /scoring-methodology for complete transparency")
+    logger.info("📊 Scanner health: GET /scanner/health")
 
     # Only run uvicorn directly when executing the script locally
     # This block WON'T run when gunicorn imports the module
