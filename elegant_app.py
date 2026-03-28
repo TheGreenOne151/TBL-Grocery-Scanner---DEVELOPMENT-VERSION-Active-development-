@@ -3488,6 +3488,11 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                 "search_brand_used": brand
             }
 
+        # Update category if a matched category was returned
+        if cert_result.get("matched_category"):
+            category = cert_result.get("matched_category")
+            logger.info(f"Updated category to matched category: '{category}'")
+
         # Use canonical brand if available
         original_brand = brand
         canonical_brand = cert_result.get("canonical_brand")
