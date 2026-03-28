@@ -706,6 +706,7 @@ class BrandNormalizer:
         "dannon": "danone",
         "hersheys": "hershey",
         "starbucks coffee": "starbucks",
+        "nestle crunch": "nestle",
     }
 
     BRAND_IDENTIFICATION_DB: ClassVar[Dict[str, Dict[str, Any]]] = {
@@ -752,7 +753,6 @@ class BrandNormalizer:
         "corn flakes": {"certifications": []},
         "costa coffee": {"certifications": ["Rainforest Alliance"]},
         "counter culture": {"certifications": ["B Corp"]},
-        "crunch": {"certifications": []},
         "dannon": {"certifications": ["B Corp"]},
         "dasani": {"certifications": []},
         "dentyne": {"certifications": []},
@@ -1115,10 +1115,11 @@ class CertificationManager:
 
     def __init__(self):
         self.data = None
+        self.brand_categories = None  # NEW: Track categories per brand
         self.last_loaded = None
 
     def load_certification_data(self) -> bool:
-        """Load certification data from Excel file"""
+        """Load certification data from Excel file and build category index"""
         try:
             if os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE):
                 logger.info(
@@ -1131,6 +1132,8 @@ class CertificationManager:
                 logger.info(f"Excel file loaded. Columns: {list(df.columns)}")
 
                 cert_data = {}
+                brand_categories = {}  # NEW: Track categories per brand
+
                 for _, row in df.iterrows():
                     # Use "Product_Brand" column from new file
                     brand = None
@@ -1144,30 +1147,51 @@ class CertificationManager:
 
                     brand_normalized = BrandNormalizer.normalize(brand)
 
+                    # NEW: Get category for this row
+                    category = ""
+                    if "Category" in df.columns:
+                        category_value = row.get("Category")
+                        if not pd.isna(category_value):
+                            category = str(category_value).strip()
+
+                    # NEW: Track categories for this brand
+                    if brand_normalized not in brand_categories:
+                        brand_categories[brand_normalized] = set()
+                    if category:
+                        brand_categories[brand_normalized].add(category)
+
                     # Get certifications with exact column names
                     certifications = self._extract_certifications(
                         row, df.columns)
 
-                    # Store brand data
-                    cert_data[brand_normalized] = {
+                    # Store brand data with category as secondary key (store all products)
+                    if brand_normalized not in cert_data:
+                        cert_data[brand_normalized] = {}
+
+                    # Use category as the key to store product-specific data
+                    product_key = category if category else "_default"
+
+                    # Store this product's data
+                    cert_data[brand_normalized][product_key] = {
                         "original_brand": brand,
                         "certifications": certifications,
-                        "research_complete": certifications.get(
-                            "research_complete",
-                            False),
+                        "research_complete": certifications.get("research_complete", False),
                         "row_data": row.to_dict(),
+                        "category": category,  # Store category for reference
                     }
 
                 self.data = cert_data
+                self.brand_categories = brand_categories  # NEW: Store category index
                 self.last_loaded = datetime.now()
 
                 logger.info(f"Loaded {len(cert_data)} certification records")
+                logger.info(f"Loaded category index for {len(brand_categories)} brands")
 
                 # Log some sample data for debugging
                 sample_brands = list(cert_data.keys())[:3]
                 for brand in sample_brands:
                     logger.info(
-                        f"Sample brand '{brand}': {cert_data[brand]['certifications']}"
+                        f"Sample brand '{brand}': certs={cert_data[brand]['certifications']}, categories={brand_categories.get(brand, set())}"
                     )
 
                 return True
@@ -1243,6 +1267,84 @@ class CertificationManager:
             certifications[cert_type] = value
 
         return certifications
+
+    def _get_brand_categories(self, brand_normalized: str) -> List[str]:
+        """Get all categories a brand appears in"""
+        categories = set()
+
+        # Check exact match
+        if brand_normalized in self.data:
+            for product_key, product_data in self.data[brand_normalized].items():
+                if product_key != "_default":
+                    categories.add(product_key)
+
+        # Also check partial matches
+        for stored_brand, products in self.data.items():
+            if stored_brand != brand_normalized and self._improved_partial_match(brand_normalized, stored_brand):
+                for product_key, product_data in products.items():
+                    if product_key != "_default":
+                        categories.add(product_key)
+
+        return sorted(list(categories))
+
+    def _find_exact_brand_category_match(self, brand_normalized: str, category: str) -> Optional[Dict]:
+        """Find exact brand + category match in stored data"""
+        category_normalized = category.strip().lower()
+
+        # Check exact brand match
+        if brand_normalized in self.data:
+            # Look for exact category match in this brand's products
+            for product_key, product_data in self.data[brand_normalized].items():
+                if product_key.lower() == category_normalized:
+                    return product_data
+
+        # Check partial brand matches
+        for stored_brand, products in self.data.items():
+            if self._improved_partial_match(brand_normalized, stored_brand):
+                for product_key, product_data in products.items():
+                    if product_key.lower() == category_normalized:
+                        return product_data
+
+        return None
+
+    def _find_best_category_match(self, brand_normalized: str, category: str) -> Optional[Dict]:
+        """Find best category match for barcode scans when exact match fails"""
+        category_lower = category.strip().lower()
+        best_match = None
+        best_score = 0
+
+        # Check exact brand match
+        if brand_normalized in self.data:
+            for product_key, product_data in self.data[brand_normalized].items():
+                if product_key == "_default":
+                    continue
+
+                # Calculate match score (simple containment)
+                product_key_lower = product_key.lower()
+                if category_lower in product_key_lower or product_key_lower in category_lower:
+                    score = len(category_lower) if category_lower in product_key_lower else len(product_key_lower)
+                    if score > best_score:
+                        best_score = score
+                        best_match = product_data
+                        logger.info(f"Found partial category match for barcode: '{category}' → '{product_key}'")
+
+        # Check partial brand matches
+        if not best_match:
+            for stored_brand, products in self.data.items():
+                if self._improved_partial_match(brand_normalized, stored_brand):
+                    for product_key, product_data in products.items():
+                        if product_key == "_default":
+                            continue
+
+                        product_key_lower = product_key.lower()
+                        if category_lower in product_key_lower or product_key_lower in category_lower:
+                            score = len(category_lower) if category_lower in product_key_lower else len(product_key_lower)
+                            if score > best_score:
+                                best_score = score
+                                best_match = product_data
+                                logger.info(f"Found partial category match via partial brand: '{category}' → '{product_key}'")
+
+        return best_match
 
     @staticmethod
     def _improved_partial_match(search_brand: str, stored_brand: str) -> bool:
@@ -1394,8 +1496,15 @@ class CertificationManager:
 
         return False
 
-    def get_certifications(self, brand: str, category: str = None) -> Dict[str, Any]:
-        """Get certifications for a brand from Excel data, optionally filtered by category"""
+    def get_certifications(self, brand: str, category: str = None, source: str = "manual") -> Dict[str, Any]:
+        """
+        Get certifications for a brand from Excel data, filtered by category.
+
+        Args:
+            brand: Brand name to look up
+            category: Product category (required for multi-category brands unless source is "barcode")
+            source: "barcode" (OFF provided category) or "manual" (user selected)
+        """
         # Reload data if never loaded or if more than 5 minutes old
         if (
             self.data is None
@@ -1407,79 +1516,169 @@ class CertificationManager:
 
         if not brand or brand.lower() in ["unknown", "n/a", ""]:
             logger.info("Empty brand requested, returning default certifications")
-            return self._get_default_response()
+            return self._get_default_response(found=False, match_type="no_brand")
 
         brand_normalized = BrandNormalizer.normalize(brand)
-        logger.info(
-            logger.info(f"Looking for 'nestle'. Keys containing 'nestle': {[k for k in self.data.keys() if 'nestle' in k]}")
-        )
+        logger.info(f"Looking for certifications for brand: '{brand_normalized}', category: '{category}', source: '{source}'")
 
-        logger.info(f"All keys containing 'nest': {[k for k in self.data.keys() if 'nest' in k]}")
+        # ===== STEP 1: Try exact brand + category match if category provided =====
+        if category and category.strip():
+            exact_match = self._find_exact_brand_category_match(brand_normalized, category)
+            if exact_match:
+                logger.info(f"Found exact match: brand='{brand_normalized}', category='{category}'")
+                return self._format_response(
+                    found=True,
+                    data=exact_match,
+                    search_brand=brand,
+                    match_type="exact_product"
+                )
 
-        # Check for exact match
+        # ===== STEP 2: Check if brand exists in our data =====
+        brand_exists = False
+        matched_brand = None
+        matched_products = None
+
+        # Check exact brand match
         if brand_normalized in self.data:
-            data = self.data[brand_normalized]
-            logger.info(f"Found exact match for '{brand}': {data['certifications']}")
+            brand_exists = True
+            matched_brand = brand_normalized
+            matched_products = self.data[brand_normalized]  # This is now a dict of products by category
+        else:
+            # Check partial brand match
+            for stored_brand, products in self.data.items():
+                if self._improved_partial_match(brand_normalized, stored_brand):
+                    brand_exists = True
+                    matched_brand = stored_brand
+                    matched_products = products
+                    break
 
-            # If category provided, try to find category-specific match
-            if category and category.strip():
-                try:
-                    pd = get_pandas()
-                    df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
+        if brand_exists and matched_products:
+            # Get categories this brand appears in
+            categories = [k for k in matched_products.keys() if k != "_default"]
+            is_single_category = len(categories) == 1
 
-                    # Filter by brand and category
-                    brand_mask = df['Product_Brand'].str.contains(brand, case=False, na=False)
-                    category_mask = df['Category'].str.contains(category, case=False, na=False)
-                    category_specific = df[brand_mask & category_mask]
+            # Get the first product's category for single-category case
+            first_category = categories[0] if categories else None
+            first_product_data = matched_products.get(first_category) if first_category else matched_products.get("_default")
 
-                    if not category_specific.empty:
-                        # Found category-specific entry
-                        row = category_specific.iloc[0]
-                        certifications = self._extract_certifications(row, df.columns)
-                        logger.info(f"Found category-specific match for '{brand}' in category '{category}'")
+            # CASE A: Single-category brand - safe to use brand-only match
+            if is_single_category:
+                single_category = categories[0]
+                product_data = matched_products[single_category]
+                logger.info(f"Brand '{matched_brand}' appears only in category '{single_category}' - using brand-only match")
+                return self._format_response(
+                    found=True,
+                    data=product_data,
+                    search_brand=brand,
+                    match_type="brand_only_single_category",
+                    matched_category=single_category,
+                    note=f"This brand only produces {single_category} products."
+                )
 
-                        # Create data dict for this specific match
-                        category_data = {
-                            "original_brand": row.get('Product_Brand', brand),
-                            "certifications": certifications,
-                            "research_complete": certifications.get("research_complete", False),
-                            "row_data": row.to_dict(),
-                        }
-                        return self._format_response(True, category_data, brand)
-                except Exception as e:
-                    logger.error(f"Error in category-specific lookup: {e}")
+            # CASE B: Barcode scan with category from OFF
+            elif source == "barcode" and category:
+                # Try to find best category match
+                best_match = self._find_best_category_match(brand_normalized, category)
+                if best_match:
+                    # Get the category from the matched product data
+                    best_category = best_match.get("category", "")
+                    if not best_category:
+                        # Fallback to row_data
+                        best_row_data = best_match.get("row_data", {})
+                        best_category = best_row_data.get("Category", "") if best_row_data else ""
 
-            # Return the default match for this brand
-            return self._format_response(True, data, brand)
+                    logger.info(f"Found category match for barcode: '{category}' → '{best_category}'")
+                    return self._format_response(
+                        found=True,
+                        data=best_match,
+                        search_brand=brand,
+                        match_type="barcode_category_match",
+                        matched_category=best_category,
+                        note=f"Matched to {best_category} category based on product information."
+                    )
+                else:
+                    # No category match found - return unknown
+                    logger.info(f"No category match for '{brand}' with category '{category}'")
+                    return self._get_default_response(
+                        found=False,
+                        match_type="no_category_match",
+                        note=f"Product category '{category}' not found in database for this brand."
+                    )
 
-        # ===== ADD THIS NEW SECTION =====
-        # Check if this brand has a parent company with certifications
+            # CASE C: Manual search with category provided but not exact match
+            elif category and category.strip():
+                # Try partial category match
+                best_match = self._find_best_category_match(brand_normalized, category)
+                if best_match:
+                    # Get the category from the matched product data
+                    best_category = best_match.get("category", "")
+                    if not best_category:
+                        best_row_data = best_match.get("row_data", {})
+                        best_category = best_row_data.get("Category", "") if best_row_data else ""
+
+                    logger.info(f"Found partial category match for manual search: '{category}' → '{best_category}'")
+                    return self._format_response(
+                        found=True,
+                        data=best_match,
+                        search_brand=brand,
+                        match_type="partial_category_match",
+                        matched_category=best_category,
+                        note=f"Best match found in {best_category} category. Please verify."
+                    )
+                else:
+                    # No match - require category selection
+                    return self._get_default_response(
+                        found=False,
+                        match_type="category_required",
+                        note=f"This brand makes multiple product types. Please select a category: {', '.join(categories)}"
+                    )
+
+            # CASE D: Manual search without category for multi-category brand
+            else:
+                logger.info(f"Brand '{matched_brand}' appears in {len(categories)} categories. Category required.")
+                return self._get_default_response(
+                    found=False,
+                    match_type="category_required",
+                    note=f"This brand makes multiple product types. Please select a category: {', '.join(categories)}"
+                )
+
+        # ===== STEP 3: Check parent company =====
         parent_company = BrandNormalizer.find_parent_company(brand)
         if parent_company:
             parent_normalized = BrandNormalizer.normalize(parent_company)
             if parent_normalized in self.data:
                 logger.info(f"Using parent company '{parent_company}' for '{brand}'")
-                data = self.data[parent_normalized]
-                return self._format_response(True, data, brand)
-        # ===== END NEW SECTION =====
+                # For parent company, get the first product
+                parent_products = self.data[parent_normalized]
+                parent_categories = [k for k in parent_products.keys() if k != "_default"]
+                if parent_categories:
+                    parent_data = parent_products[parent_categories[0]]
+                else:
+                    parent_data = parent_products.get("_default")
 
-        # Check for partial matches with improved logic
-        for stored_brand, data in self.data.items():
-            if self._improved_partial_match(brand_normalized, stored_brand):
-                logger.info(
-                    f"Found partial match for '{brand}': stored as '{stored_brand}'"
-                )
-                return self._format_response(True, data, brand)
+                if parent_data:
+                    return self._format_response(
+                        found=True,
+                        data=parent_data,
+                        search_brand=brand,
+                        match_type="parent_company",
+                        note=f"Using parent company '{parent_company}' certifications."
+                    )
 
-        # No match found
-        logger.info(f"No match found for brand: '{brand}'")
-        return self._get_default_response()
+        # ===== STEP 4: No match found =====
+        logger.info(f"No match found for brand: '{brand}' with category: '{category}'")
+        return self._get_default_response(
+            found=False,
+            match_type="no_match",
+            note="Brand not found in certification database."
+        )
 
-
-    def _get_default_response(self) -> Dict[str, Any]:
-        """Get default certification response"""
+    def _get_default_response(self, found: bool = False, match_type: str = "no_match", note: str = None) -> Dict[str, Any]:
+        """Get default certification response with match metadata"""
         return {
-            "found": False,
+            "found": found,
+            "match_type": match_type,
+            "note": note,
             "certifications": {
                 "b_corp": False,
                 "fair_trade": False,
@@ -1491,11 +1690,19 @@ class CertificationManager:
         }
 
     def _format_response(
-        self, found: bool, data: Dict, search_brand: str = None
+        self,
+        found: bool,
+        data: Dict,
+        search_brand: str = None,
+        match_type: str = "exact_match",
+        matched_category: str = None,
+        note: str = None
     ) -> Dict[str, Any]:
-        """Format certification response - returns canonical brand name when matched"""
+        """Format certification response with match metadata"""
         response = {
             "found": found,
+            "match_type": match_type,
+            "note": note,
             "certifications": data["certifications"],
             "details": {
                 "original_brand": data["original_brand"],
@@ -1503,8 +1710,10 @@ class CertificationManager:
             },
         }
 
-        # If we found a match and the original brand differs from search,
-        # include canonical
+        if matched_category:
+            response["matched_category"] = matched_category
+
+        # If we found a match and the original brand differs from search, include canonical
         if (
             found
             and search_brand
@@ -1995,21 +2204,28 @@ class BrandExtractionManager:
                     reason=f"'{brand_normalized}' is an alias for '{canonical}'",
                 )
 
-        # Check if the input contains a known brand name
+        # Check if the input contains a known brand name - find the longest match
+        longest_match = None
+        longest_match_key = None
         for brand_key in BrandNormalizer.BRAND_IDENTIFICATION_DB.keys():
             brand_key_normalized = BrandNormalizer.normalize(brand_key)
             if brand_key_normalized and len(brand_key_normalized) > 2:
                 if brand_key_normalized in brand_normalized:
-                    logger.info(
-                        f"Found brand '{brand_key}' in input: '{product_name}'")
-                    return BrandExtractionManager._format_result(
-                        success=True,
-                        message=f"Brand '{brand_key}' found in input",
-                        extracted_brand=brand_key.title(),
-                        confidence=80,
-                        method="brand_in_input",
-                        reason=f"Brand '{brand_key}' found within input text",
-                    )
+                    if longest_match is None or len(brand_key_normalized) > len(longest_match):
+                        longest_match = brand_key_normalized
+                        longest_match_key = brand_key
+
+        if longest_match_key:
+            logger.info(
+                f"Found brand '{longest_match_key}' in input: '{product_name}'")
+            return BrandExtractionManager._format_result(
+                success=True,
+                message=f"Brand '{longest_match_key}' found in input",
+                extracted_brand=longest_match_key.title(),
+                confidence=80,
+                method="brand_in_input",
+                reason=f"Brand '{longest_match_key}' found within input text",
+            )
 
         return BrandExtractionManager._format_result(
             success=False,
@@ -3111,7 +3327,7 @@ async def test_scoring_methodology(brand: str):
         scores.social,
         scores.environmental,
         scores.economic)
-    excel_result = certification_manager.get_certifications(brand, category)
+    excel_result = certification_manager.get_certifications(brand)  # Remove category parameter
 
     return HTMLResponse(
         content=render_score_breakdown(brand, scores, tbl, excel_result)
@@ -3260,7 +3476,10 @@ async def scan_product(product: Product) -> Dict[str, Any]:
 
         # Get certifications
         try:
-            cert_result = certification_manager.get_certifications(brand, category)  # â† Category added!
+            # Determine source based on whether barcode was used
+            source = "barcode" if (barcode and barcode.strip() != "") else "manual"
+            cert_result = certification_manager.get_certifications(brand, category, source=source)
+
         except Exception as e:
             logger.error(f"Certification lookup error: {e}")
             cert_result = {
@@ -3605,13 +3824,18 @@ async def upload_certifications(file: UploadFile = File(...)):
 @app.get("/certifications/search/{brand}")
 async def search_certifications(brand: str):
     """Search for a brand in the certification database"""
-    result = certification_manager.get_certifications(brand, category)
+    result = certification_manager.get_certifications(brand)
+
+    # Sanitize the result
+    sanitized_result = sanitize_for_json(result)
 
     return {
         "brand": brand,
-        "found": result["found"],
-        "certifications": result["certifications"],
-        "details": result["details"],
+        "found": sanitized_result.get("found", False),
+        "certifications": sanitized_result.get("certifications", {}),
+        "details": sanitized_result.get("details", {}),
+        "match_type": sanitized_result.get("match_type"),
+        "note": sanitized_result.get("note")
     }
 
 
@@ -3748,28 +3972,21 @@ async def validate_barcode_format(barcode: str):
 @app.get("/test/excel/{brand}")
 async def test_excel_lookup(brand: str):
     """Test endpoint to check Excel lookup for a specific brand"""
-    result = certification_manager.get_certifications(brand, category)
+    result = certification_manager.get_certifications(brand)
 
-    # Also check all brands in Excel for debugging
-    all_brands = []
-    if certification_manager.data:
-        for brand_key, data in certification_manager.data.items():
-            all_brands.append(
-                {
-                    "normalized": brand_key,
-                    "original": data["original_brand"],
-                    "certifications": data["certifications"],
-                }
-            )
+    # Sanitize the result to handle NaN/NaT values
+    sanitized_result = sanitize_for_json(result)
+
+    # Also get brand categories for debugging
+    brand_normalized = BrandNormalizer.normalize(brand)
+    categories = certification_manager.brand_categories.get(brand_normalized, set())
 
     return {
         "test_brand": brand,
-        "normalized_brand": BrandNormalizer.normalize(brand),
-        "result": result,
-        "all_brands_in_excel": all_brands[:10],
-        "total_brands_in_excel": (
-            len(certification_manager.data) if certification_manager.data else 0
-        ),
+        "normalized_brand": brand_normalized,
+        "brand_categories": list(categories),
+        "result": sanitized_result,
+        "total_brands_in_excel": len(certification_manager.data) if certification_manager.data else 0
     }
 
 
@@ -3787,7 +4004,7 @@ async def compare_brands(brands: List[BrandInput]) -> Dict[str, Any]:
         tbl = calculate_overall_score(
             scores.social, scores.environmental, scores.economic
         )
-        cert_result = certification_manager.get_certifications(brand, category)
+        cert_result = certification_manager.get_certifications(brand)  # Remove category parameter
 
         comparison.append(
             {
@@ -3941,7 +4158,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         scores.social,
         scores.environmental,
         scores.economic)
-    cert_result = certification_manager.get_certifications(brand_name, product.get("category"))
+    cert_result = certification_manager.get_certifications(brand_name, product.get("category"), source="barcode")
 
     result = {
         "barcode": barcode,
