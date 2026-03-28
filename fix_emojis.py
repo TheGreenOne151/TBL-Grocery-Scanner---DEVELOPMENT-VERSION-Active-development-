@@ -2,6 +2,7 @@
 import re
 
 fix_map = {
+    # Existing mappings
     'ðŸ“Š': '📊',
     'ðŸŽ¯': '🎯',
     'ðŸ“ˆ': '📈',
@@ -19,6 +20,13 @@ fix_map = {
     'ðŸ“±': '📱',
     'âœ…': '✅',
     'âœ—': '❌',
+    'ðŸ’¡': '💡',
+    'ðŸ“Œ': '📍',
+    'ðŸ”': '🔍',
+    # NEW MAPPINGS for the corrupted symbols
+    'Ã·': '÷',
+    'Ã—': '×',
+    'â€¢': '•',
 }
 
 with open('elegant_app.py', 'r', encoding='utf-8') as f:
