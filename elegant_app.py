@@ -524,6 +524,7 @@ class BrandNormalizer:
         "wonka": "nestle",
         "purina": "nestle",
         "friskies": "nestle",
+        "crunch": "nestle",
         # Unilever products
         "dove": "unilever",
         "axe": "unilever",
@@ -753,6 +754,7 @@ class BrandNormalizer:
         "corn flakes": {"certifications": []},
         "costa coffee": {"certifications": ["Rainforest Alliance"]},
         "counter culture": {"certifications": ["B Corp"]},
+        "crunch": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
         "dannon": {"certifications": ["B Corp"]},
         "dasani": {"certifications": []},
         "dentyne": {"certifications": []},
