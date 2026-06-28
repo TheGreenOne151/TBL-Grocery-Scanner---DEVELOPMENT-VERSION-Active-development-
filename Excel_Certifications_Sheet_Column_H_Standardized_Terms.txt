@@ -1,0 +1,228 @@
+================================================================================
+                    STANDARDIZED TERMS FOR COLUMN H
+               Certification Categories - Quick Reference
+================================================================================
+
+Use these standardized terms when filling in Column H (Certification_Categories)
+for each brand. Terms are organized by category for easy reference.
+
+================================================================================
+                            BABY PRODUCTS
+================================================================================
+
+Diapers                        Baby wipes
+Baby clothing                  Baby care products
+Baby bath products             Baby lotion
+Baby oil                       Baby powder
+Baby cream                     Baby shampoo
+Baby skincare                  Baby snacks
+Baby food (jars)               Baby food (pouches)
+Infant formula                 Baby cereals
+Baby meals                     Baby food
+Baby wipes & bags              Bath & body care
+
+================================================================================
+                        PERSONAL CARE & COSMETICS
+================================================================================
+
+Body care                      Face care
+Hair care                      Hair styling
+Shampoo                        Conditioner
+Soap                           Sun care
+Sunscreen                      Lip care
+Skincare                       Makeup
+Dental care                    Hand sanitizers
+Bath products                  Aromatherapy
+Fragrance roller               Sexual wellness
+Body lotion                    Hand cream
+Body scrub                     Body oils
+Face oils                      Toners
+Cleansers                      Skin creams
+Skin moisturizers              Skin serums
+Skin oils                      Anti-aging
+Anti-wrinkle moisturizer       Eye wrinkle care
+Eye wrinkle repair             Eye treatments
+Face-lift treatments           Skin cleansing pads
+Pre-shower beauty wash         Leg care
+Hand & foot care               Neck & bust care
+Body moisturizers              Leg moisturizer
+Leg oil                        Bronzing serum
+Sleep aids                     Sleep pillow spray
+Sleep shower gel               Sleep beauty soak
+Sleep overnight cream          Sleep retinoid complex
+Sleep breathe in               Sleep beauty oil
+Sleep bath oil                 Sleep body whip
+Sleep body cocoon              Sleep overnight cleanser
+Hydrating shampoo              Hair repair treatment
+Hair repair conditioner        Hair glow oil
+Leave-in conditioner           Pre-shampoo masque
+Scalp cleanser                 Scalp detox
+Shampoo & Conditioner
+
+================================================================================
+                            HYGIENE PRODUCTS
+================================================================================
+
+Feminine hygiene               Liners
+Pads                           Feminine care
+
+================================================================================
+                            HOUSEHOLD PRODUCTS
+================================================================================
+
+Cleaning products              Household cleaner
+Bathroom cleaner               Floor cleaner
+Carpet cleaner                 Cleaning wipes
+Stain remover                  Degreaser
+Dish detergent                 Dish soap
+Laundry products               Bleach
+Sandwich bags                  Food storage bags
+Compostable food storage bags  Compostable trash bags
+Compostable drawstring bags    Compostable bags with handles
+Storage bags                   Gloves
+Toilet paper                   Paper towels
+
+================================================================================
+                            FOOD & BEVERAGES
+================================================================================
+
+BEVERAGES:
+Beverages                      Water
+Mineral water                  Coffee
+Coffee (iced)                  Tea
+Cocoa                          Cocoa powder
+Plant-based beverages          Vanilla
+Juice                          Fruit juice
+
+DAIRY:
+Dairy                          Yogurt
+Ice cream                      Milk
+Cheese                         Butter
+Cream
+
+BAKING & COOKING:
+Baking ingredients             Flour
+Sugar                          Spices
+Herbs                          Oils
+Salt
+
+CONDIMENTS & SAUCES:
+Condiments                     Sauces
+Ketchup                        Mustard
+Mayonnaise                     Vinegar
+Salad dressing
+
+SNACKS & CONFECTIONS:
+Snacks                         Chips
+Crisps                         Popcorn
+Nuts                           Chocolate
+Cocoa                          Candy
+Biscuits                       Cookies
+Crackers                       Bread
+
+BREAKFAST:
+Breakfast cereals              Cereal flakes
+Muesli                         Porridge
+Oatmeal
+
+MEALS:
+Meals                          Prepared meals
+Soups                          Canned foods
+Frozen foods                   Pasta
+Rice
+
+================================================================================
+                            NUTRITION & HEALTH
+================================================================================
+
+Nutritional supplements        Supplements
+Vitamins                       Protein powder
+Protein bars                   Energy bars
+Meal replacements              Mushrooms
+Women's multivitamin           Frother
+
+================================================================================
+                            PET PRODUCTS
+================================================================================
+
+Pet food                       Dog food
+Cat food                       Dog treats
+Cat treats                     Pet supplements
+Dog supplements                Freeze-dried dog food
+Dog food toppers               Canned dog food
+Canned cat food                Cat food (pouch)
+Freeze-dried cat food          Peanut butter (dog treats)
+Dog treat toys                 Dog chews
+
+================================================================================
+                            OTHER CATEGORIES
+================================================================================
+
+Organic                        Nut butters
+Peanut butter                  Peanut butter bars
+Natural                        Gluten-free
+Non-GMO                        Vegan
+
+================================================================================
+                    HOW TO USE THIS REFERENCE
+================================================================================
+
+1. When adding certifications for a brand, list the product types in Column H
+2. Separate multiple terms with commas
+3. Use the standardized terms from this reference
+4. Be consistent - always use the same term for the same product type
+
+Examples:
+
+✅ CORRECT:
+   Diapers, Baby wipes, Baby care products
+   Organic, Baby food (jars), Infant formula
+   Shampoo, Conditioner, Hair styling
+   Coffee, Tea, Cocoa
+   Yogurt, Dairy, Ice cream
+
+❌ INCORRECT (avoid these variations):
+   diapers, baby wipes, baby care    (should be capitalized)
+   baby food jars, baby food pouches (use standardized terms)
+   shampoo/conditioner               (use: Shampoo, Conditioner)
+   coffee, tea, cocoa                (should be capitalized)
+
+================================================================================
+                    COMMON COMBINATIONS
+================================================================================
+
+Baby Product Brand:
+   Diapers, Baby wipes, Baby care products, Baby lotion, Baby shampoo
+
+Baby Food Brand:
+   Organic, Baby food (jars), Baby food (pouches), Infant formula, Baby snacks
+
+Cosmetics Brand:
+   Shampoo, Conditioner, Body care, Face care, Sun care
+
+Cleaning Brand:
+   Bathroom cleaner, Floor cleaner, Laundry products, Cleaning wipes
+
+Dairy Brand:
+   Yogurt, Dairy, Milk, Cheese, Butter
+
+Coffee/Tea Brand:
+   Coffee, Tea, Organic
+
+Pet Food Brand:
+   Dog food, Cat food, Dog treats, Pet supplements
+
+================================================================================
+                            NOTES
+================================================================================
+
+- Always capitalize the first letter of each term
+- Use parentheses for clarification when needed (e.g., Baby food (jars))
+- Separate terms with commas and spaces: ", "
+- Be consistent - if you use "Baby wipes" once, always use "Baby wipes"
+- Use "Organic" as a separate term when the brand is certified organic
+- The order of terms doesn't matter, but grouping similar items is helpful
+
+================================================================================
+                    LAST UPDATED: June 28, 2026
+================================================================================
