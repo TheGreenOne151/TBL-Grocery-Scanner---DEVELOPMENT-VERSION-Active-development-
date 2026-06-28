@@ -1195,10 +1195,10 @@ class CertificationManager:
                 # Log some sample data for debugging
                 sample_brands = list(cert_data.keys())[:3]
                 for brand in sample_brands:
+                    first_product = next(iter(cert_data[brand].values()))
                     logger.info(
-                        f"Sample brand '{brand}': certs={cert_data[brand]['certifications']}, categories={brand_categories.get(brand, set())}"
+                        f"Sample brand '{brand}': certs={first_product.get('certifications', {})}, categories={brand_categories.get(brand, set())}"
                     )
-
                 return True
             else:
                 logger.warning(
