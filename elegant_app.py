@@ -139,7 +139,7 @@ class ScoringConfig:
 @dataclass
 class FileConfig:
     """Configuration for file paths"""
-    CERTIFICATION_EXCEL_FILE: ClassVar[str] = "comprehensive_grocery_certifications.xlsx"  # CHANGED
+    CERTIFICATION_EXCEL_FILE: ClassVar[str] = "comprehensive_grocery_certifications_COMPLETE.xlsx"  # CHANGED
     CREATE_EXCEL_SCRIPT: ClassVar[str] = "create_excel.py"
     CERT_SOURCES: ClassVar[Dict[str, str]] = {
         "b_corp": "https://www.bcorporation.net/en-us/find-a-b-corp/",
