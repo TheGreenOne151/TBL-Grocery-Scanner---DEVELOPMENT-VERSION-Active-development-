@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import re
 import io
@@ -20,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 
+
 def safe_float(value, default=0.0):
     """Convert any value to a JSON-safe float - prevents NaN and Infinity errors"""
     try:
@@ -37,6 +39,7 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError, OverflowError):
         return default
 
+
 def sanitize_for_json(data):
     """Recursively sanitize data to be JSON-compliant"""
     if isinstance(data, dict):
@@ -51,18 +54,22 @@ def sanitize_for_json(data):
         # For any other type, convert to string
         return str(data)
 
+
 PORT = int(os.getenv("PORT", 8000))
 
 # REMOVED: import bcrypt           # Will load inside functions
 # REMOVED: import pandas as pd     # Will load inside functions
+
 
 def lazy_import(module_name: str):
     """Import modules only when needed to save memory"""
     import importlib
     return importlib.import_module(module_name)
 
+
 # Add these after the lazy_import function in your imports section
 _BCRYPT = None
+
 
 def get_bcrypt():
     """Get bcrypt module with lazy loading and caching"""
@@ -71,9 +78,11 @@ def get_bcrypt():
         _BCRYPT = lazy_import("bcrypt")
     return _BCRYPT
 
+
 # CACHED PANDAS IMPORT
 _PANDAS = None
 _OPENPYXL = None
+
 
 def get_pandas():
     """Get pandas module with lazy loading and caching"""
@@ -82,6 +91,7 @@ def get_pandas():
         _PANDAS = lazy_import("pandas")
     return _PANDAS
 
+
 def get_openpyxl():
     """Get openpyxl module with lazy loading and caching"""
     global _OPENPYXL
@@ -89,9 +99,11 @@ def get_openpyxl():
         _OPENPYXL = lazy_import("openpyxl")
     return _OPENPYXL
 
+
 # Add Numpy caching to your imports section (after pandas caching)
 # NUMPY CACHING (not currently used, but available for future)
 _NUMPY = None
+
 
 def get_numpy():
     """Get numpy module with lazy loading and caching"""
@@ -111,10 +123,10 @@ class ScoringConfig:
     BASE_SCORE: ClassVar[float] = 5.0
     MULTI_CERT_BONUS: ClassVar[float] = 0.5
     CERTIFICATION_BONUSES: ClassVar[Dict[str, Dict[str, float]]] = {
-        "B Corp": {"social": 1.0, "environmental": 1.0, "economic": 1.0},
-        "Fair Trade": {"social": 1.0, "environmental": 0.5, "economic": 0.5},
-        "Rainforest Alliance": {"social": 0.5, "environmental": 1.0, "economic": 0.5},
-        "Leaping Bunny": {"social": 1.0, "environmental": 0.5, "economic": 0.0},
+        "B Corp": {"social": 3.5, "environmental": 3.5, "economic": 3.5},
+        "Fair Trade": {"social": 2.0, "environmental": 1.0, "economic": 2.0},
+        "Rainforest Alliance": {"social": 1.0, "environmental": 2.5, "economic": 1.0},
+        "Leaping Bunny": {"social": 1.0, "environmental": 0.0, "economic": 0.0},
     }
     GRADE_THRESHOLDS: ClassVar[Dict[str, float]] = {
         "EXCELLENT": 8.5,
@@ -127,7 +139,7 @@ class ScoringConfig:
 @dataclass
 class FileConfig:
     """Configuration for file paths"""
-    CERTIFICATION_EXCEL_FILE: ClassVar[str] = "comprehensive_grocery_certifications.xlsx"  # CHANGED
+    CERTIFICATION_EXCEL_FILE: ClassVar[str] = "comprehensive_grocery_certifications_COMPLETE.xlsx"  # CHANGED
     CREATE_EXCEL_SCRIPT: ClassVar[str] = "create_excel.py"
     CERT_SOURCES: ClassVar[Dict[str, str]] = {
         "b_corp": "https://www.bcorporation.net/en-us/find-a-b-corp/",
@@ -189,7 +201,8 @@ def log_execution(func):
 
     def wrapper(*args, **kwargs):
         logger = logging.getLogger(__name__)
-        logger.debug(f"Executing {func.__name__} with args={args}, kwargs={kwargs}")
+        logger.debug(
+            f"Executing {func.__name__} with args={args}, kwargs={kwargs}")
         result = func(*args, **kwargs)
         logger.debug(f"{func.__name__} returned {result}")
         return result
@@ -233,7 +246,7 @@ def calculate_overall_score(
 # ==================== FASTAPI APP ====================
 
 
-app = FastAPI(title="TBL Grocery Scanner", version="2.3.0")
+app = FastAPI(title="TBL Grocery Scanner", version="2.4.0")
 
 # Add CORS middleware
 app.add_middleware(
@@ -249,6 +262,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ==================== PYDANTIC MODELS ====================
+
 
 class UserRegistration(BaseModel):
     username: str
@@ -312,7 +326,6 @@ class BrandAdd(BaseModel):
 class ProductSearch(BaseModel):
     product_name: str
     max_results: int = 10
-
 
 
 # ==================== BRAND NORMALIZER ====================
@@ -496,7 +509,7 @@ class BrandNormalizer:
         "dasani": "coca cola",
         "smartwater": "coca cola",
         "fairlife": "coca cola",
-        # Nestlé products
+        # NestlÃ© products
         "nescafe": "nestle",
         "nesquik": "nestle",
         "stouffers": "nestle",
@@ -511,13 +524,14 @@ class BrandNormalizer:
         "wonka": "nestle",
         "purina": "nestle",
         "friskies": "nestle",
+        "crunch": "nestle",
         # Unilever products
         "dove": "unilever",
         "axe": "unilever",
         "rexona": "unilever",
         "vaseline": "unilever",
         "lipton": "unilever",
-        # "ben jerrys": "unilever",  # ← Remove this line
+        # "ben jerrys": "unilever",  # â† Remove this line
         "magnum": "unilever",
         "breyers": "unilever",
         "klondike": "unilever",
@@ -650,6 +664,7 @@ class BrandNormalizer:
         "whole foods": "whole foods",
         "tjs": "trader joes",
         "wf": "whole foods",
+        "YVB": "Your Very Best",
     }
 
     # Common brand name variations
@@ -659,7 +674,7 @@ class BrandNormalizer:
         "mondelez": ["mondelez international", "kraft foods"],
         "pepsico": ["pepsi", "pepsi co", "pepsico inc"],
         "coca cola": ["coca-cola", "coke", "coca cola company"],
-        "nestle": ["nestlé", "nestle sa"],
+        "nestle": ["nestlÃ©", "nestle sa"],
         "unilever": ["unilever plc", "unilever nv"],
         "kraft heinz": ["kraft", "heinz", "kraft heinz company"],
         "mars": ["mars inc", "mars incorporated"],
@@ -692,309 +707,68 @@ class BrandNormalizer:
         "dannon": "danone",
         "hersheys": "hershey",
         "starbucks coffee": "starbucks",
+        "nestle crunch": "nestle",
     }
 
-    # Hardcoded scores database
-    HARDCODED_SCORES_DB: ClassVar[Dict[str, Dict[str, Any]]] = {
-        "nespresso": {
-            "social": 8.5,
-            "environmental": 8.5,
-            "economic": 8.0,
-            "certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"],
-            "multi_cert_applied": True,
-            "multi_cert_bonus": 1.0,
-        },
-        "ben and jerrys": {
-            "social": 7.5,
-            "environmental": 7.0,
-            "economic": 7.0,
-            "certifications": ["B Corp", "Fair Trade"],
-            "multi_cert_applied": True,
-            "multi_cert_bonus": 0.5,
-        },
-        "evian": {
-            "social": 6.0,
-            "environmental": 6.0,
-            "economic": 6.0,
-            "certifications": ["B Corp"],
-            "multi_cert_applied": False,
-        },
-        "volvic": {
-            "social": 6.0,
-            "environmental": 6.0,
-            "economic": 6.0,
-            "certifications": ["B Corp"],
-            "multi_cert_applied": False,
-        },
-        "dannon": {
-            "social": 6.0,
-            "environmental": 6.0,
-            "economic": 6.0,
-            "certifications": ["B Corp"],
-            "multi_cert_applied": False,
-        },
-        "activia": {
-            "social": 6.0,
-            "environmental": 6.0,
-            "economic": 6.0,
-            "certifications": ["B Corp"],
-            "multi_cert_applied": False,
-        },
-        "oikos": {
-            "social": 6.0,
-            "environmental": 6.0,
-            "economic": 6.0,
-            "certifications": ["B Corp"],
-            "multi_cert_applied": False,
-        },
-        "starbucks": {
-            "social": 6.0,
-            "environmental": 5.5,
-            "economic": 5.5,
-            "certifications": ["Fair Trade"],
-            "multi_cert_applied": False,
-        },
-        "cadbury": {
-            "social": 6.0,
-            "environmental": 5.5,
-            "economic": 5.5,
-            "certifications": ["Fair Trade"],
-            "multi_cert_applied": False,
-        },
-        "dunkin": {
-            "social": 7.0,
-            "environmental": 6.5,
-            "economic": 6.5,
-            "certifications": ["Fair Trade", "Rainforest Alliance"],
-            "multi_cert_applied": True,
-            "multi_cert_bonus": 0.5,
-        },
-        "365 everyday value": {
-            "social": 8.0,
-            "environmental": 7.5,
-            "economic": 7.0,
-            "certifications": ["Fair Trade", "Rainforest Alliance", "Leaping Bunny"],
-            "multi_cert_applied": True,
-            "multi_cert_bonus": 1.0,
-        },
-        "coca cola": {
-            "social": 5.5,
-            "environmental": 6.0,
-            "economic": 5.5,
-            "certifications": ["Rainforest Alliance"],
-            "multi_cert_applied": False,
-        },
-        "hersheys": {
-            "social": 5.5,
-            "environmental": 6.0,
-            "economic": 5.5,
-            "certifications": ["Rainforest Alliance"],
-            "multi_cert_applied": False,
-        },
-        "lipton": {
-            "social": 5.5,
-            "environmental": 6.0,
-            "economic": 5.5,
-            "certifications": ["Rainforest Alliance"],
-            "multi_cert_applied": False,
-        },
-        "magnum": {
-            "social": 5.5,
-            "environmental": 6.0,
-            "economic": 5.5,
-            "certifications": ["Rainforest Alliance"],
-            "multi_cert_applied": False,
-        },
-        "nestle": {
-            "social": 5.5,
-            "environmental": 6.0,
-            "economic": 5.5,
-            "certifications": ["Rainforest Alliance"],
-            "multi_cert_applied": False,
-        },
-        "dove": {
-            "social": 6.0,
-            "environmental": 5.5,
-            "economic": 5.0,
-            "certifications": ["Leaping Bunny"],
-            "multi_cert_applied": False,
-        },
-        "general mills": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "kelloggs": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "pepsico": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "mondelez": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "kraft heinz": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "unilever": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "procter gamble": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "johnson johnson": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "mars": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "danone": {
-            "social": 6.0,
-            "environmental": 6.0,
-            "economic": 6.0,
-            "certifications": ["B Corp"],
-            "multi_cert_applied": False,
-        },
-        "hershey": {
-            "social": 5.5,
-            "environmental": 6.0,
-            "economic": 5.5,
-            "certifications": ["Rainforest Alliance"],
-            "multi_cert_applied": False,
-        },
-        "campbell soup": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "conagra": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "tyson foods": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "hormel": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "aquafina": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "colgate palmolive": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "gerber": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-        "hellmanns": {
-            "social": 5.0,
-            "environmental": 5.0,
-            "economic": 5.0,
-            "certifications": [],
-            "multi_cert_applied": False,
-        },
-    }
-
-    # Brand identification database
     BRAND_IDENTIFICATION_DB: ClassVar[Dict[str, Dict[str, Any]]] = {
         "365 everyday value": {
             "certifications": ["Fair Trade", "Rainforest Alliance", "Leaping Bunny"]
         },
+        "365 by whole foods market": {
+            "certifications": ["Leaping Bunny"]
+        },
         "activia": {"certifications": ["B Corp"]},
+        "amavida coffee & trading company": {"certifications": ["B Corp", "Fair Trade"]},
         "annies homegrown": {"certifications": []},
         "aquafina": {"certifications": []},
         "banquet": {"certifications": []},
-        "ben jerrys": {"certifications": ["B Corp", "Fair Trade"]},
+        "barrys tea": {"certifications": ["Rainforest Alliance"]},
+        "ben & jerrys": {"certifications": ["B Corp", "Fair Trade"]},
         "bens original": {"certifications": []},
         "best foods": {"certifications": []},
+        "bettergoods": {"certifications": ["Rainforest Alliance"]},
         "betty crocker": {"certifications": []},
+        "big spoon roasters": {"certifications": ["B Corp"]},
         "birds eye": {"certifications": []},
         "bisquick": {"certifications": []},
+        "blk & bold": {"certifications": ["Fair Trade"]},
         "blue buffalo": {"certifications": []},
-        "breyers": {"certifications": []},
+        "bones coffee company": {"certifications": ["Rainforest Alliance"]},
+        "breyers": {"certifications": ["Rainforest Alliance"]},
+        "brooklyn roasting company": {"certifications": ["Fair Trade"]},
+        "bulletproof cold brew coffee": {"certifications": ["Rainforest Alliance"]},
         "butterfinger": {"certifications": []},
-        "cadbury": {"certifications": ["Fair Trade"]},
+        "caboo": {"certifications": ["B Corp", "Leaping Bunny"]},
+        "cadbury": {"certifications": []},
+        "caffe umbria coffee": {"certifications": ["Fair Trade"]},
         "campbells": {"certifications": []},
         "capri sun": {"certifications": []},
+        "caribou coffee": {"certifications": ["Rainforest Alliance"]},
         "cheerios": {"certifications": []},
         "cheetos": {"certifications": []},
         "cheez it": {"certifications": []},
         "chex": {"certifications": []},
         "chips ahoy": {"certifications": []},
-        "coca cola": {"certifications": ["Rainforest Alliance"]},
+        "clif": {"certifications": ["Rainforest Alliance"]},
+        "coca cola": {"certifications": []},
         "colgate palmolive": {"certifications": []},
         "corn flakes": {"certifications": []},
-        "crunch": {"certifications": []},
+        "costa coffee": {"certifications": ["Rainforest Alliance"]},
+        "counter culture": {"certifications": ["B Corp"]},
+        "crunch": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
         "dannon": {"certifications": ["B Corp"]},
         "dasani": {"certifications": []},
         "dentyne": {"certifications": []},
         "digiorno": {"certifications": []},
         "doritos": {"certifications": []},
-        "dove": {"certifications": ["Leaping Bunny"]},
+        "dove": {"certifications": []},
         "duncan hines": {"certifications": []},
-        "dunkin": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
+        "dunkin": {"certifications": ["Rainforest Alliance"]},
         "eggo": {"certifications": []},
+        "eight oclock": {"certifications": ["Rainforest Alliance"]},
         "evian": {"certifications": ["B Corp"]},
         "fanta": {"certifications": []},
+        "feline natural": {"certifications": ["B Corp"]},
         "fiber one": {"certifications": []},
         "fritos": {"certifications": []},
         "froot loops": {"certifications": []},
@@ -1002,96 +776,142 @@ class BrandNormalizer:
         "gatorade": {"certifications": []},
         "general electric": {"certifications": []},
         "gerber": {"certifications": []},
+        "gimme coffee": {"certifications": ["Fair Trade"]},
         "go gurt": {"certifications": []},
         "goldfish": {"certifications": []},
         "good gather": {"certifications": []},
         "great value": {"certifications": []},
         "grey poupon": {"certifications": []},
         "haagen dazs": {"certifications": []},
+        "happy family organics": {"certifications": ["B Corp"]},
         "healthy choice": {"certifications": []},
         "heinz": {"certifications": []},
         "hellmanns": {"certifications": []},
         "hersheys": {"certifications": ["Rainforest Alliance"]},
+        "hersheys milk chocolate cocoa mix": {"certifications": ["Rainforest Alliance"]},
         "hormel": {"certifications": []},
         "hot pockets": {"certifications": []},
+        "hurricane": {"certifications": ["Rainforest Alliance"]},
         "international delight": {"certifications": []},
+        "jaf tea": {"certifications": ["Rainforest Alliance"]},
         "jimmy dean": {"certifications": []},
+        "joe coffee company": {"certifications": ["Rainforest Alliance"]},
         "johnson johnson": {"certifications": []},
         "jolly rancher": {"certifications": []},
+        "k9 natural": {"certifications": ["B Corp"]},
         "keebler": {"certifications": []},
         "kelloggs": {"certifications": []},
+        "keurig": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
         "kirkland signature": {"certifications": []},
         "kitkat": {"certifications": []},
         "knorr": {"certifications": []},
         "kool aid": {"certifications": []},
         "kraft": {"certifications": []},
+        "kroger": {"certifications": ["Rainforest Alliance"]},
+        "la colombe": {"certifications": ["Rainforest Alliance"]},
+        "lavazza": {"certifications": ["Rainforest Alliance"]},
         "lays": {"certifications": []},
         "lipton": {"certifications": ["Rainforest Alliance"]},
+        "lipton pure leaf": {"certifications": ["Rainforest Alliance"]},
         "lucky charms": {"certifications": []},
         "lunchables": {"certifications": []},
-        "mms": {"certifications": []},
+        "luzianne tea": {"certifications": ["Rainforest Alliance"]},
         "magnum": {"certifications": ["Rainforest Alliance"]},
         "marie callenders": {"certifications": []},
+        "meraki": {"certifications": ["B Corp"]},
         "milky way": {"certifications": []},
         "minute maid": {"certifications": []},
+        "mms": {"certifications": []},
         "morningstar farms": {"certifications": []},
         "mountain dew": {"certifications": []},
+        "naty": {"certifications": ["B Corp"]},
         "nature valley": {"certifications": []},
-        "nescafe": {"certifications": []},
-        "nespresso": {
-            "certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]
-        },
-        "nestle": {"certifications": ["Rainforest Alliance"]},
+        "nescafe": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
+        "nespresso": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
+        "nesquik": {"certifications": ["Rainforest Alliance"]},
+        "nestle": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
+        "nordqvist": {"certifications": ["Rainforest Alliance"]},
         "nutri grain": {"certifications": []},
         "oikos": {"certifications": ["B Corp"]},
+        "once upon a farm": {"certifications": ["B Corp"]},
         "oreo": {"certifications": []},
         "oscar mayer": {"certifications": []},
         "pedigree": {"certifications": []},
         "pepperidge farm": {"certifications": []},
         "pepsi": {"certifications": []},
         "perdue": {"certifications": []},
+        "pg tips": {"certifications": ["Rainforest Alliance"]},
         "philadelphia cream cheese": {"certifications": []},
         "pillsbury": {"certifications": []},
         "planters": {"certifications": []},
         "poland spring": {"certifications": []},
         "pop tarts": {"certifications": []},
+        "popzup popcorn": {"certifications": ["B Corp"]},
         "prego": {"certifications": []},
         "pringles": {"certifications": []},
         "procter gamble": {"certifications": []},
+        "purelife": {"certifications": []},
         "purina": {"certifications": []},
         "quaker oats": {"certifications": []},
         "reddi wip": {"certifications": []},
         "reeses": {"certifications": []},
+        "reunion coffee roasters": {"certifications": ["Rainforest Alliance"]},
         "ritz": {"certifications": []},
+        "rosamonte": {"certifications": ["Rainforest Alliance"]},
+        "royal cup coffee": {"certifications": ["Rainforest Alliance"]},
         "ruffles": {"certifications": []},
+        "second cup": {"certifications": ["Rainforest Alliance"]},
         "simply orange": {"certifications": []},
+        "sisterly": {"certifications": ["B Corp"]},
         "skittles": {"certifications": []},
+        "skinnygirl": {"certifications": ["Rainforest Alliance"]},
         "slim jim": {"certifications": []},
         "smart water": {"certifications": []},
         "smithfield": {"certifications": []},
         "snickers": {"certifications": []},
+        "soleivita": {"certifications": ["Rainforest Alliance"]},
         "sour patch kids": {"certifications": []},
         "special k": {"certifications": []},
         "sprite": {"certifications": []},
         "starbucks": {"certifications": ["Fair Trade"]},
         "starburst": {"certifications": []},
+        "stonyfield": {"certifications": ["B Corp"]},
         "stouffers": {"certifications": []},
         "sunchips": {"certifications": []},
+        "sure house coffee roasting co": {"certifications": ["Fair Trade"]},
         "swanson": {"certifications": []},
+        "taragüí": {"certifications": ["Rainforest Alliance"]},
+        "tayst": {"certifications": ["Rainforest Alliance"]},
+        "tchibo": {"certifications": ["Rainforest Alliance"]},
+        "te reval": {"certifications": ["Rainforest Alliance"]},
+        "teekanne": {"certifications": ["Rainforest Alliance"]},
+        "tejava": {"certifications": ["Rainforest Alliance"]},
+        "tetley": {"certifications": ["Rainforest Alliance"]},
+        "this works": {"certifications": ["B Corp"]},
         "toblerone": {"certifications": []},
         "tostitos": {"certifications": []},
+        "tres": {"certifications": ["Rainforest Alliance"]},
         "trident": {"certifications": []},
         "trix": {"certifications": []},
         "tropicana": {"certifications": []},
+        "true botanicals": {"certifications": ["B Corp", "Leaping Bunny"]},
         "twix": {"certifications": []},
         "tyson": {"certifications": []},
         "uncle bens": {"certifications": []},
+        "unni": {"certifications": ["B Corp"]},
         "v8": {"certifications": []},
         "velveeta": {"certifications": []},
+        "verena street": {"certifications": ["Rainforest Alliance"]},
         "vitaminwater": {"certifications": []},
         "volvic": {"certifications": ["B Corp"]},
+        "wawa": {"certifications": ["Rainforest Alliance"]},
+        "westrock coffee": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
         "whiskas": {"certifications": []},
-        "yoplait": {"certifications": []},
+        "yogi tea": {"certifications": ["Rainforest Alliance"]},
+        "yoplait": {"certifications": ["B Corp"]},
+        "yorkshire tea": {"certifications": ["Rainforest Alliance"]},
+        "your very best": {"certifications": ["B Corp"]},
+        "zavida coffee": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
     }
 
     @classmethod
@@ -1100,6 +920,10 @@ class BrandNormalizer:
         """Enhanced brand name normalization with better handling of variations"""
         if not brand:
             return ""
+
+        # ADD THIS: Normalize accents (Ã© â†’ e, etc.)
+        import unicodedata
+        brand = unicodedata.normalize('NFKD', brand).encode('ASCII', 'ignore').decode('ASCII')
 
         normalized = brand.strip().lower()
 
@@ -1127,9 +951,9 @@ class BrandNormalizer:
             " uk",
             " canada",
             " europe",
-            "®",
-            "™",
-            "©",
+            "Â®",
+            "â„¢",
+            "Â©",
             "(",
             ")",
             "[",
@@ -1139,7 +963,7 @@ class BrandNormalizer:
             "|",
             "\\",
             "/",
-         ]
+        ]
 
         for phrase in remove_phrases:
             normalized = normalized.replace(phrase, "")
@@ -1220,9 +1044,11 @@ class BrandNormalizer:
         return None
 
     @classmethod
-    def extract_brand_from_product_text(cls, product_name: str) -> Optional[str]:
+    def extract_brand_from_product_text(
+            cls, product_name: str) -> Optional[str]:
         """Enhanced brand extraction from product name using multiple strategies"""
-        if not product_name or product_name.lower() in ["unknown", "generic product"]:
+        if not product_name or product_name.lower() in [
+                "unknown", "generic product"]:
             return None
 
         product_lower = product_name.lower()
@@ -1263,8 +1089,7 @@ class BrandNormalizer:
                 for brand in cls.BRAND_IDENTIFICATION_DB.keys():
                     brand_normalized = cls.normalize(brand)
                     if brand_normalized == first_word or brand_normalized.startswith(
-                        first_word
-                    ):
+                            first_word):
                         logger.info(
                             f"Extracted brand '{brand}' from first word of product name"
                         )
@@ -1295,10 +1120,11 @@ class CertificationManager:
 
     def __init__(self):
         self.data = None
+        self.brand_categories = None  # NEW: Track categories per brand
         self.last_loaded = None
 
     def load_certification_data(self) -> bool:
-        """Load certification data from Excel file"""
+        """Load certification data from Excel file and build category index"""
         try:
             if os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE):
                 logger.info(
@@ -1311,6 +1137,8 @@ class CertificationManager:
                 logger.info(f"Excel file loaded. Columns: {list(df.columns)}")
 
                 cert_data = {}
+                brand_categories = {}  # NEW: Track categories per brand
+
                 for _, row in df.iterrows():
                     # Use "Product_Brand" column from new file
                     brand = None
@@ -1324,29 +1152,53 @@ class CertificationManager:
 
                     brand_normalized = BrandNormalizer.normalize(brand)
 
-                    # Get certifications with exact column names
-                    certifications = self._extract_certifications(row, df.columns)
+                    # NEW: Get category for this row
+                    category = ""
+                    if "Category" in df.columns:
+                        category_value = row.get("Category")
+                        if not pd.isna(category_value):
+                            category = str(category_value).strip()
 
-                    # Store brand data
-                    cert_data[brand_normalized] = {
+                    # NEW: Track categories for this brand
+                    if brand_normalized not in brand_categories:
+                        brand_categories[brand_normalized] = set()
+                    if category:
+                        brand_categories[brand_normalized].add(category)
+
+                    # Get certifications with exact column names
+                    certifications = self._extract_certifications(
+                        row, df.columns)
+
+                    # Store brand data with category as secondary key (store all products)
+                    if brand_normalized not in cert_data:
+                        cert_data[brand_normalized] = {}
+
+                    # Use category as the key to store product-specific data
+                    product_key = category if category else "_default"
+
+                    # Store this product's data
+                    cert_data[brand_normalized][product_key] = {
                         "original_brand": brand,
                         "certifications": certifications,
                         "research_complete": certifications.get("research_complete", False),
                         "row_data": row.to_dict(),
+                        "category": category,  # Store category for reference
                     }
 
                 self.data = cert_data
+                self.brand_categories = brand_categories  # NEW: Store category index
                 self.last_loaded = datetime.now()
 
                 logger.info(f"Loaded {len(cert_data)} certification records")
+                logger.info(f"Loaded category index for {len(brand_categories)} brands")
 
                 # Log some sample data for debugging
                 sample_brands = list(cert_data.keys())[:3]
                 for brand in sample_brands:
+                    first_product = next(iter(cert_data[brand].values()))
                     logger.info(
-                        f"Sample brand '{brand}': {cert_data[brand]['certifications']}"
+                        f"Sample brand '{brand}': certs={first_product.get('certifications', {})}, categories={brand_categories.get(brand, set())}"
                     )
-
                 return True
             else:
                 logger.warning(
@@ -1421,6 +1273,84 @@ class CertificationManager:
 
         return certifications
 
+    def _get_brand_categories(self, brand_normalized: str) -> List[str]:
+        """Get all categories a brand appears in"""
+        categories = set()
+
+        # Check exact match
+        if brand_normalized in self.data:
+            for product_key, product_data in self.data[brand_normalized].items():
+                if product_key != "_default":
+                    categories.add(product_key)
+
+        # Also check partial matches
+        for stored_brand, products in self.data.items():
+            if stored_brand != brand_normalized and self._improved_partial_match(brand_normalized, stored_brand):
+                for product_key, product_data in products.items():
+                    if product_key != "_default":
+                        categories.add(product_key)
+
+        return sorted(list(categories))
+
+    def _find_exact_brand_category_match(self, brand_normalized: str, category: str) -> Optional[Dict]:
+        """Find exact brand + category match in stored data"""
+        category_normalized = category.strip().lower()
+
+        # Check exact brand match
+        if brand_normalized in self.data:
+            # Look for exact category match in this brand's products
+            for product_key, product_data in self.data[brand_normalized].items():
+                if product_key.lower() == category_normalized:
+                    return product_data
+
+        # Check partial brand matches
+        for stored_brand, products in self.data.items():
+            if self._improved_partial_match(brand_normalized, stored_brand):
+                for product_key, product_data in products.items():
+                    if product_key.lower() == category_normalized:
+                        return product_data
+
+        return None
+
+    def _find_best_category_match(self, brand_normalized: str, category: str) -> Optional[Dict]:
+        """Find best category match for barcode scans when exact match fails"""
+        category_lower = category.strip().lower()
+        best_match = None
+        best_score = 0
+
+        # Check exact brand match
+        if brand_normalized in self.data:
+            for product_key, product_data in self.data[brand_normalized].items():
+                if product_key == "_default":
+                    continue
+
+                # Calculate match score (simple containment)
+                product_key_lower = product_key.lower()
+                if category_lower in product_key_lower or product_key_lower in category_lower:
+                    score = len(category_lower) if category_lower in product_key_lower else len(product_key_lower)
+                    if score > best_score:
+                        best_score = score
+                        best_match = product_data
+                        logger.info(f"Found partial category match for barcode: '{category}' → '{product_key}'")
+
+        # Check partial brand matches
+        if not best_match:
+            for stored_brand, products in self.data.items():
+                if self._improved_partial_match(brand_normalized, stored_brand):
+                    for product_key, product_data in products.items():
+                        if product_key == "_default":
+                            continue
+
+                        product_key_lower = product_key.lower()
+                        if category_lower in product_key_lower or product_key_lower in category_lower:
+                            score = len(category_lower) if category_lower in product_key_lower else len(product_key_lower)
+                            if score > best_score:
+                                best_score = score
+                                best_match = product_data
+                                logger.info(f"Found partial category match via partial brand: '{category}' → '{product_key}'")
+
+        return best_match
+
     @staticmethod
     def _improved_partial_match(search_brand: str, stored_brand: str) -> bool:
         """Improved brand matching with hybrid approach to prevent generic word mismatches"""
@@ -1459,13 +1389,15 @@ class CertificationManager:
             common_words = search_words & stored_words
 
             # Remove generic words from consideration
-            meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
+            meaningful_common = [
+                w for w in common_words if w not in GENERIC_WORDS]
 
             # Rule 1: At least 2 meaningful words match
             if len(meaningful_common) >= 2:
                 return True
 
-            # Rule 2: For single meaningful word match, require it to be significant
+            # Rule 2: For single meaningful word match, require it to be
+            # significant
             if len(meaningful_common) == 1:
                 word = next(iter(meaningful_common))
                 # Word must be at least 4 chars and not too common
@@ -1516,7 +1448,8 @@ class CertificationManager:
             # Don't match based solely on generic words like "value"
             return False
 
-        # Also check for word overlap (for cases like "ben jerry" vs "ben and jerry")
+        # Also check for word overlap (for cases like "ben jerry" vs "ben and
+        # jerry")
         search_words = set(search_brand.split())
         stored_words = set(stored_brand.split())
         common_words = search_words & stored_words
@@ -1526,7 +1459,8 @@ class CertificationManager:
         if len(meaningful_common) >= 2:
             return True
 
-        # Rule 4: Fuzzy word matching for cases like "ben jerry" vs "ben and jerrys"
+        # Rule 4: Fuzzy word matching for cases like "ben jerry" vs "ben and
+        # jerrys"
         if len(meaningful_common) == 1:
             # Get the remaining meaningful words (excluding generic words)
             search_remaining = [
@@ -1561,13 +1495,21 @@ class CertificationManager:
 
         # Rule 5: Check if it's a known single-word brand with high similarity
         if len(search_words) == 1 and len(stored_words) == 1:
-            similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
+            similarity = SequenceMatcher(
+                None, search_brand, stored_brand).ratio()
             return similarity >= 0.8
 
         return False
 
-    def get_certifications(self, brand: str) -> Dict[str, Any]:
-        """Get certifications for a brand from Excel data"""
+    def get_certifications(self, brand: str, category: str = None, source: str = "manual") -> Dict[str, Any]:
+        """
+        Get certifications for a brand from Excel data, filtered by category.
+
+        Args:
+            brand: Brand name to look up
+            category: Product category (required for multi-category brands unless source is "barcode")
+            source: "barcode" (OFF provided category) or "manual" (user selected)
+        """
         # Reload data if never loaded or if more than 5 minutes old
         if (
             self.data is None
@@ -1579,35 +1521,169 @@ class CertificationManager:
 
         if not brand or brand.lower() in ["unknown", "n/a", ""]:
             logger.info("Empty brand requested, returning default certifications")
-            return self._get_default_response()
+            return self._get_default_response(found=False, match_type="no_brand")
 
         brand_normalized = BrandNormalizer.normalize(brand)
-        logger.info(
-            f"Looking up certifications for brand: '{brand}' (normalized: '{brand_normalized}')"
+        logger.info(f"Looking for certifications for brand: '{brand_normalized}', category: '{category}', source: '{source}'")
+
+        # ===== STEP 1: Try exact brand + category match if category provided =====
+        if category and category.strip():
+            exact_match = self._find_exact_brand_category_match(brand_normalized, category)
+            if exact_match:
+                logger.info(f"Found exact match: brand='{brand_normalized}', category='{category}'")
+                return self._format_response(
+                    found=True,
+                    data=exact_match,
+                    search_brand=brand,
+                    match_type="exact_product"
+                )
+
+        # ===== STEP 2: Check if brand exists in our data =====
+        brand_exists = False
+        matched_brand = None
+        matched_products = None
+
+        # Check exact brand match
+        if brand_normalized in self.data:
+            brand_exists = True
+            matched_brand = brand_normalized
+            matched_products = self.data[brand_normalized]  # This is now a dict of products by category
+        else:
+            # Check partial brand match
+            for stored_brand, products in self.data.items():
+                if self._improved_partial_match(brand_normalized, stored_brand):
+                    brand_exists = True
+                    matched_brand = stored_brand
+                    matched_products = products
+                    break
+
+        if brand_exists and matched_products:
+            # Get categories this brand appears in
+            categories = [k for k in matched_products.keys() if k != "_default"]
+            is_single_category = len(categories) == 1
+
+            # Get the first product's category for single-category case
+            first_category = categories[0] if categories else None
+            first_product_data = matched_products.get(first_category) if first_category else matched_products.get("_default")
+
+            # CASE A: Single-category brand - safe to use brand-only match
+            if is_single_category:
+                single_category = categories[0]
+                product_data = matched_products[single_category]
+                logger.info(f"Brand '{matched_brand}' appears only in category '{single_category}' - using brand-only match")
+                return self._format_response(
+                    found=True,
+                    data=product_data,
+                    search_brand=brand,
+                    match_type="brand_only_single_category",
+                    matched_category=single_category,
+                    note=f"This brand only produces {single_category} products."
+                )
+
+            # CASE B: Barcode scan with category from OFF
+            elif source == "barcode" and category:
+                # Try to find best category match
+                best_match = self._find_best_category_match(brand_normalized, category)
+                if best_match:
+                    # Get the category from the matched product data
+                    best_category = best_match.get("category", "")
+                    if not best_category:
+                        # Fallback to row_data
+                        best_row_data = best_match.get("row_data", {})
+                        best_category = best_row_data.get("Category", "") if best_row_data else ""
+
+                    logger.info(f"Found category match for barcode: '{category}' → '{best_category}'")
+                    return self._format_response(
+                        found=True,
+                        data=best_match,
+                        search_brand=brand,
+                        match_type="barcode_category_match",
+                        matched_category=best_category,
+                        note=f"Matched to {best_category} category based on product information."
+                    )
+                else:
+                    # No category match found - return unknown
+                    logger.info(f"No category match for '{brand}' with category '{category}'")
+                    return self._get_default_response(
+                        found=False,
+                        match_type="no_category_match",
+                        note=f"Product category '{category}' not found in database for this brand."
+                    )
+
+            # CASE C: Manual search with category provided but not exact match
+            elif category and category.strip():
+                # Try partial category match
+                best_match = self._find_best_category_match(brand_normalized, category)
+                if best_match:
+                    # Get the category from the matched product data
+                    best_category = best_match.get("category", "")
+                    if not best_category:
+                        best_row_data = best_match.get("row_data", {})
+                        best_category = best_row_data.get("Category", "") if best_row_data else ""
+
+                    logger.info(f"Found partial category match for manual search: '{category}' → '{best_category}'")
+                    return self._format_response(
+                        found=True,
+                        data=best_match,
+                        search_brand=brand,
+                        match_type="partial_category_match",
+                        matched_category=best_category,
+                        note=f"Best match found in {best_category} category. Please verify."
+                    )
+                else:
+                    # No match - require category selection
+                    return self._get_default_response(
+                        found=False,
+                        match_type="category_required",
+                        note=f"This brand makes multiple product types. Please select a category: {', '.join(categories)}"
+                    )
+
+            # CASE D: Manual search without category for multi-category brand
+            else:
+                logger.info(f"Brand '{matched_brand}' appears in {len(categories)} categories. Category required.")
+                return self._get_default_response(
+                    found=False,
+                    match_type="category_required",
+                    note=f"This brand makes multiple product types. Please select a category: {', '.join(categories)}"
+                )
+
+        # ===== STEP 3: Check parent company =====
+        parent_company = BrandNormalizer.find_parent_company(brand)
+        if parent_company:
+            parent_normalized = BrandNormalizer.normalize(parent_company)
+            if parent_normalized in self.data:
+                logger.info(f"Using parent company '{parent_company}' for '{brand}'")
+                # For parent company, get the first product
+                parent_products = self.data[parent_normalized]
+                parent_categories = [k for k in parent_products.keys() if k != "_default"]
+                if parent_categories:
+                    parent_data = parent_products[parent_categories[0]]
+                else:
+                    parent_data = parent_products.get("_default")
+
+                if parent_data:
+                    return self._format_response(
+                        found=True,
+                        data=parent_data,
+                        search_brand=brand,
+                        match_type="parent_company",
+                        note=f"Using parent company '{parent_company}' certifications."
+                    )
+
+        # ===== STEP 4: No match found =====
+        logger.info(f"No match found for brand: '{brand}' with category: '{category}'")
+        return self._get_default_response(
+            found=False,
+            match_type="no_match",
+            note="Brand not found in certification database."
         )
 
-        # Check for exact match
-        if brand_normalized in self.data:
-            data = self.data[brand_normalized]
-            logger.info(f"Found exact match for '{brand}': {data['certifications']}")
-            return self._format_response(True, data, brand)
-
-        # Check for partial matches with improved logic
-        for stored_brand, data in self.data.items():
-            if self._improved_partial_match(brand_normalized, stored_brand):
-                logger.info(
-                    f"Found partial match for '{brand}': stored as '{stored_brand}'"
-                )
-                return self._format_response(True, data, brand)
-
-        # No match found
-        logger.info(f"No match found for brand: '{brand}'")
-        return self._get_default_response()
-
-    def _get_default_response(self) -> Dict[str, Any]:
-        """Get default certification response"""
+    def _get_default_response(self, found: bool = False, match_type: str = "no_match", note: str = None) -> Dict[str, Any]:
+        """Get default certification response with match metadata"""
         return {
-            "found": False,
+            "found": found,
+            "match_type": match_type,
+            "note": note,
             "certifications": {
                 "b_corp": False,
                 "fair_trade": False,
@@ -1619,11 +1695,19 @@ class CertificationManager:
         }
 
     def _format_response(
-        self, found: bool, data: Dict, search_brand: str = None
+        self,
+        found: bool,
+        data: Dict,
+        search_brand: str = None,
+        match_type: str = "exact_match",
+        matched_category: str = None,
+        note: str = None
     ) -> Dict[str, Any]:
-        """Format certification response - returns canonical brand name when matched"""
+        """Format certification response with match metadata"""
         response = {
             "found": found,
+            "match_type": match_type,
+            "note": note,
             "certifications": data["certifications"],
             "details": {
                 "original_brand": data["original_brand"],
@@ -1631,8 +1715,10 @@ class CertificationManager:
             },
         }
 
-        # If we found a match and the original brand differs from search,
-        # include canonical
+        if matched_category:
+            response["matched_category"] = matched_category
+
+        # If we found a match and the original brand differs from search, include canonical
         if (
             found
             and search_brand
@@ -1650,13 +1736,11 @@ class ScoringManager:
     """Manage all scoring-related operations"""
 
     @staticmethod
-    def calculate_brand_scores(brand: str) -> BrandData:
+    def calculate_brand_scores(brand: str, category: str = None) -> BrandData:
         """
         Calculate scores for a brand using priority order:
-        1. Hardcoded scores database (pre-calculated with multi-cert bonus)
-        2. Brand synonyms mapping
-        3. Parent company inheritance
-        4. Dynamic calculation from certifications
+        1. Parent company identification (for product search)
+        2. Dynamic calculation from certifications (Excel + BRAND_IDENTIFICATION_DB)
         """
         # Handle empty/unknown brand
         if not brand or brand == "Unknown":
@@ -1672,73 +1756,30 @@ class ScoringManager:
 
         brand_normalized = BrandNormalizer.normalize(brand)
 
-        # Step 1: Check hardcoded scores database FIRST
-        if brand_normalized in BrandNormalizer.HARDCODED_SCORES_DB:
-            scores = BrandNormalizer.HARDCODED_SCORES_DB[brand_normalized]
-            logger.info(f"Using hardcoded scores for '{brand_normalized}'")
-            return BrandData(
-                brand=brand,
-                social=safe_float(scores["social"]),
-                environmental=safe_float(scores["environmental"]),
-                economic=safe_float(scores["economic"]),
-                certifications=scores.get("certifications", []),
-                scoring_method="hardcoded_database",
-                multi_cert_applied=scores.get("multi_cert_applied", False),
-                multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
-                notes="Pre-calculated score from hardcoded database (includes multi-cert bonus if applicable)",
-            )
-
-        # Step 2: Check brand synonyms
-        if brand_normalized in BrandNormalizer.BRAND_SYNONYMS:
-            synonym_brand = BrandNormalizer.BRAND_SYNONYMS[brand_normalized]
-            if synonym_brand in BrandNormalizer.HARDCODED_SCORES_DB:
-                scores = BrandNormalizer.HARDCODED_SCORES_DB[synonym_brand]
-                logger.info(
-                    f"Using hardcoded scores via synonym for '{brand_normalized}' → '{synonym_brand}'"
-                )
-                return BrandData(
-                    brand=brand,  # Add this line
-                    social=safe_float(scores["social"]),
-                    environmental=safe_float(scores["environmental"]),
-                    economic=safe_float(scores["economic"]),
-                    certifications=scores.get("certifications", []),
-                    scoring_method="hardcoded_database_via_synonym",
-                    multi_cert_applied=scores.get("multi_cert_applied", False),
-                    multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
-                    notes=f"Pre-calculated score via brand synonym '{synonym_brand}'",
-                )
-
-        # Step 3: Check if this is a product that should inherit parent company
-        # scores
+        # Step 1: Check if this is a product that should inherit parent company scores
         parent_company = BrandNormalizer.find_parent_company(brand)
         if parent_company:
             parent_normalized = BrandNormalizer.normalize(parent_company)
-            if parent_normalized in BrandNormalizer.HARDCODED_SCORES_DB:
-                scores = BrandNormalizer.HARDCODED_SCORES_DB[parent_normalized]
-                logger.info(
-                    f"Using parent company scores for '{brand_normalized}' → parent '{parent_normalized}'"
-                )
-                return BrandData(
-                    brand=brand,
-                    social=safe_float(scores["social"]),
-                    environmental=safe_float(scores["environmental"]),
-                    economic=safe_float(scores["economic"]),
-                    certifications=scores.get("certifications", []),
-                    scoring_method="parent_company_inheritance",
-                    multi_cert_applied=scores.get("multi_cert_applied", False),
-                    multi_cert_bonus=safe_float(scores.get("multi_cert_bonus", 0.0)),
-                    notes=f"Inherited score from parent company '{parent_company}'",
-                )
 
-        # Step 4: Dynamic calculation from certifications (fallback for unknown
-        # brands)
+            # Only skip inheritance for specific brands that should NOT inherit
+            # (like Digiorno, which has its own empty entry)
+            non_inheriting_brands = ["digiorno", "bai", "nestle pure life", "pure life"]
+
+            if brand_normalized in non_inheriting_brands:
+                logger.info(f"Brand {brand} in non-inheriting list, skipping parent inheritance")
+                # Fall through to dynamic calculation
+            else:
+                logger.info(f"Found parent company '{parent_company}' for '{brand}' - will use dynamic calculation")
+                # Fall through to dynamic calculation
+
+        # Step 2: Dynamic calculation from certifications - PASS THE CATEGORY
         logger.info(
-            f"Brand '{brand_normalized}' not in hardcoded database, calculating dynamically"
+            f"Brand '{brand_normalized}' calculating dynamically"
         )
-        return ScoringManager._calculate_dynamic_scores(brand)
+        return ScoringManager._calculate_dynamic_scores(brand, category)
 
     @staticmethod
-    def _calculate_dynamic_scores(brand: str) -> BrandData:
+    def _calculate_dynamic_scores(brand: str, category: str = None) -> BrandData:
         """Calculate scores dynamically from certifications"""
         # Start with base score
         social_score = ScoringConfig.BASE_SCORE
@@ -1746,7 +1787,7 @@ class ScoringManager:
         economic_score = ScoringConfig.BASE_SCORE
 
         # Get all certifications from combined sources
-        all_certifications = ScoringManager._get_all_certifications(brand)
+        all_certifications = ScoringManager._get_all_certifications(brand, category)
 
         # Apply certification bonuses
         bonus_applied = False
@@ -1760,7 +1801,8 @@ class ScoringManager:
 
         # Apply multi-certification bonus if applicable
         if bonus_applied and len(all_certifications) > 1:
-            multi_bonus = (len(all_certifications) - 1) * ScoringConfig.MULTI_CERT_BONUS
+            multi_bonus = (len(all_certifications) - 1) * \
+                ScoringConfig.MULTI_CERT_BONUS
             social_score += multi_bonus
             environmental_score += multi_bonus
             economic_score += multi_bonus
@@ -1782,16 +1824,16 @@ class ScoringManager:
                 if bonus_applied and len(all_certifications) > 1
                 else 0.0
             ),
-            notes="Base 5.0 + certification bonuses + multi-cert bonus (calculated dynamically)",
+            notes="Base 5.0 + certification bonuses + multi-cert bonus (capped at 10.0)",
         )
 
     @staticmethod
-    def _get_all_certifications(brand: str) -> List[str]:
+    def _get_all_certifications(brand: str, category: str = None) -> List[str]:
         """Get all certifications from combined sources"""
         brand_normalized = BrandNormalizer.normalize(brand)
 
         # Get certifications from Excel database
-        excel_certs = certification_manager.get_certifications(brand)
+        excel_certs = certification_manager.get_certifications(brand, category)  # Need to add category parameter throughout the chain
 
         # Also check hardcoded identification database for certifications
         hardcoded_certs = []
@@ -1856,7 +1898,8 @@ class OpenFoodFactsClient:
                         "brand_analysis": {},
                     }
         except Exception as e:
-            logger.error(f"Open Food Facts search error for '{product_name}': {e}")
+            logger.error(
+                f"Open Food Facts search error for '{product_name}': {e}")
             return {
                 "found": False,
                 "message": f"Search error: {str(e)}",
@@ -1915,13 +1958,11 @@ class OpenFoodFactsClient:
                         )
                         if normalized_brand not in brand_details:
                             brand_details[normalized_brand] = {
-                                "original_brand": field_value,
-                                "product_name": product.get("product_name", ""),
-                                "product_id": product.get("code", ""),
-                                "categories": product.get("categories", ""),
-                                "countries": product.get("countries", ""),
-                                "source_field": field,
-                            }
+                                "original_brand": field_value, "product_name": product.get(
+                                    "product_name", ""), "product_id": product.get(
+                                    "code", ""), "categories": product.get(
+                                    "categories", ""), "countries": product.get(
+                                    "countries", ""), "source_field": field, }
                         break
 
         return OpenFoodFactsClient._analyze_brand_candidates(
@@ -1955,7 +1996,10 @@ class OpenFoodFactsClient:
                 brand_percentages[brand] = round(percentage, 1)
 
         # Sort brands by frequency
-        sorted_brands = sorted(brand_counts.items(), key=lambda x: x[1], reverse=True)
+        sorted_brands = sorted(
+            brand_counts.items(),
+            key=lambda x: x[1],
+            reverse=True)
         top_brand = sorted_brands[0][0] if sorted_brands else None
 
         return {
@@ -1992,7 +2036,8 @@ class OpenFoodFactsClient:
                             barcode, product
                         )
         except Exception as e:
-            logger.error(f"Open Food Facts lookup error for barcode {barcode}: {e}")
+            logger.error(
+                f"Open Food Facts lookup error for barcode {barcode}: {e}")
 
         return {
             "barcode": barcode,
@@ -2012,7 +2057,8 @@ class OpenFoodFactsClient:
         for field in brand_fields:
             if field in product and product[field]:
                 brand_value = str(product[field]).strip()
-                if brand_value and brand_value.lower() not in ["", "unknown", "n/a"]:
+                if brand_value and brand_value.lower() not in [
+                        "", "unknown", "n/a"]:
                     brand = (
                         brand_value.split(",")[0].strip()
                         if "," in brand_value
@@ -2024,7 +2070,8 @@ class OpenFoodFactsClient:
         if brand == "Unknown":
             name = product.get("product_name", "")
             if name:
-                extracted = BrandNormalizer.extract_brand_from_product_text(name)
+                extracted = BrandNormalizer.extract_brand_from_product_text(
+                    name)
                 if extracted:
                     brand = extracted
 
@@ -2039,7 +2086,8 @@ class OpenFoodFactsClient:
         categories = product.get("categories", "")
         category = "Unknown"
         if categories:
-            category_list = [c.strip() for c in categories.split(",") if c.strip()]
+            category_list = [c.strip()
+                             for c in categories.split(",") if c.strip()]
             if category_list:
                 category = category_list[-1]
 
@@ -2078,9 +2126,11 @@ class BrandExtractionManager:
     """Manager for brand extraction from product names"""
 
     @staticmethod
-    async def extract_brand_from_product_name(product_name: str) -> Dict[str, Any]:
+    async def extract_brand_from_product_name(
+            product_name: str) -> Dict[str, Any]:
         """Main function to extract brand from product name using multiple strategies"""
-        logger.info(f"Attempting to extract brand from product name: '{product_name}'")
+        logger.info(
+            f"Attempting to extract brand from product name: '{product_name}'")
 
         # Strategy 1: Direct brand name check
         result = BrandExtractionManager._check_direct_brand_match(product_name)
@@ -2088,7 +2138,8 @@ class BrandExtractionManager:
             return result
 
         # Strategy 2: Try to extract brand directly from product name text
-        direct_brand = BrandNormalizer.extract_brand_from_product_text(product_name)
+        direct_brand = BrandNormalizer.extract_brand_from_product_text(
+            product_name)
         if direct_brand:
             logger.info(
                 f"Direct extraction found brand: '{direct_brand}' from product name"
@@ -2117,7 +2168,8 @@ class BrandExtractionManager:
 
         # Check if the input is already a known brand
         if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
-            logger.info(f"Input is already a known brand: '{brand_normalized}'")
+            logger.info(
+                f"Input is already a known brand: '{brand_normalized}'")
             return BrandExtractionManager._format_result(
                 success=True,
                 message=f"Input recognized as brand: '{brand_normalized}'",
@@ -2131,7 +2183,7 @@ class BrandExtractionManager:
         if brand_normalized in BrandNormalizer.BRAND_SYNONYMS:
             canonical_brand = BrandNormalizer.BRAND_SYNONYMS[brand_normalized]
             logger.info(
-                f"Input matches brand synonym: '{brand_normalized}' → '{canonical_brand}'"
+                f"Input matches brand synonym: '{brand_normalized}' â†’ '{canonical_brand}'"
             )
             return BrandExtractionManager._format_result(
                 success=True,
@@ -2146,7 +2198,7 @@ class BrandExtractionManager:
         for alias, canonical in BrandNormalizer.BRAND_ALIASES.items():
             if alias == brand_normalized:
                 logger.info(
-                    f"Input matches brand alias: '{brand_normalized}' → '{canonical}'"
+                    f"Input matches brand alias: '{brand_normalized}' â†’ '{canonical}'"
                 )
                 return BrandExtractionManager._format_result(
                     success=True,
@@ -2157,20 +2209,28 @@ class BrandExtractionManager:
                     reason=f"'{brand_normalized}' is an alias for '{canonical}'",
                 )
 
-        # Check if the input contains a known brand name
+        # Check if the input contains a known brand name - find the longest match
+        longest_match = None
+        longest_match_key = None
         for brand_key in BrandNormalizer.BRAND_IDENTIFICATION_DB.keys():
             brand_key_normalized = BrandNormalizer.normalize(brand_key)
             if brand_key_normalized and len(brand_key_normalized) > 2:
                 if brand_key_normalized in brand_normalized:
-                    logger.info(f"Found brand '{brand_key}' in input: '{product_name}'")
-                    return BrandExtractionManager._format_result(
-                        success=True,
-                        message=f"Brand '{brand_key}' found in input",
-                        extracted_brand=brand_key.title(),
-                        confidence=80,
-                        method="brand_in_input",
-                        reason=f"Brand '{brand_key}' found within input text",
-                    )
+                    if longest_match is None or len(brand_key_normalized) > len(longest_match):
+                        longest_match = brand_key_normalized
+                        longest_match_key = brand_key
+
+        if longest_match_key:
+            logger.info(
+                f"Found brand '{longest_match_key}' in input: '{product_name}'")
+            return BrandExtractionManager._format_result(
+                success=True,
+                message=f"Brand '{longest_match_key}' found in input",
+                extracted_brand=longest_match_key.title(),
+                confidence=80,
+                method="brand_in_input",
+                reason=f"Brand '{longest_match_key}' found within input text",
+            )
 
         return BrandExtractionManager._format_result(
             success=False,
@@ -2295,11 +2355,11 @@ class BrandExtractionManager:
             reason=reason,
             search_results={
                 "total_products": search_result["brand_analysis"].get(
-                    "total_products", 0
-                ),
+                    "total_products",
+                    0),
                 "total_brand_candidates": search_result["brand_analysis"].get(
-                    "total_brand_candidates", 0
-                ),
+                    "total_brand_candidates",
+                    0),
             },
         )
 
@@ -2326,7 +2386,7 @@ class BrandExtractionManager:
 
         if best_match:
             logger.info(
-                f"Fuzzy match found: '{brand_normalized}' → '{best_match}' ({best_score:.1%} similarity)"
+                f"Fuzzy match found: '{brand_normalized}' â†’ '{best_match}' ({best_score:.1%} similarity)"
             )
             confidence = int(best_score * 100)
             return BrandExtractionManager._format_result(
@@ -2411,6 +2471,8 @@ PURCHASE_HISTORY_DB = {}
 PRODUCT_CACHE = {}
 
 # Simple user database class (optional)
+
+
 class UserDatabase:
     def __init__(self):
         self.users = {}
@@ -2418,8 +2480,10 @@ class UserDatabase:
 
 # ==================== PERSISTENT STORAGE SETUP ====================
 
+
 # JSON file for persistent storage
 USER_DATA_FILE = "user_data.json"
+
 
 def load_user_data():
     """Load user data from JSON file"""
@@ -2435,6 +2499,7 @@ def load_user_data():
     # Return empty structure if file doesn't exist or has errors
     return {"users": {}, "purchases": {}}
 
+
 def save_user_data():
     """Save current user data to JSON file"""
     try:
@@ -2447,6 +2512,7 @@ def save_user_data():
         logger.info(f"Saved user data to {USER_DATA_FILE}")
     except Exception as e:
         logger.error(f"Error saving user data: {e}")
+
 
 # Load existing data or initialize
 user_data = load_user_data()
@@ -2466,6 +2532,7 @@ if "ALB" not in USERS_DB:
     logger.info("Created ALB user")
 
 # ==================== SCRIPT EXECUTION FUNCTIONS ====================
+
 
 def run_create_excel_script() -> Dict[str, Any]:
     """Execute the create_excel.py script"""
@@ -2501,12 +2568,12 @@ def run_create_excel_script() -> Dict[str, Any]:
             "success": True,
             "message": f"Successfully executed {FileConfig.CREATE_EXCEL_SCRIPT}",
             "output": output,
-            "excel_file_created": os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE),
+            "excel_file_created": os.path.exists(
+                FileConfig.CERTIFICATION_EXCEL_FILE),
             "excel_file_size": (
-                os.path.getsize(FileConfig.CERTIFICATION_EXCEL_FILE)
-                if os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE)
-                else 0
-            ),
+                os.path.getsize(
+                    FileConfig.CERTIFICATION_EXCEL_FILE) if os.path.exists(
+                    FileConfig.CERTIFICATION_EXCEL_FILE) else 0),
         }
     except Exception as e:
         logger.error(f"Error executing {FileConfig.CREATE_EXCEL_SCRIPT}: {e}")
@@ -2526,14 +2593,14 @@ def verify_excel_script() -> Dict[str, Any]:
         # Check if script exists
         script_exists = os.path.exists(FileConfig.CREATE_EXCEL_SCRIPT)
         script_size = (
-            os.path.getsize(FileConfig.CREATE_EXCEL_SCRIPT) if script_exists else 0
-        )
+            os.path.getsize(
+                FileConfig.CREATE_EXCEL_SCRIPT) if script_exists else 0)
 
         # Check if Excel file exists
         excel_exists = os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE)
         excel_size = (
-            os.path.getsize(FileConfig.CERTIFICATION_EXCEL_FILE) if excel_exists else 0
-        )
+            os.path.getsize(
+                FileConfig.CERTIFICATION_EXCEL_FILE) if excel_exists else 0)
 
         # Try to read Excel file
         excel_data = None
@@ -2750,7 +2817,7 @@ def render_scoring_methodology() -> str:
     <body>
         <div class="container">
             <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
-            <div class="subtitle">Version 2.3.0 • Consistent, Transparent Certification-Based Scoring</div>
+            <div class="subtitle">Version 2.4.0 • Weighted Certification Bonuses with Cap at 10.0</div>
 
             <div class="section">
                 <h2>🎯 Core Principles</h2>
@@ -2804,32 +2871,33 @@ def render_scoring_methodology() -> str:
                         <th>Focus Area</th>
                     </tr>
                     <tr>
+                    <tr>
                         <td><strong>B Corp</strong></td>
-                        <td>+1.0</td>
-                        <td>+1.0</td>
-                        <td>+1.0</td>
-                        <td>Holistic corporate responsibility</td>
+                        <td><strong>+3.5</strong></td>
+                        <td><strong>+3.5</strong></td>
+                        <td><strong>+3.5</strong></td>
+                        <td>Holistic (5 areas: Governance, Workers, Community, Environment, Customers)</td>
                     </tr>
                     <tr>
                         <td><strong>Fair Trade</strong></td>
-                        <td>+1.0</td>
-                        <td>+0.5</td>
-                        <td>+0.5</td>
-                        <td>Social justice & fair compensation</td>
+                        <td><strong>+2.0</strong></td>
+                        <td><strong>+1.0</strong></td>
+                        <td><strong>+2.0</strong></td>
+                        <td>Multi-dimensional (Labor rights, Fair pricing, Some environmental)</td>
                     </tr>
                     <tr>
                         <td><strong>Rainforest Alliance</strong></td>
-                        <td>+0.5</td>
-                        <td>+1.0</td>
-                        <td>+0.5</td>
-                        <td>Environmental sustainability</td>
+                        <td><strong>+1.0</strong></td>
+                        <td><strong>+2.5</strong></td>
+                        <td><strong>+1.0</strong></td>
+                        <td>Environmental focus (Deforestation, Biodiversity, Agrochemicals)</td>
                     </tr>
                     <tr>
                         <td><strong>Leaping Bunny</strong></td>
-                        <td>+1.0</td>
-                        <td>+0.5</td>
-                        <td>+0.0</td>
-                        <td>Animal welfare</td>
+                        <td><strong>+1.0</strong></td>
+                        <td><strong>0.0</strong></td>
+                        <td><strong>0.0</strong></td>
+                        <td>Single-issue (No animal testing only)</td>
                     </tr>
                 </table>
 
@@ -2859,7 +2927,7 @@ def render_scoring_methodology() -> str:
 
             <div class="example">
                 <h2>🧪 Example Calculation: Nespresso</h2>
-                <p><strong>Certifications:</strong> B Corp, Fair Trade, Rainforest Alliance</p>
+                                <p><strong>Certifications:</strong> B Corp + Fair Trade + Rainforest Alliance (All stack with cap at 10.0)</p>
 
                 <table>
                     <tr>
@@ -2876,21 +2944,21 @@ def render_scoring_methodology() -> str:
                     </tr>
                     <tr>
                         <td>+ B Corp Certification</td>
-                        <td>+1.0</td>
-                        <td>+1.0</td>
-                        <td>+1.0</td>
+                        <td>+3.5</td>
+                        <td>+3.5</td>
+                        <td>+3.5</td>
                     </tr>
                     <tr>
                         <td>+ Fair Trade Certification</td>
+                        <td>+2.0</td>
                         <td>+1.0</td>
-                        <td>+0.5</td>
-                        <td>+0.5</td>
+                        <td>+2.0</td>
                     </tr>
                     <tr>
                         <td>+ Rainforest Alliance Certification</td>
-                        <td>+0.5</td>
                         <td>+1.0</td>
-                        <td>+0.5</td>
+                        <td>+2.5</td>
+                        <td>+1.0</td>
                     </tr>
                     <tr>
                         <td>+ Multi-Cert Bonus (2 additional certs × {ScoringConfig.MULTI_CERT_BONUS})</td>
@@ -2900,9 +2968,9 @@ def render_scoring_methodology() -> str:
                     </tr>
                     <tr style="font-weight: bold; background: #e8f5e9;">
                         <td>Final Scores (capped at 10.0)</td>
-                        <td>8.5</td>
-                        <td>8.5</td>
-                        <td>8.0</td>
+                        <td><strong>10.0</strong></td>
+                        <td><strong>10.0</strong></td>
+                        <td><strong>10.0</strong></td>
                     </tr>
                 </table>
 
@@ -2911,7 +2979,7 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>🔄 Consistent Scoring Across All Search Methods</h2>
+                <h2>🔍 Consistent Scoring Across All Search Methods</h2>
                 <div class="principle-box">
                     <h3>Single Source of Truth</h3>
                     <p>One function (<code>calculate_brand_scores()</code>) handles all scoring</p>
@@ -2960,8 +3028,7 @@ def render_score_breakdown(
     hardcoded_certs = []
     if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
         hardcoded_certs = BrandNormalizer.BRAND_IDENTIFICATION_DB[brand_normalized].get(
-            "certifications", []
-        )
+            "certifications", [])
 
     excel_cert_list = []
     if excel_result["certifications"]["b_corp"]:
@@ -3003,7 +3070,7 @@ def render_score_breakdown(
     multi_cert_row = (
         f"""
     <div class="bonus-row">
-        <span>+ Multi-Certification Bonus ({len(all_certs)-1} additional cert{'s' if len(all_certs)-1 != 1 else ''} × {ScoringConfig.MULTI_CERT_BONUS})</span>
+        <span>+ Multi-Certification Bonus ({len(all_certs)-1} additional cert{'s' if len(all_certs)-1 != 1 else ''} x {ScoringConfig.MULTI_CERT_BONUS})</span>
         <span>+{(len(all_certs)-1) * ScoringConfig.MULTI_CERT_BONUS:.1f} to each pillar</span>
     </div>
     """
@@ -3167,7 +3234,7 @@ def render_score_breakdown(
             </div>
 
             <div class="excel-status {'excel-found' if excel_result['found'] else 'excel-notfound'}">
-                {'✓ Found in Excel Database' if excel_result['found'] else '✗ Not in Excel Database'}
+                {'âœ“ Found in Excel Database' if excel_result['found'] else '❌ Not in Excel Database'}
             </div>
 
             <div class="score-display">
@@ -3231,14 +3298,13 @@ def render_score_breakdown(
 
             <div style="text-align: center; margin-top: 40px;">
                 <a href="/" class="back-button">🏠 Back to Scanner</a>
-                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">📖 Full Methodology</a>
+                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">ðŸ“š Full Methodology</a>
                 <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
             </div>
         </div>
     </body>
     </html>
     """
-
 
 # ==================== API ENDPOINTS ====================
 
@@ -3249,6 +3315,8 @@ async def get_scoring_methodology():
     return HTMLResponse(content=render_scoring_methodology())
 
 # ✅ ADD THIS NEW ROUTE RIGHT HERE:
+
+
 @app.get("/data-sources", response_class=HTMLResponse)
 async def get_data_sources():
     """Serve the data sources information page."""
@@ -3256,16 +3324,21 @@ async def get_data_sources():
         html_content = file.read()
     return HTMLResponse(content=html_content)
 
+
 @app.get("/test/scoring/{brand}")
 async def test_scoring_methodology(brand: str):
     """Test the scoring methodology for a specific brand - returns HTML"""
     scores = scoring_manager.calculate_brand_scores(brand)
-    tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
-    excel_result = certification_manager.get_certifications(brand)
+    tbl = calculate_overall_score(
+        scores.social,
+        scores.environmental,
+        scores.economic)
+    excel_result = certification_manager.get_certifications(brand)  # Remove category parameter
 
     return HTMLResponse(
         content=render_score_breakdown(brand, scores, tbl, excel_result)
     )
+
 
 @app.post("/auth/register")
 async def register_user(user: UserRegistration) -> Dict[str, Any]:
@@ -3285,14 +3358,18 @@ async def register_user(user: UserRegistration) -> Dict[str, Any]:
     save_user_data()
 
     logger.info(f"New user registered: {user.username}")
-    return {"message": "User registered successfully", "username": user.username}
+    return {
+        "message": "User registered successfully",
+        "username": user.username}
 
 
 @app.post("/auth/login")
 async def login_user(login_data: LoginRequest) -> Dict[str, Any]:
     """Login user"""
     user = USERS_DB.get(login_data.username)
-    if not user or not verify_password(login_data.password, user["password_hash"]):
+    if not user or not verify_password(
+            login_data.password,
+            user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     logger.info(f"User logged in: {login_data.username}")
@@ -3335,36 +3412,48 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                 logger.error(f"Barcode lookup error: {e}")
                 # Continue with original values
 
-        # If brand is empty/Unknown but product_name is provided, try to extract brand
-        if (not brand or brand == "Unknown") and product_name and product_name != "Generic Product":
-            logger.info(f"Attempting to extract brand from product name: {product_name}")
+        # If brand is empty/Unknown but product_name is provided, try to
+        # extract brand
+        if (not brand or brand ==
+                "Unknown") and product_name and product_name != "Generic Product":
+            logger.info(
+                f"Attempting to extract brand from product name: {product_name}")
             try:
                 brand_extraction = await brand_extraction_manager.extract_brand_from_product_name(product_name)
 
                 if brand_extraction["success"]:
                     extracted_brand = brand_extraction["extracted_brand"]
-                    logger.info(f"Successfully extracted brand '{extracted_brand}' from product name '{product_name}'")
+                    logger.info(
+                        f"Successfully extracted brand '{extracted_brand}' from product name '{product_name}'")
 
                     brand = extracted_brand
 
                     # Update extraction info
                     brand_extraction_info = {
                         "extracted_from_name": True,
-                        "confidence": brand_extraction.get("confidence", 0.5),
-                        "method": brand_extraction.get("method", "unknown"),
+                        "confidence": brand_extraction.get(
+                            "confidence",
+                            0.5),
+                        "method": brand_extraction.get(
+                            "method",
+                            "unknown"),
                         "parent_company": brand_extraction.get("parent_company"),
                         "warning": brand_extraction.get("warning"),
-                        "alternative_brands": brand_extraction.get("alternative_brands", []),
-                        "search_results": brand_extraction.get("search_results", {}),
+                        "alternative_brands": brand_extraction.get(
+                            "alternative_brands",
+                            []),
+                        "search_results": brand_extraction.get(
+                            "search_results",
+                            {}),
                     }
                 else:
-                    logger.warning(f"Failed to extract brand from product name: {brand_extraction.get('message', 'Unknown error')}")
+                    logger.warning(
+                        f"Failed to extract brand from product name: {brand_extraction.get('message', 'Unknown error')}")
                     # Fallback: use product name as brand
                     brand = product_name
                     brand_extraction_info = {
-                        "extracted_from_name": False,
-                        "error": brand_extraction.get("message", "Brand extraction failed"),
-                    }
+                        "extracted_from_name": False, "error": brand_extraction.get(
+                            "message", "Brand extraction failed"), }
             except Exception as e:
                 logger.error(f"Brand extraction error: {e}")
                 brand = product_name if product_name != "Generic Product" else "Unknown"
@@ -3386,11 +3475,17 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             )
 
         # Calculate overall score
-        tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+        tbl = calculate_overall_score(
+            scores.social,
+            scores.environmental,
+            scores.economic)
 
         # Get certifications
         try:
-            cert_result = certification_manager.get_certifications(brand)
+            # Determine source based on whether barcode was used
+            source = "barcode" if (barcode and barcode.strip() != "") else "manual"
+            cert_result = certification_manager.get_certifications(brand, category, source=source)
+
         except Exception as e:
             logger.error(f"Certification lookup error: {e}")
             cert_result = {
@@ -3399,14 +3494,21 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                 "search_brand_used": brand
             }
 
+        # Update category if a matched category was returned
+        if cert_result.get("matched_category"):
+            category = cert_result.get("matched_category")
+            logger.info(f"Updated category to matched category: '{category}'")
+
         # Use canonical brand if available
         original_brand = brand
         canonical_brand = cert_result.get("canonical_brand")
         if canonical_brand:
             brand = canonical_brand
-            logger.info(f"Using canonical brand: '{original_brand}' → '{brand}'")
+            logger.info(
+                f"Using canonical brand: '{original_brand}' â†’ '{brand}'")
 
-        logger.info(f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
+        logger.info(
+            f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
 
         # Build response - ensure all values are not None
         # Get certifications once to avoid repeated checks
@@ -3415,6 +3517,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         response_data = {
             "barcode": barcode or "",
             "brand": brand or "Unknown",
+            "brand_display": f"{brand} ({category})" if category else brand,  # ADD THIS LINE
             "product_name": product_name or "Unknown Product",
             "category": category or "",
             "social_score": safe_float(getattr(scores, 'social', 0.0)),
@@ -3436,6 +3539,9 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "notes": getattr(scores, 'notes', 'Error processing request'),
             "found_in_excel": cert_result.get("found", False),
             "excel_details": cert_result.get("details", {}),
+            "match_type": cert_result.get("match_type"),
+            "note": cert_result.get("note"),
+            "matched_category": cert_result.get("matched_category"),
             "certification_verified_date": datetime.utcnow().isoformat(),
             "certification_sources": FileConfig.CERT_SOURCES,
             "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses Only + Multi-Cert Bonus",
@@ -3446,7 +3552,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "brand_correction_note": f"Corrected to canonical brand: '{canonical_brand}'" if canonical_brand else "No brand correction needed",
             "success": True,
             "timestamp": datetime.utcnow().isoformat()
-            }
+        }
 
         return sanitize_for_json(response_data)
 
@@ -3455,10 +3561,38 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         error_response = {
             "success": False,
             "error": str(e),
-            "barcode": str(getattr(product, 'barcode', '')) if getattr(product, 'barcode', '') else "",
-            "brand": str(getattr(product, 'brand', 'Unknown')) if getattr(product, 'brand', 'Unknown') else "Unknown",
-            "product_name": str(getattr(product, 'product_name', 'Unknown Product')) if getattr(product, 'product_name', 'Unknown Product') else "Unknown Product",
-            "category": str(getattr(product, 'category', '')) if getattr(product, 'category', '') else "",
+            "barcode": str(
+                getattr(
+                    product,
+                    'barcode',
+                    '')) if getattr(
+                product,
+                'barcode',
+                '') else "",
+            "brand": str(
+                getattr(
+                    product,
+                    'brand',
+                    'Unknown')) if getattr(
+                product,
+                'brand',
+                'Unknown') else "Unknown",
+            "product_name": str(
+                getattr(
+                    product,
+                    'product_name',
+                    'Unknown Product')) if getattr(
+                product,
+                'product_name',
+                'Unknown Product') else "Unknown Product",
+            "category": str(
+                getattr(
+                    product,
+                    'category',
+                    '')) if getattr(
+                product,
+                'category',
+                '') else "",
             "social_score": 0.0,
             "environmental_score": 0.0,
             "economic_score": 0.0,
@@ -3474,8 +3608,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             },
             "scoring_method": "error_fallback",
             "notes": f"Error processing request: {str(e)}",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat()}
         return sanitize_for_json(error_response)
 
 
@@ -3506,8 +3639,9 @@ async def test_brand_extraction_endpoint(product_name: str):
         "normalized_product_name": BrandNormalizer.normalize(product_name),
     }
 
+
 @app.get("/search-brand")
-async def search_brand(q: str = Query(...)):
+async def search_brand(q: str = Query(...), category: str = Query(None)):
     """Search for a brand with fuzzy matching and OFF discovery fallback"""
     # Load certification data if not already loaded
     if certification_manager.data is None:
@@ -3521,39 +3655,55 @@ async def search_brand(q: str = Query(...)):
     best_score = 0
     search_query = q.lower().strip()
 
-    # 1. Try local Excel search using fuzzy matching
-    # FIRST: Read the Excel file to get the DataFrame
+    if len(search_query) < 2:
+        return {"suggestions": [], "source": "local", "query": q}
+
+    # 1. Try local Excel search for auto-suggest
     try:
-        pd = get_pandas()  # LAZY load pandas
-        # Check if Excel file exists
+        pd = get_pandas()
         if not os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE):
             logger.warning(f"Excel file not found: {FileConfig.CERTIFICATION_EXCEL_FILE}")
             df = None
         else:
-            # Read the Excel file
             df = pd.read_excel(FileConfig.CERTIFICATION_EXCEL_FILE)
 
-            # Only proceed if we have data and the right column
             if df is not None and 'Product_Brand' in df.columns:
+                matches = []
+                seen_brands = set()
+
                 for _, row in df.iterrows():
                     brand_name = str(row['Product_Brand'])
-                    # SequenceMatcher handles typos (e.g., "Kellog" -> "Kellogg's")
-                    score = SequenceMatcher(None, search_query, brand_name.lower()).ratio() * 100
+                    brand_lower = brand_name.lower()
 
-                    if score > best_score:
-                        best_score = score
-                        best_match = brand_name
+                    # Simple starts-with check for auto-suggest
+                    if brand_lower.startswith(search_query):
+                        if brand_name not in seen_brands:
+                            seen_brands.add(brand_name)
+                            matches.append({
+                                "brand": brand_name,
+                                "category": row.get('Category', ''),
+                                "confidence": 100
+                            })
 
-                    # Optimization: If we find a 100% match, stop looking
-                    if best_score == 100:
+                    # Limit results for performance
+                    if len(matches) >= 10:
                         break
+
+                if matches:
+                    return {
+                        "suggestions": matches,
+                        "source": "local_database",
+                        "query": q,
+                        "success": True
+                    }
     except Exception as e:
         logger.error(f"Error reading Excel file for search: {e}")
         df = None
 
     # 2. IF local search score is low, query OFF for discovery
     if not best_match or best_score < 60:
-        logger.info(f"Low local match score ({round(best_score, 1)}%). Discovering via OFF...")
+        logger.info(
+            f"Low local match score ({round(best_score, 1)}%). Discovering via OFF...")
 
         off_url = f"https://world.openfoodfacts.org/api/v2/search?brands_tags={quote(q)}&fields=product_name,brands,image_small_url,code&page_size=5"
 
@@ -3571,14 +3721,15 @@ async def search_brand(q: str = Query(...)):
                             "message": "Brand not found in local records. Showing web matches:",
                             "discovered_products": [
                                 {
-                                    "name": p.get("product_name", "Unknown Product"),
-                                    "brand": p.get("brands", "Unknown Brand"),
+                                    "name": p.get(
+                                        "product_name",
+                                        "Unknown Product"),
+                                    "brand": p.get(
+                                        "brands",
+                                        "Unknown Brand"),
                                     "image": p.get("image_small_url"),
-                                    "barcode": p.get("code")
-                                } for p in products
-                            ],
-                            "success": True
-                        }
+                                    "barcode": p.get("code")} for p in products],
+                            "success": True}
             except Exception as e:
                 logger.error(f"OFF Search Error: {str(e)}")
 
@@ -3587,8 +3738,11 @@ async def search_brand(q: str = Query(...)):
         parent_company = BrandNormalizer.find_parent_company(best_match)
         target_brand = parent_company or best_match
 
-        scores = scoring_manager.calculate_brand_scores(target_brand)
-        tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+        scores = scoring_manager.calculate_brand_scores(target_brand, category)  # Pass category if availabl
+        tbl = calculate_overall_score(
+            scores.social,
+            scores.environmental,
+            scores.economic)
 
         return {
             "source": "local_database",
@@ -3606,10 +3760,12 @@ async def search_brand(q: str = Query(...)):
 
     return JSONResponse(
         status_code=404,
-        content={"success": False, "message": "No matching brands found locally or on the web."}
-    )
+        content={
+            "success": False,
+            "message": "No matching brands found locally or on the web."})
 
 # ==================== EXCEL MANAGEMENT ENDPOINTS ====================
+
 
 @app.get("/certifications/status")
 async def get_certification_status():
@@ -3675,7 +3831,8 @@ async def upload_certifications(file: UploadFile = File(...)):
 
     except Exception as e:
         logger.error(f"Error uploading certification file: {e}")
-        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+        raise HTTPException(status_code=500,
+                            detail=f"Error uploading file: {str(e)}")
 
 
 @app.get("/certifications/search/{brand}")
@@ -3683,11 +3840,16 @@ async def search_certifications(brand: str):
     """Search for a brand in the certification database"""
     result = certification_manager.get_certifications(brand)
 
+    # Sanitize the result
+    sanitized_result = sanitize_for_json(result)
+
     return {
         "brand": brand,
-        "found": result["found"],
-        "certifications": result["certifications"],
-        "details": result["details"],
+        "found": sanitized_result.get("found", False),
+        "certifications": sanitized_result.get("certifications", {}),
+        "details": sanitized_result.get("details", {}),
+        "match_type": sanitized_result.get("match_type"),
+        "note": sanitized_result.get("note")
     }
 
 
@@ -3698,7 +3860,8 @@ async def export_certifications():
         certification_manager.load_certification_data()
 
     if certification_manager.data is None:
-        raise HTTPException(status_code=404, detail="No certification data available")
+        raise HTTPException(status_code=404,
+                            detail="No certification data available")
 
     return JSONResponse(content=certification_manager.data)
 
@@ -3733,7 +3896,10 @@ async def verify_script_status():
     """Verify the status of create_excel.py script and Excel file"""
     result = verify_excel_script()
 
-    return {"status": "success", "timestamp": datetime.utcnow().isoformat(), **result}
+    return {
+        "status": "success",
+        "timestamp": datetime.utcnow().isoformat(),
+        **result}
 
 
 @app.post("/certifications/reset")
@@ -3777,16 +3943,21 @@ async def reset_excel_file():
 
 @app.get("/validate/barcode/{barcode}")
 async def validate_barcode_format(barcode: str):
-    """Validate barcode format and provide debugging info for ZXing-web"""
-    # Common barcode patterns
+    """Validate barcode format and provide compatibility info for Html5Qrcode"""
+    # Html5Qrcode supported formats
     patterns = {
-        "UPC-A": r"^\d{12}$",
-        "UPC-E": r"^\d{6,8}$",
         "EAN-13": r"^\d{13}$",
         "EAN-8": r"^\d{8}$",
-        "Code 39": r"^[A-Z0-9\-\.\ \$\/\+\%]+$",
+        "UPC-A": r"^\d{12}$",
+        "UPC-E": r"^\d{6,8}$",
         "Code 128": r"^[\x00-\x7F]+$",
-        "QR Code": r"^.+$",  # QR codes can contain any data
+        "Code 39": r"^[A-Z0-9\-\.\ \$\/\+\%]+$",
+        "Code 93": r"^[A-Z0-9\-\.\ \$\/\+\%]+$",
+        "Codabar": r"^[0-9\-\$\:\.\+\/]+$",
+        "ITF": r"^\d+$",  # Interleaved 2 of 5
+        "PDF417": r"^.+$",
+        "Data Matrix": r"^.+$",
+        "QR Code": r"^.+$",
     }
 
     detected_formats = []
@@ -3799,12 +3970,12 @@ async def validate_barcode_format(barcode: str):
         "length": len(barcode),
         "detected_formats": detected_formats,
         "is_numeric": barcode.isdigit(),
-        "is_valid_upc": len(barcode) in [12, 13, 8] and barcode.isdigit(),
-        "zxing_support": "Yes" if detected_formats else "No - may need manual entry",
+        "html5qrcode_compatible": len(detected_formats) > 0,
+        "library": "Html5Qrcode v2.3.8",
         "suggested_action": (
-            "Scan with /scan endpoint"
+            "âœ“ Compatible with Html5Qrcode scanner"
             if detected_formats
-            else "Try manual lookup with /product/{barcode}"
+            else "âš ï¸ This format may not be supported. Try manual entry."
         ),
     }
 
@@ -3817,26 +3988,19 @@ async def test_excel_lookup(brand: str):
     """Test endpoint to check Excel lookup for a specific brand"""
     result = certification_manager.get_certifications(brand)
 
-    # Also check all brands in Excel for debugging
-    all_brands = []
-    if certification_manager.data:
-        for brand_key, data in certification_manager.data.items():
-            all_brands.append(
-                {
-                    "normalized": brand_key,
-                    "original": data["original_brand"],
-                    "certifications": data["certifications"],
-                }
-            )
+    # Sanitize the result to handle NaN/NaT values
+    sanitized_result = sanitize_for_json(result)
+
+    # Also get brand categories for debugging
+    brand_normalized = BrandNormalizer.normalize(brand)
+    categories = certification_manager.brand_categories.get(brand_normalized, set())
 
     return {
         "test_brand": brand,
-        "normalized_brand": BrandNormalizer.normalize(brand),
-        "result": result,
-        "all_brands_in_excel": all_brands[:10],
-        "total_brands_in_excel": (
-            len(certification_manager.data) if certification_manager.data else 0
-        ),
+        "normalized_brand": brand_normalized,
+        "brand_categories": list(categories),
+        "result": sanitized_result,
+        "total_brands_in_excel": len(certification_manager.data) if certification_manager.data else 0
     }
 
 
@@ -3854,7 +4018,7 @@ async def compare_brands(brands: List[BrandInput]) -> Dict[str, Any]:
         tbl = calculate_overall_score(
             scores.social, scores.environmental, scores.economic
         )
-        cert_result = certification_manager.get_certifications(brand)
+        cert_result = certification_manager.get_certifications(brand)  # Remove category parameter
 
         comparison.append(
             {
@@ -3894,7 +4058,10 @@ async def record_purchase(
         raise HTTPException(status_code=400, detail="Product data required")
 
     scores = scoring_manager.calculate_brand_scores(product.brand)
-    tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
+    tbl = calculate_overall_score(
+        scores.social,
+        scores.environmental,
+        scores.economic)
 
     purchase = {
         "barcode": product.barcode,
@@ -3921,7 +4088,8 @@ async def record_purchase(
 
 
 @app.get("/history/{username}")
-async def get_purchase_history(username: str, limit: int = 50) -> Dict[str, Any]:
+async def get_purchase_history(
+        username: str, limit: int = 50) -> Dict[str, Any]:
     """Get user purchase history"""
     if username not in USERS_DB:
         raise HTTPException(status_code=404, detail="User not found")
@@ -3953,6 +4121,7 @@ async def debug_users():
                                     for user in USERS_DB.keys()}
     }
 
+
 @app.get("/debug/storage")
 async def debug_storage():
     """Debug endpoint to check storage status"""
@@ -3964,30 +4133,33 @@ async def debug_storage():
         "file_exists": file_exists,
         "file_size_bytes": file_size,
         "total_users": len(USERS_DB),
-        "total_purchases": sum(len(purchases) for purchases in PURCHASE_HISTORY_DB.values()),
-        "users": list(USERS_DB.keys()),
+        "total_purchases": sum(
+            len(purchases) for purchases in PURCHASE_HISTORY_DB.values()),
+        "users": list(
+            USERS_DB.keys()),
     }
 
 
 @app.get("/product/{barcode}")
 async def get_product_info(barcode: str) -> Dict[str, Any]:
     """Get comprehensive product info by barcode with verified certifications"""
-    # Add ZXing-web specific validation
+    # Add Html5Qrcode validation
     if not barcode or barcode.strip() == "":
         raise HTTPException(
             status_code=400,
-            detail="Empty barcode. ZXing-web may not have captured properly. Try manual entry or rescan.",
+            detail="Empty barcode. Please try scanning again or enter manually.",
         )
 
-    # Check if barcode looks like a common format
+    # Check if barcode looks valid
     if len(barcode) < 6:
-        logger.warning(f"Short barcode from ZXing-web: {barcode}. May be misread.")
+        logger.warning(
+            f"Short barcode detected: {barcode}. May be misread.")
 
     product = await food_facts_client.lookup_barcode(barcode)
 
     # Enhanced logging for debugging scanner issues
     logger.info(
-        f"ZXing-web scan -> Barcode: {barcode}, Length: {len(barcode)}, Found in OFF: {product.get('found', False)}"
+        f"Html5Qrcode scan -> Barcode: {barcode}, Length: {len(barcode)}, Found in OFF: {product.get('found', False)}"
     )
 
     brand_name = product.get("brand", "Unknown")
@@ -3996,12 +4168,17 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 
     # Use the scoring manager
     scores = scoring_manager.calculate_brand_scores(brand_name)
-    tbl = calculate_overall_score(scores.social, scores.environmental, scores.economic)
-    cert_result = certification_manager.get_certifications(brand_name)
+    tbl = calculate_overall_score(
+        scores.social,
+        scores.environmental,
+        scores.economic)
+    cert_result = certification_manager.get_certifications(brand_name, product.get("category"), source="barcode")
 
     result = {
         "barcode": barcode,
-        "found": product.get("found", False),
+        "found": product.get(
+            "found",
+            False),
         "name": product.get("name"),
         "brand": brand_name,
         "category": product.get("category"),
@@ -4017,7 +4194,11 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
             "fair_trade": "Fair Trade" in scores.certifications,
             "rainforest_alliance": "Rainforest Alliance" in scores.certifications,
             "leaping_bunny": "Leaping Bunny" in scores.certifications,
-            "research_complete": cert_result.get("certifications", {}).get("research_complete", False) if cert_result.get("certifications") else False,
+            "research_complete": cert_result.get(
+                "certifications",
+                {}).get(
+                    "research_complete",
+                    False) if cert_result.get("certifications") else False,
         },
         "scoring_method": scores.scoring_method,
         "notes": scores.notes,
@@ -4030,7 +4211,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         "certification_sources": FileConfig.CERT_SOURCES,
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses Only + Multi-Cert Bonus",
         "methodology_explanation": "See /scoring-methodology for detailed breakdown",
-        "scanner_notes": "Scanned with ZXing-web. If barcode looks incorrect, try adjusting lighting or camera distance.",
+        "scanner_notes": "Scanned with Html5Qrcode v2.3.8. Lightweight, mobile-optimized barcode scanner.",
     }
 
     # Include Open Food Facts data if product was found
@@ -4062,7 +4243,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         }
 
     logger.info(
-        f"ZXing-web product lookup for barcode: {barcode} - Found: {product.get('found', False)}"
+        f"Html5Qrcode product lookup for barcode: {barcode} - Found: {product.get('found', False)}"
     )
     return sanitize_for_json(result)
 
@@ -4074,8 +4255,9 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 async def scanner_health():
     """Check scanner system health and compatibility"""
     return {
-        "scanner_system": "ZXing-web (Browser Multi-Format Reader)",
-        "backend_integration": "✅ Ready",
+        "scanner_system": "Html5Qrcode (Lightweight JavaScript Scanner)",
+        "backend_integration": "âœ“ Ready",
+        "library": "Html5Qrcode v2.3.8 - actively maintained",
         "api_endpoints": {
             "scan": "/scan (POST) - Main scanning endpoint",
             "product_lookup": "/product/{barcode} (GET)",
@@ -4083,17 +4265,24 @@ async def scanner_health():
             "health": "/scanner/health (GET)",
         },
         "supported_formats": [
-            "UPC-A (12-digit)",
-            "UPC-E (6-8 digit)",
-            "EAN-13 (13-digit)",
-            "EAN-8 (8-digit)",
-            "Code 39",
+            "EAN-13",
+            "EAN-8",
+            "UPC-A",
+            "UPC-E",
             "Code 128",
+            "Code 39",
+            "Code 93",
+            "Codabar",
+            "ITF (Interleaved 2 of 5)",
+            "PDF417",
+            "Data Matrix",
             "QR Code",
+            "Aztec",
+            "MaxiCode"
         ],
         "camera_requirements": "User media permission required",
-        "mobile_compatible": "Yes (iOS Safari 11+, Android Chrome 53+)",
-        "https_required": "Recommended for camera access",
+        "mobile_compatible": "Yes - optimized for Android and iOS",
+        "https_required": "Required for camera access on most browsers",
         "fallback_methods": [
             "Manual barcode entry",
             "Brand name search via /extract-brand",
@@ -4101,8 +4290,9 @@ async def scanner_health():
         ],
         "troubleshooting": {
             "no_camera": "Check browser permissions and ensure HTTPS",
-            "poor_scanning": "Improve lighting and hold steady",
-            "wrong_barcode": "Validate format at /validate/barcode/{code}",
+            "poor_scanning": "Ensure good lighting and hold steady",
+            "small_barcodes": "Move camera closer to small barcodes",
+            "performance": "WASM provides near-native speed",
         },
     }
 
@@ -4123,12 +4313,10 @@ async def health_check() -> Dict[str, Any]:
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "total_brands": len(BrandNormalizer.BRAND_IDENTIFICATION_DB),
-        "hardcoded_scores": len(BrandNormalizer.HARDCODED_SCORES_DB),
-        "total_users": len(USERS_DB),
+                "total_users": len(USERS_DB),
         "cache_size": len(PRODUCT_CACHE),
-        "certification_system": "Hardcoded Scores + Excel-based + Hardcoded Identification Database",
-        "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses + Multi-Cert Bonus",
-        "scoring_priority": "Hardcoded DB → Brand Synonyms → Parent Company → Dynamic Calculation",
+        "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Weighted Certification Bonuses + Multi-Cert Bonus (capped at 10.0)",
+        "scoring_priority": "Brand Synonyms → Parent Company → Dynamic Calculation",
         "scoring_consistency": "Single scoring function ensures identical results across all search methods",
         "certification_bonuses": ScoringConfig.CERTIFICATION_BONUSES,
         "multi_cert_bonus": ScoringConfig.MULTI_CERT_BONUS,
@@ -4151,8 +4339,8 @@ async def health_check() -> Dict[str, Any]:
         "brand_aliases": len(BrandNormalizer.BRAND_ALIASES),
         "brand_synonyms": len(BrandNormalizer.BRAND_SYNONYMS),
         "scoring_methodology_endpoint": "/scoring-methodology (HTML)",
-        "version": "2.3.0",
-        "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Hardcoded + Dynamic)",
+        "version": "2.4.0",
+        "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Excel + Dynamic)",
     }
 
 
@@ -4168,35 +4356,17 @@ async def serve_frontend():
             html_content = f.read()
         return HTMLResponse(content=html_content, status_code=200)
     except FileNotFoundError:
-        # If index.html doesn't exist, serve a basic page with instructions
-        basic_html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>TBL Grocery Scanner</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
-                h1 { color: #2e7d32; }
-                .container { max-width: 600px; margin: 0 auto; }
-                .card { background: #f8f9fa; padding: 30px; border-radius: 10px; border: 1px solid #dee2e6; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>🌿 TBL Grocery Scanner Backend</h1>
-                <div class="card">
-                    <p>✅ Backend is running!</p>
-                    <p>To use the scanner, place <code>index.html</code> in the same directory as this Python file.</p>
-                    <p>📊 <a href="/health">Health Check</a></p>
-                    <p>📖 <a href="/scoring-methodology">Scoring Methodology</a></p>
-                    <p>🛠️ <a href="/scanner/health">Scanner Health</a></p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        return HTMLResponse(content=basic_html, status_code=200)
+        # If index.html doesn't exist, serve a basic page with instructions from file
+        try:
+            with open("backend_status.html", "r", encoding="utf-8") as f:
+                html_content = f.read()
+            return HTMLResponse(content=html_content, status_code=200)
+        except FileNotFoundError:
+            # Ultimate fallback - minimal HTML
+            return HTMLResponse(
+                content="<h1>Backend Running</h1><p>Place index.html in the directory</p>",
+                status_code=200
+            )
 
 
 # ==================== ALSO ADD THIS: Favicon endpoint ====================
@@ -4232,13 +4402,11 @@ if __name__ == "__main__":
         f"Brand identification database has {len(BrandNormalizer.BRAND_IDENTIFICATION_DB)} brands"
     )
     logger.info(
-        f"Hardcoded scores database has {len(BrandNormalizer.HARDCODED_SCORES_DB)} pre-calculated scores"
-    )
-    logger.info(
-        "Scoring Consistency: Single scoring function with hardcoded priority ensures identical results"
+        "Scoring Consistency: Weighted certification bonuses with cap at 10.0"
     )
     logger.info("Multi-certification bonus always applied correctly")
-    logger.info(f"Certification Bonuses: {ScoringConfig.CERTIFICATION_BONUSES}")
+    logger.info(
+        f"Certification Bonuses: {ScoringConfig.CERTIFICATION_BONUSES}")
     logger.info(
         f"Multi-certification bonus: {ScoringConfig.MULTI_CERT_BONUS} per additional cert"
     )
@@ -4260,12 +4428,14 @@ if __name__ == "__main__":
     for product in test_products:
         parent = BrandNormalizer.find_parent_company(product)
         if parent:
-            logger.info(f"Test mapping: '{product}' → '{parent}'")
+            logger.info(f"Test mapping: '{product}' â†’ '{parent}'")
 
-    logger.info("🎯 Scanner System: ZXing-web integrated")
-    logger.info("🌐 Open http://localhost:8000 in your browser")
-    logger.info("📱 For mobile: Use your computer's IP address with port 8000")
-    logger.info("🔧 Key endpoint: GET /scoring-methodology for complete transparency")
+    logger.info("🎯 Scanner System: Html5Qrcode integrated")
+    logger.info("ðŸŒ Open http://localhost:8000 in your browser")
+    logger.info(
+        "📱 For mobile: Use your computer's IP address with port 8000")
+    logger.info(
+        "🔧 Key endpoint: GET /scoring-methodology for complete transparency")
     logger.info("📊 Scanner health: GET /scanner/health")
 
     # Only run uvicorn directly when executing the script locally
