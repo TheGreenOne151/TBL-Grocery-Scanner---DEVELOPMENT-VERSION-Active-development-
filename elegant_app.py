@@ -123,10 +123,10 @@ class ScoringConfig:
     BASE_SCORE: ClassVar[float] = 5.0
     MULTI_CERT_BONUS: ClassVar[float] = 0.5
     CERTIFICATION_BONUSES: ClassVar[Dict[str, Dict[str, float]]] = {
-        "B Corp": {"social": 1.0, "environmental": 1.0, "economic": 1.0},
-        "Fair Trade": {"social": 1.0, "environmental": 0.5, "economic": 0.5},
-        "Rainforest Alliance": {"social": 0.5, "environmental": 1.0, "economic": 0.5},
-        "Leaping Bunny": {"social": 1.0, "environmental": 0.5, "economic": 0.0},
+        "B Corp": {"social": 3.5, "environmental": 3.5, "economic": 3.5},
+        "Fair Trade": {"social": 2.0, "environmental": 1.0, "economic": 2.0},
+        "Rainforest Alliance": {"social": 1.0, "environmental": 2.5, "economic": 1.0},
+        "Leaping Bunny": {"social": 1.0, "environmental": 0.0, "economic": 0.0},
     }
     GRADE_THRESHOLDS: ClassVar[Dict[str, float]] = {
         "EXCELLENT": 8.5,
@@ -246,7 +246,7 @@ def calculate_overall_score(
 # ==================== FASTAPI APP ====================
 
 
-app = FastAPI(title="TBL Grocery Scanner", version="2.3.0")
+app = FastAPI(title="TBL Grocery Scanner", version="2.4.0")
 
 # Add CORS middleware
 app.add_middleware(
@@ -1824,7 +1824,7 @@ class ScoringManager:
                 if bonus_applied and len(all_certifications) > 1
                 else 0.0
             ),
-            notes="Base 5.0 + certification bonuses + multi-cert bonus (calculated dynamically)",
+            notes="Base 5.0 + certification bonuses + multi-cert bonus (capped at 10.0)",
         )
 
     @staticmethod
@@ -2817,7 +2817,7 @@ def render_scoring_methodology() -> str:
     <body>
         <div class="container">
             <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
-            <div class="subtitle">Version 2.3.0 • Consistent, Transparent Certification-Based Scoring</div>
+            <div class="subtitle">Version 2.4.0 • Weighted Certification Bonuses with Cap at 10.0</div>
 
             <div class="section">
                 <h2>🎯 Core Principles</h2>
@@ -2871,32 +2871,33 @@ def render_scoring_methodology() -> str:
                         <th>Focus Area</th>
                     </tr>
                     <tr>
+                    <tr>
                         <td><strong>B Corp</strong></td>
-                        <td>+1.0</td>
-                        <td>+1.0</td>
-                        <td>+1.0</td>
-                        <td>Holistic corporate responsibility</td>
+                        <td><strong>+3.5</strong></td>
+                        <td><strong>+3.5</strong></td>
+                        <td><strong>+3.5</strong></td>
+                        <td>Holistic (5 areas: Governance, Workers, Community, Environment, Customers)</td>
                     </tr>
                     <tr>
                         <td><strong>Fair Trade</strong></td>
-                        <td>+1.0</td>
-                        <td>+0.5</td>
-                        <td>+0.5</td>
-                        <td>Social justice & fair compensation</td>
+                        <td><strong>+2.0</strong></td>
+                        <td><strong>+1.0</strong></td>
+                        <td><strong>+2.0</strong></td>
+                        <td>Multi-dimensional (Labor rights, Fair pricing, Some environmental)</td>
                     </tr>
                     <tr>
                         <td><strong>Rainforest Alliance</strong></td>
-                        <td>+0.5</td>
-                        <td>+1.0</td>
-                        <td>+0.5</td>
-                        <td>Environmental sustainability</td>
+                        <td><strong>+1.0</strong></td>
+                        <td><strong>+2.5</strong></td>
+                        <td><strong>+1.0</strong></td>
+                        <td>Environmental focus (Deforestation, Biodiversity, Agrochemicals)</td>
                     </tr>
                     <tr>
                         <td><strong>Leaping Bunny</strong></td>
-                        <td>+1.0</td>
-                        <td>+0.5</td>
-                        <td>+0.0</td>
-                        <td>Animal welfare</td>
+                        <td><strong>+1.0</strong></td>
+                        <td><strong>0.0</strong></td>
+                        <td><strong>0.0</strong></td>
+                        <td>Single-issue (No animal testing only)</td>
                     </tr>
                 </table>
 
@@ -2926,7 +2927,7 @@ def render_scoring_methodology() -> str:
 
             <div class="example">
                 <h2>🧪 Example Calculation: Nespresso</h2>
-                <p><strong>Certifications:</strong> B Corp, Fair Trade, Rainforest Alliance</p>
+                                <p><strong>Certifications:</strong> B Corp + Fair Trade + Rainforest Alliance (All stack with cap at 10.0)</p>
 
                 <table>
                     <tr>
@@ -2943,21 +2944,21 @@ def render_scoring_methodology() -> str:
                     </tr>
                     <tr>
                         <td>+ B Corp Certification</td>
-                        <td>+1.0</td>
-                        <td>+1.0</td>
-                        <td>+1.0</td>
+                        <td>+3.5</td>
+                        <td>+3.5</td>
+                        <td>+3.5</td>
                     </tr>
                     <tr>
                         <td>+ Fair Trade Certification</td>
+                        <td>+2.0</td>
                         <td>+1.0</td>
-                        <td>+0.5</td>
-                        <td>+0.5</td>
+                        <td>+2.0</td>
                     </tr>
                     <tr>
                         <td>+ Rainforest Alliance Certification</td>
-                        <td>+0.5</td>
                         <td>+1.0</td>
-                        <td>+0.5</td>
+                        <td>+2.5</td>
+                        <td>+1.0</td>
                     </tr>
                     <tr>
                         <td>+ Multi-Cert Bonus (2 additional certs × {ScoringConfig.MULTI_CERT_BONUS})</td>
@@ -2967,9 +2968,9 @@ def render_scoring_methodology() -> str:
                     </tr>
                     <tr style="font-weight: bold; background: #e8f5e9;">
                         <td>Final Scores (capped at 10.0)</td>
-                        <td>8.5</td>
-                        <td>8.5</td>
-                        <td>8.0</td>
+                        <td><strong>10.0</strong></td>
+                        <td><strong>10.0</strong></td>
+                        <td><strong>10.0</strong></td>
                     </tr>
                 </table>
 
@@ -4314,8 +4315,8 @@ async def health_check() -> Dict[str, Any]:
         "total_brands": len(BrandNormalizer.BRAND_IDENTIFICATION_DB),
                 "total_users": len(USERS_DB),
         "cache_size": len(PRODUCT_CACHE),
-        "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses + Multi-Cert Bonus",
-        "scoring_priority": "Brand Synonyms â†’ Parent Company â†’ Dynamic Calculation",
+        "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Weighted Certification Bonuses + Multi-Cert Bonus (capped at 10.0)",
+        "scoring_priority": "Brand Synonyms → Parent Company → Dynamic Calculation",
         "scoring_consistency": "Single scoring function ensures identical results across all search methods",
         "certification_bonuses": ScoringConfig.CERTIFICATION_BONUSES,
         "multi_cert_bonus": ScoringConfig.MULTI_CERT_BONUS,
@@ -4338,7 +4339,7 @@ async def health_check() -> Dict[str, Any]:
         "brand_aliases": len(BrandNormalizer.BRAND_ALIASES),
         "brand_synonyms": len(BrandNormalizer.BRAND_SYNONYMS),
         "scoring_methodology_endpoint": "/scoring-methodology (HTML)",
-        "version": "2.3.0",
+        "version": "2.4.0",
         "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Excel + Dynamic)",
     }
 
@@ -4401,7 +4402,7 @@ if __name__ == "__main__":
         f"Brand identification database has {len(BrandNormalizer.BRAND_IDENTIFICATION_DB)} brands"
     )
     logger.info(
-        "Scoring Consistency: Single scoring function with hardcoded priority ensures identical results"
+        "Scoring Consistency: Weighted certification bonuses with cap at 10.0"
     )
     logger.info("Multi-certification bonus always applied correctly")
     logger.info(
