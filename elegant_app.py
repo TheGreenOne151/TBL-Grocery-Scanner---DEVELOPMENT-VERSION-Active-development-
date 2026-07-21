@@ -1317,26 +1317,55 @@ class CertificationManager:
         category_lower = category.strip().lower()
         best_match = None
         best_score = 0
+        match_confidence = "low"  # Track confidence level
 
-        # Check exact brand match
+        # Check exact brand match (HIGHEST CONFIDENCE)
         if brand_normalized in self.data:
+            match_confidence = "high"
             for product_key, product_data in self.data[brand_normalized].items():
                 if product_key == "_default":
                     continue
 
-                # Calculate match score (simple containment)
                 product_key_lower = product_key.lower()
                 if category_lower in product_key_lower or product_key_lower in category_lower:
                     score = len(category_lower) if category_lower in product_key_lower else len(product_key_lower)
                     if score > best_score:
                         best_score = score
                         best_match = product_data
-                        logger.info(f"Found partial category match for barcode: '{category}' → '{product_key}'")
+                        logger.info(f"Found exact brand category match: '{category}' → '{product_key}'")
 
-        # Check partial brand matches
+        # Check partial brand matches (LOWER CONFIDENCE - ONLY if exact brand not found)
         if not best_match:
             for stored_brand, products in self.data.items():
                 if self._improved_partial_match(brand_normalized, stored_brand):
+                    # Check if this is a high-confidence partial match (2+ words)
+                    search_words = set(brand_normalized.split())
+                    stored_words = set(stored_brand.split())
+                    common_words = search_words & stored_words
+                    meaningful_common = [w for w in common_words if w not in {
+                        "value", "brand", "store", "market", "everyday", "organic",
+                        "natural", "premium", "select", "choice", "essential",
+                        "basic", "original", "classic", "traditional", "regular",
+                        "quality", "fresh", "pure", "simple", "smart", "total",
+                        "complete", "farm", "food", "house", "good", "great"
+                    }]
+
+                    # Only use partial match if at least 2 meaningful words match
+                    if len(meaningful_common) >= 2:
+                        match_confidence = "medium"
+                    else:
+                        # Single word match - only use if it's a distinctive word
+                        distinctive_words = {
+                            "nestle", "unilever", "pepsico", "coca", "cola",
+                            "mars", "hershey", "kellogg", "danone", "campbell",
+                            "pepperidge", "smucker", "quaker", "kraft", "heinz"
+                        }
+                        if meaningful_common and meaningful_common[0] in distinctive_words:
+                            match_confidence = "medium"
+                        else:
+                            match_confidence = "low"
+                            continue  # Skip low-confidence partial matches
+
                     for product_key, product_data in products.items():
                         if product_key == "_default":
                             continue
@@ -1349,39 +1378,33 @@ class CertificationManager:
                                 best_match = product_data
                                 logger.info(f"Found partial category match via partial brand: '{category}' → '{product_key}'")
 
-        return best_match
+        # ===== SAFETY CHECK: Only return match if confidence is high enough =====
+        if best_match and match_confidence in ["high", "medium"]:
+            return best_match
+
+        # If match_confidence is "low", don't return anything (prevents false positives)
+        logger.info(f"Rejected low-confidence brand match for '{brand_normalized}' → category '{category}'")
+        return None
 
     @staticmethod
     def _improved_partial_match(search_brand: str, stored_brand: str) -> bool:
         """Improved brand matching with hybrid approach to prevent generic word mismatches"""
         # Generic words that shouldn't trigger matches alone
         GENERIC_WORDS = {
-            "value",
-            "brand",
-            "store",
-            "market",
-            "everyday",
-            "organic",
-            "natural",
-            "premium",
-            "select",
-            "choice",
-            "essential",
-            "basic",
-            "original",
-            "classic",
-            "traditional",
-            "regular",
-            "quality",
-            "fresh",
-            "pure",
-            "simple",
-            "smart",
-            "total",
-            "complete",
+            "value", "brand", "store", "market", "everyday", "organic",
+            "natural", "premium", "select", "choice", "essential",
+            "basic", "original", "classic", "traditional", "regular",
+            "quality", "fresh", "pure", "simple", "smart", "total",
+            "complete", "farm", "food", "house", "good", "great",
+            "best", "finest", "fresh", "home", "family", "country",
+            "american", "old", "new", "world", "nature", "harvest"
         }
 
-        # If one is substring of another (current behavior)
+        # ===== STEP 1: EXACT MATCH =====
+        if search_brand == stored_brand:
+            return True
+
+        # ===== STEP 2: SUBSTRING CHECK WITH SAFEGUARDS =====
         if stored_brand in search_brand or search_brand in stored_brand:
             # Split into words
             search_words = set(search_brand.split())
@@ -1389,99 +1412,70 @@ class CertificationManager:
             common_words = search_words & stored_words
 
             # Remove generic words from consideration
-            meaningful_common = [
-                w for w in common_words if w not in GENERIC_WORDS]
+            meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
 
-            # Rule 1: At least 2 meaningful words match
+            # Rule 1: At least 2 meaningful words match - SAFE
             if len(meaningful_common) >= 2:
                 return True
 
-            # Rule 2: For single meaningful word match, require it to be
-            # significant
+            # Rule 2: Single meaningful word match - require it to be distinctive
             if len(meaningful_common) == 1:
                 word = next(iter(meaningful_common))
-                # Word must be at least 4 chars and not too common
-                if len(word) >= 4:
-                    # Check if this is a known brand word from our databases
-                    known_brand_words = {
-                        "nespresso",
-                        "dannon",
-                        "activia",
-                        "oikos",
-                        "evian",
-                        "volvic",
-                        "starbucks",
-                        "cadbury",
-                        "dunkin",
-                        "hershey",
-                        "coca",
-                        "cola",
-                        "pepsi",
-                        "kraft",
-                        "heinz",
-                        "general",
-                        "mills",
-                        "kellogg",
-                        "mondelez",
-                        "unilever",
-                        "procter",
-                        "gamble",
-                        "johnson",
-                        "campbell",
-                        "tyson",
-                        "hormel",
-                        "danone",
-                        "nestle",
-                        "mars",
-                    }
-                    if word in known_brand_words:
-                        return True
 
-                    # For single-word brands, use similarity
-                    if len(search_words) == 1 and len(stored_words) == 1:
-                        similarity = SequenceMatcher(
-                            None, search_brand, stored_brand
-                        ).ratio()
-                        return similarity >= 0.8  # 80% similarity threshold
+                # Only allow if word is distinctive (5+ chars OR known brand word)
+                distinctive_words = {
+                    "nespresso", "dannon", "activia", "oikos", "evian",
+                    "volvic", "starbucks", "cadbury", "dunkin", "hershey",
+                    "coca", "cola", "pepsi", "kraft", "heinz", "general",
+                    "mills", "kellogg", "mondelez", "unilever", "procter",
+                    "gamble", "johnson", "campbell", "tyson", "hormel",
+                    "danone", "nestle", "mars", "pepperidge", "smucker",
+                    "quaker", "kroger", "safeway", "traders", "joes"
+                }
 
-            # If we get here but had substring match, it was based on generic words only
-            # Don't match based solely on generic words like "value"
+                # Reject if word is short and generic
+                if len(word) < 5 and word not in distinctive_words:
+                    return False
+
+                if word in distinctive_words:
+                    return True
+
+                # For single-word brands, use similarity with high threshold
+                if len(search_words) == 1 and len(stored_words) == 1:
+                    similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
+                    return similarity >= 0.85  # 85% similarity threshold
+
+            # Substring match with only generic words = NO MATCH
             return False
 
-        # Also check for word overlap (for cases like "ben jerry" vs "ben and
-        # jerry")
+        # ===== STEP 3: WORD OVERLAP CHECK =====
         search_words = set(search_brand.split())
         stored_words = set(stored_brand.split())
         common_words = search_words & stored_words
         meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
 
-        # Rule 3: At least 2 meaningful words overlap
+        # Rule 3: At least 2 meaningful words overlap - SAFE
         if len(meaningful_common) >= 2:
             return True
 
-        # Rule 4: Fuzzy word matching for cases like "ben jerry" vs "ben and
-        # jerrys"
+        # Rule 4: Single meaningful word overlap - require distinctiveness
         if len(meaningful_common) == 1:
-            # Get the remaining meaningful words (excluding generic words)
-            search_remaining = [
-                w
-                for w in search_words
-                if w not in GENERIC_WORDS and w not in meaningful_common
-            ]
-            stored_remaining = [
-                w
-                for w in stored_words
-                if w not in GENERIC_WORDS and w not in meaningful_common
-            ]
+            word = meaningful_common[0]
+
+            # Reject short/generic words
+            if len(word) < 4 and word not in {"coca", "cola", "pepsi", "mars"}:
+                return False
+
+            # Get remaining words for fuzzy matching
+            search_remaining = [w for w in search_words if w not in GENERIC_WORDS and w != word]
+            stored_remaining = [w for w in stored_words if w not in GENERIC_WORDS and w != word]
 
             # If we have one word remaining in each, check similarity
             if len(search_remaining) == 1 and len(stored_remaining) == 1:
                 word1 = search_remaining[0]
                 word2 = stored_remaining[0]
-
-                # Check if words are similar (allowing for small differences)
                 similarity = SequenceMatcher(None, word1, word2).ratio()
-                if similarity >= 0.7:  # 70% similarity for word variations
+                if similarity >= 0.75 and (len(word1) >= 4 or len(word2) >= 4):
                     return True
 
             # Also check if one contains the other (e.g., "jerry" in "jerrys")
@@ -1489,16 +1483,31 @@ class CertificationManager:
                 for s_word in search_remaining:
                     for t_word in stored_remaining:
                         if s_word in t_word or t_word in s_word:
-                            # Only allow if the contained part is significant
-                            if len(s_word) >= 3 or len(t_word) >= 3:
+                            if len(s_word) >= 4 or len(t_word) >= 4:
                                 return True
 
-        # Rule 5: Check if it's a known single-word brand with high similarity
+        # ===== STEP 4: SINGLE-WORD BRAND MATCH (STRICT) =====
         if len(search_words) == 1 and len(stored_words) == 1:
-            similarity = SequenceMatcher(
-                None, search_brand, stored_brand).ratio()
-            return similarity >= 0.8
+            word1 = search_brand
+            word2 = stored_brand
 
+            # Exact single word match
+            if word1 == word2:
+                return True
+
+            # Similarity check with high threshold (85%)
+            similarity = SequenceMatcher(None, word1, word2).ratio()
+            if similarity >= 0.85:
+                return True
+
+            # Also allow if the word is distinctive and matches partially
+            if word1 in distinctive_words or word2 in distinctive_words:
+                if word1 in word2 or word2 in word1:
+                    return True
+
+            return False
+
+        # ===== NO MATCH =====
         return False
 
     def get_certifications(self, brand: str, category: str = None, source: str = "manual") -> Dict[str, Any]:
