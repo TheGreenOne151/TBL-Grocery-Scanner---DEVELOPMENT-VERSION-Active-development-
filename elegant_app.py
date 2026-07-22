@@ -4181,18 +4181,26 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         logger.warning("⚠️ Data not ready, attempting to load...")
         certification_manager.load_certification_data()
 
+        # Wait and retry if still not ready
+        retries = 3
+        while certification_manager.data is None and retries > 0:
+            logger.info(f"⏳ Waiting for data to load... ({retries} retries left)")
+            time.sleep(1)
+            retries -= 1
+
         if certification_manager.data is None:
             return {
                 "barcode": barcode,
                 "found": False,
-                "brand": "Unknown",
-                "name": "Unknown",
-                "category": "Unknown",
-                "message": "Product database is loading. Please try again in a moment.",
+                "brand": "Loading",
+                "name": "Please Wait",
+                "category": "Loading",
+                "message": "Product database is still loading. Please try again in a moment.",
                 "overall_tbl_score": 5.0,
                 "grade": "GOOD",
                 "certifications": [],
-                "loading": True
+                "loading": True,
+                "retry": True
             }
 
     # Add Html5Qrcode validation
@@ -4448,15 +4456,20 @@ async def startup_event():
     logger.info("🚀 Application starting up...")
     logger.info("📊 Loading certification data...")
 
-    # Load the data
-    success = certification_manager.load_certification_data()
+    # Load the data with retry
+    max_retries = 5
+    for attempt in range(max_retries):
+        success = certification_manager.load_certification_data()
+        if success and certification_manager.data is not None:
+            logger.info(f"✅ Successfully loaded {len(certification_manager.data)} certification records")
+            logger.info(f"✅ Category index ready for {len(certification_manager.brand_categories)} brands")
+            logger.info("🚀 Application startup complete!")
+            return
+        else:
+            logger.warning(f"⚠️ Attempt {attempt + 1}/{max_retries} failed, retrying in 1 second...")
+            time.sleep(1)
 
-    if success and certification_manager.data is not None:
-        logger.info(f"✅ Successfully loaded {len(certification_manager.data)} certification records")
-        logger.info(f"✅ Category index ready for {len(certification_manager.brand_categories)} brands")
-    else:
-        logger.warning("⚠️ Certification data did not load on startup. Will retry on first request.")
-
+    logger.warning("⚠️ Certification data did not load on startup. Will retry on first request.")
     logger.info("🚀 Application startup complete!")
 
 if __name__ == "__main__":
