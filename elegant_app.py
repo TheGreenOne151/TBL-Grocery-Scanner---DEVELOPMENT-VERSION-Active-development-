@@ -1389,6 +1389,18 @@ class CertificationManager:
     @staticmethod
     def _improved_partial_match(search_brand: str, stored_brand: str) -> bool:
         """Improved brand matching with hybrid approach to prevent generic word mismatches"""
+
+        # ===== DEFINED AT TOP (available everywhere) =====
+        distinctive_words = {
+            "nespresso", "dannon", "activia", "oikos", "evian",
+            "volvic", "starbucks", "cadbury", "dunkin", "hershey",
+            "coca", "cola", "pepsi", "kraft", "heinz", "general",
+            "mills", "kellogg", "mondelez", "unilever", "procter",
+            "gamble", "johnson", "campbell", "tyson", "hormel",
+            "danone", "nestle", "mars", "pepperidge", "smucker",
+            "quaker", "kroger", "safeway", "traders", "joes"
+        }
+
         # Generic words that shouldn't trigger matches alone
         GENERIC_WORDS = {
             "value", "brand", "store", "market", "everyday", "organic",
@@ -1422,17 +1434,6 @@ class CertificationManager:
             if len(meaningful_common) == 1:
                 word = next(iter(meaningful_common))
 
-                # Only allow if word is distinctive (5+ chars OR known brand word)
-                distinctive_words = {
-                    "nespresso", "dannon", "activia", "oikos", "evian",
-                    "volvic", "starbucks", "cadbury", "dunkin", "hershey",
-                    "coca", "cola", "pepsi", "kraft", "heinz", "general",
-                    "mills", "kellogg", "mondelez", "unilever", "procter",
-                    "gamble", "johnson", "campbell", "tyson", "hormel",
-                    "danone", "nestle", "mars", "pepperidge", "smucker",
-                    "quaker", "kroger", "safeway", "traders", "joes"
-                }
-
                 # Reject if word is short and generic
                 if len(word) < 5 and word not in distinctive_words:
                     return False
@@ -1443,7 +1444,7 @@ class CertificationManager:
                 # For single-word brands, use similarity with high threshold
                 if len(search_words) == 1 and len(stored_words) == 1:
                     similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
-                    return similarity >= 0.85  # 85% similarity threshold
+                    return similarity >= 0.85
 
             # Substring match with only generic words = NO MATCH
             return False
@@ -1478,7 +1479,7 @@ class CertificationManager:
                 if similarity >= 0.75 and (len(word1) >= 4 or len(word2) >= 4):
                     return True
 
-            # Also check if one contains the other (e.g., "jerry" in "jerrys")
+            # Also check if one contains the other
             if search_remaining and stored_remaining:
                 for s_word in search_remaining:
                     for t_word in stored_remaining:
