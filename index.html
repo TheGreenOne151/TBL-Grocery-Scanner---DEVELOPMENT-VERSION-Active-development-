@@ -1485,35 +1485,25 @@
                 hideLoading();
 
                 // Check if category is required
-                if (data.match_type === 'category_required' && data.note) {
-                    // Highlight the category dropdown
+                // Always display results if we have brand data from OFF
+                if (data.brand && data.brand !== 'Unknown') {
+                    // Show the results even if not in Excel
+                    displayResults(data);
+                } else if (data.match_type === 'category_required' && data.note) {
+                    // Show category dropdown
                     const categorySelect = document.getElementById('categorySelect');
                     const categoryGroup = document.getElementById('categoryGroup');
                     const categoryInfo = document.getElementById('categoryInfo');
-
-                    // Make sure category dropdown is visible
                     if (categoryGroup) categoryGroup.style.display = 'block';
                     if (categoryInfo) categoryInfo.style.display = 'block';
-
-                    // Add highlight class instead of inline styles
                     categorySelect.classList.add('category-highlight');
-
-                    // Scroll to category dropdown
                     categorySelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-                    // Show the error/warning message
                     showError(data.note);
-
-                    // Clear any previous results
                     document.getElementById('certBadges').innerHTML = '';
                     document.getElementById('overallScore').textContent = '-';
-
-                    // Remove highlight after 3 seconds
                     setTimeout(() => {
                         categorySelect.classList.remove('category-highlight');
                     }, 3000);
-
-                    // Hide results since we need category
                     hideResults();
                 } else {
                     displayResults(data);
