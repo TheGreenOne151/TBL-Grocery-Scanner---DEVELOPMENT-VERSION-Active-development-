@@ -4,6 +4,7 @@ import re
 import io
 import json
 import math
+import time
 import sqlite3
 import importlib.util
 import logging
@@ -1186,7 +1187,7 @@ class CertificationManager:
                     }
 
                 self.data = cert_data
-                self.brand_categories = brand_categories  # NEW: Store category index
+                self.brand_categories = brand_categories
                 self.last_loaded = datetime.now()
 
                 logger.info(f"Loaded {len(cert_data)} certification records")
@@ -1199,7 +1200,15 @@ class CertificationManager:
                     logger.info(
                         f"Sample brand '{brand}': certs={first_product.get('certifications', {})}, categories={brand_categories.get(brand, set())}"
                     )
-                return True
+
+                # ✅ ADD THIS: Verify data is ready
+                if self.data is not None and len(self.data) > 0:
+                    logger.info(f"✅ Data verification: {len(self.data)} records ready")
+                    return True
+                else:
+                    logger.warning("⚠️ Data appears empty, retrying...")
+                    time.sleep(1)
+                    return self.load_certification_data()
             else:
                 logger.warning(
                     f"Certification Excel file {FileConfig.CERTIFICATION_EXCEL_FILE} not found"
@@ -1520,6 +1529,20 @@ class CertificationManager:
             category: Product category (required for multi-category brands unless source is "barcode")
             source: "barcode" (OFF provided category) or "manual" (user selected)
         """
+        # ===== SAFETY CHECK: If data is None, try loading once =====
+        if self.data is None:
+            logger.warning("⚠️ Data is None, attempting to load...")
+            self.load_certification_data()
+
+            # If still None, return default response
+            if self.data is None:
+                logger.error("❌ Data still None after load attempt")
+                return self._get_default_response(
+                    found=False,
+                    match_type="data_not_loaded",
+                    note="Certification data is still loading. Please try again in a moment."
+                )
+
         # Reload data if never loaded or if more than 5 minutes old
         if (
             self.data is None
@@ -1528,6 +1551,15 @@ class CertificationManager:
         ):
             logger.info("Reloading certification data...")
             self.load_certification_data()
+
+            # ===== CHECK: If reload failed =====
+            if self.data is None:
+                logger.error("❌ Data reload failed")
+                return self._get_default_response(
+                    found=False,
+                    match_type="data_load_failed",
+                    note="Unable to load certification data. Please try again later."
+                )
 
         if not brand or brand.lower() in ["unknown", "n/a", ""]:
             logger.info("Empty brand requested, returning default certifications")
@@ -4153,6 +4185,26 @@ async def debug_storage():
 @app.get("/product/{barcode}")
 async def get_product_info(barcode: str) -> Dict[str, Any]:
     """Get comprehensive product info by barcode with verified certifications"""
+
+    # ===== SAFETY CHECK: Check if data is ready =====
+    if certification_manager.data is None:
+        logger.warning("⚠️ Data not ready, attempting to load...")
+        certification_manager.load_certification_data()
+
+        if certification_manager.data is None:
+            return {
+                "barcode": barcode,
+                "found": False,
+                "brand": "Unknown",
+                "name": "Unknown",
+                "category": "Unknown",
+                "message": "Product database is loading. Please try again in a moment.",
+                "overall_tbl_score": 5.0,
+                "grade": "GOOD",
+                "certifications": [],
+                "loading": True
+            }
+
     # Add Html5Qrcode validation
     if not barcode or barcode.strip() == "":
         raise HTTPException(
@@ -4396,15 +4448,26 @@ async def favicon():
 
     return Response(content=transparent_png, media_type="image/png")
 
-# Load certification data on startup
-certification_manager.load_certification_data()
 
-if certification_manager.data:
-    logger.info(
-        f"Successfully loaded {len(certification_manager.data)} certification records from Excel"
-    )
-else:
-    logger.warning("No Excel certification data loaded")
+# ==================== STARTUP EVENT ====================
+# ✅ ADD THIS: Load data before accepting requests
+
+@app.on_event("startup")
+async def startup_event():
+    """Load certification data on startup and wait for it to complete"""
+    logger.info("🚀 Application starting up...")
+    logger.info("📊 Loading certification data...")
+
+    # Load the data
+    success = certification_manager.load_certification_data()
+
+    if success and certification_manager.data is not None:
+        logger.info(f"✅ Successfully loaded {len(certification_manager.data)} certification records")
+        logger.info(f"✅ Category index ready for {len(certification_manager.brand_categories)} brands")
+    else:
+        logger.warning("⚠️ Certification data did not load on startup. Will retry on first request.")
+
+    logger.info("🚀 Application startup complete!")
 
 if __name__ == "__main__":
 

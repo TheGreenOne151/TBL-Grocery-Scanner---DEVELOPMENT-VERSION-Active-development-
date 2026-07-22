@@ -6,7 +6,7 @@ tbl-grocery-app/
 ├── .gitignore                             # Git ignore rules
 ├── render.yaml                            # Render deployment config
 ├── index.html                             # Frontend HTML interface (UPDATED with Html5Qrcode scanner + anti-glare)
-├── comprehensive_grocery_certifications.xlsx  # Certification database (896 brands)
+├── comprehensive_grocery_certifications_COMPLETE.xlsx  # Certification database (963 brands)
 ├── brand_maintenance.py                    # Brand consistency checker
 ├── MAINTENANCE.md                          # Brand maintenance guide
 ├── Project_Structure.txt                   # This file (UPDATED)
