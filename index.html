@@ -966,6 +966,19 @@
             }
         }
 
+        async function retryScan(barcode) {
+            showLoading();
+            try {
+                const response = await fetch(`${API_URL}/product/${encodeURIComponent(barcode)}`);
+                const data = await response.json();
+                hideLoading();
+                displayResults(data);
+            } catch (error) {
+                hideLoading();
+                showError('Retry failed: ' + error.message);
+            }
+        }
+
         async function register() {
             const username = document.getElementById('regUsername').value.trim();
             const email = document.getElementById('regEmail').value.trim();
@@ -1521,6 +1534,55 @@
         function displayResults(data) {
             if (!data || data.grade === 'ERROR') {
                 showError(data?.notes || 'Unable to find product information');
+                return;
+            }
+
+            // ===== CHECK FOR LOADING/RETRY STATE =====
+            if (data.loading === true || data.retry === true) {
+                document.getElementById('brandName').textContent = '⏳ Loading...';
+                document.getElementById('productName').textContent = 'Database is loading. Please wait...';
+                document.getElementById('overallScore').textContent = '...';
+                document.getElementById('gradeBadge').textContent = 'LOADING';
+                document.getElementById('gradeBadge').className = 'grade-badge grade-good';
+                document.getElementById('socialScore').textContent = '...';
+                document.getElementById('envScore').textContent = '...';
+                document.getElementById('econScore').textContent = '...';
+                document.getElementById('certBadges').innerHTML = '<p class="no-certs">⏳ Loading certifications...</p>';
+                document.getElementById('researchStatus').style.display = 'none';
+
+                // Remove old match info and details
+                const oldMatchInfo = document.getElementById('matchInfo');
+                if (oldMatchInfo) oldMatchInfo.remove();
+                const oldDetails = document.getElementById('productDetails');
+                if (oldDetails) oldDetails.remove();
+
+                showResults();
+
+                // Auto-retry after 2 seconds if retry flag is true
+                if (data.retry === true && data.barcode) {
+                    console.log('🔄 Auto-retrying scan for barcode:', data.barcode);
+                    setTimeout(() => {
+                        // Re-fetch the product
+                        fetch(`${API_URL}/product/${encodeURIComponent(data.barcode)}`)
+                            .then(r => r.json())
+                            .then(retryData => {
+                                console.log('🔄 Retry result:', retryData);
+                                displayResults(retryData);
+                            })
+                            .catch(err => {
+                                console.error('Retry failed:', err);
+                                document.getElementById('brandName').textContent = '❌ Retry Failed';
+                                document.getElementById('productName').textContent = 'Please try scanning again manually.';
+                                document.getElementById('overallScore').textContent = '5.0';
+                                document.getElementById('gradeBadge').textContent = 'GOOD';
+                                document.getElementById('gradeBadge').className = 'grade-badge grade-good';
+                                document.getElementById('socialScore').textContent = '5.0';
+                                document.getElementById('envScore').textContent = '5.0';
+                                document.getElementById('econScore').textContent = '5.0';
+                                document.getElementById('certBadges').innerHTML = '<p class="no-certs">Could not load certifications. Please try again.</p>';
+                            });
+                    }, 2000);
+                }
                 return;
             }
 
