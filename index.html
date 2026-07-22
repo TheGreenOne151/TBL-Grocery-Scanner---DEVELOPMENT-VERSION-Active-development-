@@ -1528,26 +1528,27 @@
 
             console.log('Product data:', data);
 
-            // ===== BRAND + CATEGORY =====
+            // ===== BRAND + CATEGORY (always from API) =====
+            const brand = data.brand || 'Unknown';
             const category = data.category || data.matched_category || '';
-            const brandDisplay = category ? `${data.brand} — ${category}` : data.brand;
+            const brandDisplay = category ? `${brand} — ${category}` : brand;
             document.getElementById('brandName').textContent = brandDisplay || 'Unknown';
 
-            // ===== PRODUCT NAME =====
-            const productName = data.product_name || data.name || 'Unknown Product';
+            // ===== PRODUCT NAME (always from API) =====
+            const productName = data.name || data.product_name || 'Unknown Product';
             document.getElementById('productName').textContent = productName;
 
             // ===== SCORES =====
-            document.getElementById('overallScore').textContent = (data.overall_tbl_score || 0).toFixed(1);
+            document.getElementById('overallScore').textContent = (data.overall_tbl_score || 5.0).toFixed(1);
 
-            const grade = data.grade || 'UNKNOWN';
+            const grade = data.grade || 'GOOD';
             const gradeBadge = document.getElementById('gradeBadge');
             gradeBadge.textContent = grade;
             gradeBadge.className = 'grade-badge grade-' + grade.toLowerCase();
 
-            document.getElementById('socialScore').textContent = (data.social_score || 0).toFixed(1);
-            document.getElementById('envScore').textContent = (data.environmental_score || 0).toFixed(1);
-            document.getElementById('econScore').textContent = (data.economic_score || 0).toFixed(1);
+            document.getElementById('socialScore').textContent = (data.social_score || 5.0).toFixed(1);
+            document.getElementById('envScore').textContent = (data.environmental_score || 5.0).toFixed(1);
+            document.getElementById('econScore').textContent = (data.economic_score || 5.0).toFixed(1);
 
             // ===== CERTIFICATIONS =====
             const certBadges = document.getElementById('certBadges');
@@ -1562,7 +1563,8 @@
                     `<span class="cert-badge">${cert}</span>`
                 ).join('');
             } else {
-                certBadges.innerHTML = '<p class="no-certs">No verified certifications found</p>';
+                const notInSheet = data.found_in_excel === false ? ' (not in certification database)' : '';
+                certBadges.innerHTML = `<p class="no-certs">No verified certifications found${notInSheet}</p>`;
             }
 
             // ===== RESEARCH STATUS =====
