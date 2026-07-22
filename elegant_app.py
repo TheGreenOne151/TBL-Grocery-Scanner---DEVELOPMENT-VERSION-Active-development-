@@ -5,6 +5,7 @@ import io
 import json
 import math
 import time
+import threading
 import sqlite3
 import importlib.util
 import logging
@@ -1123,6 +1124,7 @@ class CertificationManager:
         self.data = None
         self.brand_categories = None  # NEW: Track categories per brand
         self.last_loaded = None
+        self._lock = threading.Lock()
 
     def load_certification_data(self) -> bool:
         """Load certification data from Excel file and build category index"""
@@ -1529,37 +1531,25 @@ class CertificationManager:
             category: Product category (required for multi-category brands unless source is "barcode")
             source: "barcode" (OFF provided category) or "manual" (user selected)
         """
-        # ===== SAFETY CHECK: If data is None, try loading once =====
-        if self.data is None:
-            logger.warning("⚠️ Data is None, attempting to load...")
-            self.load_certification_data()
+        # ===== CHECK DATA WITH LOCK (prevents reload failures) =====
+        with self._lock:
+            need_load = (
+                self.data is None
+                or self.last_loaded is None
+                or (datetime.now() - self.last_loaded).seconds > 300
+            )
 
-            # If still None, return default response
-            if self.data is None:
-                logger.error("❌ Data still None after load attempt")
-                return self._get_default_response(
-                    found=False,
-                    match_type="data_not_loaded",
-                    note="Certification data is still loading. Please try again in a moment."
-                )
+            if need_load:
+                logger.info("🔄 Loading/Reloading certification data...")
+                self.load_certification_data()
 
-        # Reload data if never loaded or if more than 5 minutes old
-        if (
-            self.data is None
-            or self.last_loaded is None
-            or (datetime.now() - self.last_loaded).seconds > 300
-        ):
-            logger.info("Reloading certification data...")
-            self.load_certification_data()
-
-            # ===== CHECK: If reload failed =====
-            if self.data is None:
-                logger.error("❌ Data reload failed")
-                return self._get_default_response(
-                    found=False,
-                    match_type="data_load_failed",
-                    note="Unable to load certification data. Please try again later."
-                )
+                if self.data is None:
+                    logger.error("❌ Data still None after load attempt")
+                    return self._get_default_response(
+                        found=False,
+                        match_type="data_not_loaded",
+                        note="Certification data is loading. Please try again in a moment."
+                    )
 
         if not brand or brand.lower() in ["unknown", "n/a", ""]:
             logger.info("Empty brand requested, returning default certifications")
