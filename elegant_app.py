@@ -4212,9 +4212,9 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 
     # Check if barcode looks valid
     if len(barcode) < 6:
-        logger.warning(
-            f"Short barcode detected: {barcode}. May be misread.")
+        logger.warning(f"Short barcode detected: {barcode}. May be misread.")
 
+    # ===== GET PRODUCT FROM OFF FIRST =====
     product = await food_facts_client.lookup_barcode(barcode)
 
     # Enhanced logging for debugging scanner issues
@@ -4222,26 +4222,68 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         f"Html5Qrcode scan -> Barcode: {barcode}, Length: {len(barcode)}, Found in OFF: {product.get('found', False)}"
     )
 
+    # ===== HANDLE CASE WHERE OFF DOESN'T FIND THE PRODUCT =====
+    if not product.get("found", False):
+        return {
+            "barcode": barcode,
+            "found": False,
+            "brand": "Unknown",
+            "name": "Not Found in Open Food Facts",
+            "category": "Unknown",
+            "message": "This barcode was not found in Open Food Facts. Try searching by brand name instead.",
+            "overall_tbl_score": 5.0,
+            "grade": "GOOD",
+            "certifications": [],
+            "social_score": 5.0,
+            "environmental_score": 5.0,
+            "economic_score": 5.0,
+            "scoring_method": "default_fallback",
+            "notes": "Product not found in Open Food Facts. Using default score of 5.0.",
+            "found_in_excel": False,
+            "scanner_notes": "Try scanning again with better lighting or enter the barcode manually.",
+        }
+
     brand_name = product.get("brand", "Unknown")
     if brand_name != "Unknown":
         brand_name = brand_name.replace("The ", "").strip()
 
-    # Use the scoring manager
-    scores = scoring_manager.calculate_brand_scores(brand_name)
+    # ===== GET CERTIFICATIONS FROM EXCEL (if available) =====
+    cert_result = certification_manager.get_certifications(brand_name, product.get("category"), source="barcode")
+    found_in_excel = cert_result.get("found", False)
+
+    # ===== ALWAYS USE OFF BRAND AND PRODUCT NAME =====
+    # Use the brand from OFF (not Excel canonical)
+    display_brand = brand_name if brand_name != "Unknown" else product.get("brand", "Unknown")
+
+    # ===== CALCULATE SCORES =====
+    # If found in Excel, use Excel scores; otherwise use default 5.0
+    if found_in_excel:
+        scores = scoring_manager.calculate_brand_scores(display_brand)
+    else:
+        # Use default scores but mark as "Not in database"
+        scores = BrandData(
+            brand=display_brand,
+            social=5.0,
+            environmental=5.0,
+            economic=5.0,
+            certifications=[],
+            scoring_method="default_fallback",
+            notes="Brand not found in certification database. Using default score of 5.0."
+        )
+
     tbl = calculate_overall_score(
         scores.social,
         scores.environmental,
-        scores.economic)
-    cert_result = certification_manager.get_certifications(brand_name, product.get("category"), source="barcode")
+        scores.economic
+    )
 
+    # ===== BUILD RESULT =====
     result = {
         "barcode": barcode,
-        "found": product.get(
-            "found",
-            False),
-        "name": product.get("name"),
-        "brand": brand_name,
-        "category": product.get("category"),
+        "found": True,  # Always true since we found it in OFF
+        "name": product.get("name", "Unknown Product"),
+        "brand": display_brand,
+        "category": product.get("category", "Unknown"),
         "social_score": scores.social,
         "environmental_score": scores.environmental,
         "economic_score": scores.economic,
@@ -4254,29 +4296,22 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
             "fair_trade": "Fair Trade" in scores.certifications,
             "rainforest_alliance": "Rainforest Alliance" in scores.certifications,
             "leaping_bunny": "Leaping Bunny" in scores.certifications,
-            "research_complete": cert_result.get(
-                "certifications",
-                {}).get(
-                    "research_complete",
-                    False) if cert_result.get("certifications") else False,
+            "research_complete": cert_result.get("certifications", {}).get("research_complete", False) if cert_result.get("certifications") else False,
         },
         "scoring_method": scores.scoring_method,
         "notes": scores.notes,
         "multi_cert_applied": scores.multi_cert_applied,
         "multi_cert_bonus": scores.multi_cert_bonus,
-        "certification_source": "Hardcoded Database (pre-calculated) + Excel Database (combined)",
-        "found_in_excel": cert_result["found"],
-        "excel_details": cert_result["details"],
-        "certification_verified_date": datetime.utcnow().isoformat(),
+        "certification_source": "Excel Database" if found_in_excel else "No certifications found",
+        "found_in_excel": found_in_excel,
+        "excel_details": cert_result.get("details", {}),
+        "match_type": cert_result.get("match_type"),
+        "certification_verified_date": datetime.utcnow().isoformat() if found_in_excel else None,
         "certification_sources": FileConfig.CERT_SOURCES,
-        "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Objective Certification Bonuses Only + Multi-Cert Bonus",
+        "scoring_methodology": "Base 5.0 + Objective Certification Bonuses Only + Multi-Cert Bonus",
         "methodology_explanation": "See /scoring-methodology for detailed breakdown",
         "scanner_notes": "Scanned with Html5Qrcode v2.3.8. Lightweight, mobile-optimized barcode scanner.",
-    }
-
-    # Include Open Food Facts data if product was found
-    if product.get("found"):
-        result["open_food_facts"] = {
+        "off_data": {  # Include OFF data
             "eco_score_grade": product.get("eco_score"),
             "eco_score_value": product.get("eco_score_value"),
             "nutriscore_grade": product.get("nutriscore"),
@@ -4294,17 +4329,9 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
             "image_url": product.get("image_url"),
             "last_updated": product.get("last_updated"),
         }
-    else:
-        # Provide helpful guidance for failed scans
-        result["scanner_tips"] = {
-            "suggestion": "Try scanning again with better lighting",
-            "alternative": "Use manual entry with brand name instead",
-            "validate_format": f"Visit /validate/barcode/{barcode} to check barcode format",
-        }
+    }
 
-    logger.info(
-        f"Html5Qrcode product lookup for barcode: {barcode} - Found: {product.get('found', False)}"
-    )
+    logger.info(f"Product lookup for barcode: {barcode} - Found in OFF: True, Found in Excel: {found_in_excel}")
     return sanitize_for_json(result)
 
 
