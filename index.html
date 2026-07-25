@@ -1484,10 +1484,16 @@
 
                 hideLoading();
 
-                // Check if category is required
-                // Always display results if we have brand data from OFF
-                if (data.brand && data.brand !== 'Unknown') {
-                    // Show the results even if not in Excel
+                // ===== DEBUG: Log what we got =====
+                console.log('🔍 SEARCHPRODUCT DATA:', data);
+                console.log('🔍 data.brand:', data.brand);
+                console.log('🔍 data.found:', data.found);
+                console.log('🔍 data.found_in_excel:', data.found_in_excel);
+
+                // ===== DISPLAY RESULTS =====
+                // Check if we have product data from OFF
+                if (data && data.found !== false) {
+                    // Always display results when product is found in OFF
                     displayResults(data);
                 } else if (data.match_type === 'category_required' && data.note) {
                     // Show category dropdown
@@ -1506,6 +1512,7 @@
                     }, 3000);
                     hideResults();
                 } else {
+                    // Fallback: try to display results anyway
                     displayResults(data);
                 }
 
