@@ -13,7 +13,34 @@ tbl-grocery-app/
 ├── README.md                               # Project documentation
 └── create_excel.py                         # Excel creation script (optional)
 
-# 🆕 New Features Added (March 2025):
+# 📊 API Endpoints:
+├── GET  /                              # Frontend interface
+├── GET  /health                        # Health check
+├── GET  /scoring-methodology           # Scoring methodology explanation
+├── GET  /data-sources                  # Data sources information
+├── GET  /excel/verify                  # 🆕 Verify Excel data stats & health
+├── GET  /certifications/status         # Certification database status
+├── GET  /certifications/search/{brand} # Search brand in Excel
+├── GET  /certifications/export         # Export certification data
+├── POST /certifications/upload         # Upload new Excel file
+├── POST /certifications/create-excel   # Generate Excel file
+├── GET  /certifications/verify-script  # Verify script status
+├── POST /certifications/reset          # Reset Excel file
+├── GET  /product/{barcode}             # Product lookup (OFF + Excel)
+├── POST /scan                          # Scan product (OFF + Excel)
+├── POST /auth/register                 # User registration
+├── POST /auth/login                    # User login
+├── POST /purchase                      # Record purchase
+├── GET  /history/{username}            # Purchase history
+├── POST /compare                       # Compare brands
+├── GET  /search-brand                  # Brand search with fuzzy matching
+├── POST /extract-brand                 # Extract brand from product name
+├── GET  /validate/barcode/{barcode}    # Validate barcode format
+├── GET  /scanner/health                # Scanner system health
+└── GET  /test/*                        # Test endpoints
+
+# 🆕 New Features Added (July 2026):
+# ├── /excel/verify endpoint                # Excel data statistics & health check
 # ├── Html5Qrcode Barcode Scanner           # Lightweight, mobile-optimized scanning library
 # ├── Anti-Glare Preprocessing              # Adaptive thresholding to eliminate glare on glossy packages
 # ├── Grayscale Conversion                   # Luminance-based conversion for better contrast
@@ -21,7 +48,8 @@ tbl-grocery-app/
 # ├── Auto-search on Scan                   # Automatically searches after successful scan
 # ├── 30 FPS continuous frame scanning      # Fast, real-time barcode detection
 # ├── Support for all grocery barcode formats # EAN-13, EAN-8, UPC-A, UPC-E, CODE-128, CODE-39
-# └── Center Pixel Diagnostics              # Real-time RGB monitoring for debugging
+# ├── Center Pixel Diagnostics              # Real-time RGB monitoring for debugging
+# └── Brand Matching Comments               # Documentation for complex brand matching logic
 
 # Previous scanner history:
 # ├── ZXing-web (original, working)         # Replaced due to maintenance status
