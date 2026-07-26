@@ -1799,19 +1799,21 @@
                     if (navigator.vibrate) navigator.vibrate(200);
                     updateScannerStatus(`✅ ${decodedText}`);
 
-                    // Stop scanning and close
-                    if (html5Scanner) {
-                        html5Scanner.stop().then(() => {
-                            closeScanner();
-                            document.getElementById('searchInput').value = decodedText;
-                            document.getElementById('searchType').value = 'barcode';
-                            document.getElementById('searchType').dispatchEvent(new Event('change'));
-                            setTimeout(() => searchProduct(), 400);
-                        }).catch(err => {
-                            console.error('Error stopping scanner:', err);
-                            closeScanner();
-                        });
-                    }
+                    // Wait 250ms before closing so user can see the barcode
+                    setTimeout(() => {
+                        if (html5Scanner) {
+                            html5Scanner.stop().then(() => {
+                                closeScanner();
+                                document.getElementById('searchInput').value = decodedText;
+                                document.getElementById('searchType').value = 'barcode';
+                                document.getElementById('searchType').dispatchEvent(new Event('change'));
+                                setTimeout(() => searchProduct(), 400);
+                            }).catch(err => {
+                                console.error('Error stopping scanner:', err);
+                                closeScanner();
+                            });
+                        }
+                    }, 250); // 👈 250ms delay - long enough to see, short enough not to feel slow
                 };
 
                 // Configuration
