@@ -2084,23 +2084,36 @@ class OpenFoodFactsClient:
                 )
 
                 api_used = "Open Food Facts"
+                found = False
+                product_data = None
 
-                # If not found in human food, try Open Pet Food Facts
-                if response.status_code == 404:
+                # Check if human food API found the product
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("status") == 1:
+                        found = True
+                        product_data = data.get("product", {})
+
+                # If NOT found in human food (status 0), try pet food
+                if not found:
                     response = await client.get(
                         f"https://world.openpetfoodfacts.org/api/v0/product/{barcode}.json",
                         headers={"User-Agent": "TBLGroceryScanner/1.0"},
                     )
                     api_used = "Open Pet Food Facts"
 
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("status") == 1:
-                        product = data.get("product", {})
-                        logger.info(f"Product found in {api_used} for barcode: {barcode}")
-                        return OpenFoodFactsClient._extract_product_info(
-                            barcode, product
-                        )
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get("status") == 1:
+                            found = True
+                            product_data = data.get("product", {})
+
+                if found and product_data:
+                    logger.info(f"Product found in {api_used} for barcode: {barcode}")
+                    return OpenFoodFactsClient._extract_product_info(
+                        barcode, product_data
+                    )
+
         except Exception as e:
             logger.error(
                 f"Open Food Facts lookup error for barcode {barcode}: {e}")
