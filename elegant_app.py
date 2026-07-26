@@ -2077,14 +2077,27 @@ class OpenFoodFactsClient:
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
+                # First try Open Food Facts (human food)
                 response = await client.get(
                     f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json",
                     headers={"User-Agent": "TBLGroceryScanner/1.0"},
                 )
+
+                api_used = "Open Food Facts"
+
+                # If not found in human food, try Open Pet Food Facts
+                if response.status_code == 404:
+                    response = await client.get(
+                        f"https://world.openpetfoodfacts.org/api/v0/product/{barcode}.json",
+                        headers={"User-Agent": "TBLGroceryScanner/1.0"},
+                    )
+                    api_used = "Open Pet Food Facts"
+
                 if response.status_code == 200:
                     data = response.json()
                     if data.get("status") == 1:
                         product = data.get("product", {})
+                        logger.info(f"Product found in {api_used} for barcode: {barcode}")
                         return OpenFoodFactsClient._extract_product_info(
                             barcode, product
                         )
