@@ -24,6 +24,27 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 
 
+# ==================== BRAND MATCHING ====================
+# This handles real-world product names like:
+# - "Starbucks Coffee" → "Starbucks" (word overlap)
+# - "Nestlé" → "Nestle" (unicode normalization)
+# - "P&G" → "Procter & Gamble" (brand aliases)
+# - "Great Value" → SKIP (store brand filtering)
+#
+# It evolved over time to solve specific user-facing issues.
+# Each rule was added to fix a real problem.
+#
+# Why so complex? Because users search with:
+# - Incomplete names: "Coca" → should match "Coca-Cola"
+# - Misspellings: "Nestle" → should match "Nestlé"
+# - Abbreviations: "P&G" → should match "Procter & Gamble"
+# - Store brands: "Great Value" → should NOT match similar words
+# - Product names: "Oreo Cookies" → should extract "Oreo"
+#
+# If you're changing this, test with ALL these cases!
+# =======================================================
+
+
 def safe_float(value, default=0.0):
     """Convert any value to a JSON-safe float - prevents NaN and Infinity errors"""
     try:
