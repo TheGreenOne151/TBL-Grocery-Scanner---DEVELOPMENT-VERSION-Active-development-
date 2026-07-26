@@ -3898,6 +3898,95 @@ async def export_certifications():
     return JSONResponse(content=certification_manager.data)
 
 
+@app.get("/excel/verify")
+async def verify_excel_data():
+    """Verify Excel data is loaded correctly and provide detailed statistics"""
+    try:
+        # Check if data is loaded
+        if certification_manager.data is None:
+            logger.info("Excel data not loaded, attempting to load...")
+            certification_manager.load_certification_data()
+
+        if certification_manager.data is None:
+            return {
+                "status": "error",
+                "message": "No Excel data loaded",
+                "path": FileConfig.CERTIFICATION_EXCEL_FILE,
+                "file_exists": os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE)
+            }
+
+        # Get file info
+        file_exists = os.path.exists(FileConfig.CERTIFICATION_EXCEL_FILE)
+        file_size = os.path.getsize(FileConfig.CERTIFICATION_EXCEL_FILE) if file_exists else 0
+
+        # Count certifications
+        cert_counts = {
+            "b_corp": 0,
+            "fair_trade": 0,
+            "rainforest_alliance": 0,
+            "leaping_bunny": 0,
+            "research_complete": 0
+        }
+
+        # Brand categories stats
+        brands_with_categories = 0
+        total_categories = set()
+
+        for brand_key, products in certification_manager.data.items():
+            for product_key, product_data in products.items():
+                if product_key != "_default":
+                    brands_with_categories += 1
+                    total_categories.add(product_key)
+                    # Count certifications
+                    certs = product_data.get("certifications", {})
+                    for cert in cert_counts.keys():
+                        if certs.get(cert, False):
+                            cert_counts[cert] += 1
+
+        # Get a few sample brands
+        sample_brands = []
+        for i, (brand_key, products) in enumerate(certification_manager.data.items()):
+            if i >= 5:
+                break
+            first_product = next(iter(products.values()))
+            sample_brands.append({
+                "brand": brand_key,
+                "original_brand": first_product.get("original_brand"),
+                "certifications": first_product.get("certifications", {}),
+                "categories": list(products.keys())[:3]  # Show up to 3 categories
+            })
+
+        return {
+            "status": "success",
+            "timestamp": datetime.utcnow().isoformat(),
+            "file_info": {
+                "path": FileConfig.CERTIFICATION_EXCEL_FILE,
+                "exists": file_exists,
+                "size_bytes": file_size,
+                "size_mb": round(file_size / (1024 * 1024), 2) if file_exists else 0
+            },
+            "data_stats": {
+                "total_brands": len(certification_manager.data),
+                "brands_with_categories": brands_with_categories,
+                "total_categories": len(total_categories),
+                "categories": sorted(list(total_categories))[:20],  # Show first 20
+                "certification_counts": cert_counts
+            },
+            "last_loaded": certification_manager.last_loaded.isoformat() if certification_manager.last_loaded else None,
+            "sample_brands": sample_brands,
+            "is_healthy": len(certification_manager.data) > 0
+        }
+
+    except Exception as e:
+        logger.error(f"Error verifying Excel data: {e}")
+        import traceback
+        return {
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
 # ==================== SCRIPT EXECUTION ENDPOINTS ====================
 
 
