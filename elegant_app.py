@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import os
 import re
 import io
@@ -26,20 +26,20 @@ from pydantic import BaseModel, field_validator
 
 # ==================== BRAND MATCHING ====================
 # This handles real-world product names like:
-# - "Starbucks Coffee" → "Starbucks" (word overlap)
-# - "Nestlé" → "Nestle" (unicode normalization)
-# - "P&G" → "Procter & Gamble" (brand aliases)
-# - "Great Value" → SKIP (store brand filtering)
+# - "Starbucks Coffee" â†’ "Starbucks" (word overlap)
+# - "NestlÃ©" â†’ "Nestle" (unicode normalization)
+# - "P&G" â†’ "Procter & Gamble" (brand aliases)
+# - "Great Value" â†’ SKIP (store brand filtering)
 #
 # It evolved over time to solve specific user-facing issues.
 # Each rule was added to fix a real problem.
 #
 # Why so complex? Because users search with:
-# - Incomplete names: "Coca" → should match "Coca-Cola"
-# - Misspellings: "Nestle" → should match "Nestlé"
-# - Abbreviations: "P&G" → should match "Procter & Gamble"
-# - Store brands: "Great Value" → should NOT match similar words
-# - Product names: "Oreo Cookies" → should extract "Oreo"
+# - Incomplete names: "Coca" â†’ should match "Coca-Cola"
+# - Misspellings: "Nestle" â†’ should match "NestlÃ©"
+# - Abbreviations: "P&G" â†’ should match "Procter & Gamble"
+# - Store brands: "Great Value" â†’ should NOT match similar words
+# - Product names: "Oreo Cookies" â†’ should extract "Oreo"
 #
 # If you're changing this, test with ALL these cases!
 # =======================================================
@@ -532,7 +532,7 @@ class BrandNormalizer:
         "dasani": "coca cola",
         "smartwater": "coca cola",
         "fairlife": "coca cola",
-        # NestlÃ© products
+        # NestlÃƒÂ© products
         "nescafe": "nestle",
         "nesquik": "nestle",
         "stouffers": "nestle",
@@ -554,7 +554,7 @@ class BrandNormalizer:
         "rexona": "unilever",
         "vaseline": "unilever",
         "lipton": "unilever",
-        # "ben jerrys": "unilever",  # â† Remove this line
+        # "ben jerrys": "unilever",  # Ã¢â€ Â Remove this line
         "magnum": "unilever",
         "breyers": "unilever",
         "klondike": "unilever",
@@ -697,7 +697,7 @@ class BrandNormalizer:
         "mondelez": ["mondelez international", "kraft foods"],
         "pepsico": ["pepsi", "pepsi co", "pepsico inc"],
         "coca cola": ["coca-cola", "coke", "coca cola company"],
-        "nestle": ["nestlÃ©", "nestle sa"],
+        "nestle": ["nestlÃƒÂ©", "nestle sa"],
         "unilever": ["unilever plc", "unilever nv"],
         "kraft heinz": ["kraft", "heinz", "kraft heinz company"],
         "mars": ["mars inc", "mars incorporated"],
@@ -733,411 +733,676 @@ class BrandNormalizer:
         "nestle crunch": "nestle",
     }
 
-    BRAND_IDENTIFICATION_DB: ClassVar[Dict[str, Dict[str, Any]]] = {
-        "365 everyday value": {
-            "certifications": ["Fair Trade", "Rainforest Alliance", "Leaping Bunny"]
-        },
-        "365 by whole foods market": {
-            "certifications": ["Leaping Bunny"]
-        },
-        "activia": {"certifications": ["B Corp"]},
-        "amavida coffee & trading company": {"certifications": ["B Corp", "Fair Trade"]},
-        "annies homegrown": {"certifications": []},
-        "aquafina": {"certifications": []},
-        "banquet": {"certifications": []},
-        "barrys tea": {"certifications": ["Rainforest Alliance"]},
-        "ben & jerrys": {"certifications": ["B Corp", "Fair Trade"]},
-        "bens original": {"certifications": []},
-        "best foods": {"certifications": []},
-        "bettergoods": {"certifications": ["Rainforest Alliance"]},
-        "betty crocker": {"certifications": []},
-        "big spoon roasters": {"certifications": ["B Corp"]},
-        "birds eye": {"certifications": []},
-        "bisquick": {"certifications": []},
-        "blk & bold": {"certifications": ["Fair Trade"]},
-        "blue buffalo": {"certifications": []},
-        "bones coffee company": {"certifications": ["Rainforest Alliance"]},
-        "breyers": {"certifications": ["Rainforest Alliance"]},
-        "brooklyn roasting company": {"certifications": ["Fair Trade"]},
-        "bulletproof cold brew coffee": {"certifications": ["Rainforest Alliance"]},
-        "butterfinger": {"certifications": []},
-        "caboo": {"certifications": ["B Corp", "Leaping Bunny"]},
-        "cadbury": {"certifications": []},
-        "caffe umbria coffee": {"certifications": ["Fair Trade"]},
-        "campbells": {"certifications": []},
-        "capri sun": {"certifications": []},
-        "caribou coffee": {"certifications": ["Rainforest Alliance"]},
-        "cheerios": {"certifications": []},
-        "cheetos": {"certifications": []},
-        "cheez it": {"certifications": []},
-        "chex": {"certifications": []},
-        "chips ahoy": {"certifications": []},
-        "clif": {"certifications": ["Rainforest Alliance"]},
-        "coca cola": {"certifications": []},
-        "colgate palmolive": {"certifications": []},
-        "corn flakes": {"certifications": []},
-        "costa coffee": {"certifications": ["Rainforest Alliance"]},
-        "counter culture": {"certifications": ["B Corp"]},
-        "crunch": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
-        "dannon": {"certifications": ["B Corp"]},
-        "dasani": {"certifications": []},
-        "dentyne": {"certifications": []},
-        "digiorno": {"certifications": []},
-        "doritos": {"certifications": []},
-        "dove": {"certifications": []},
-        "duncan hines": {"certifications": []},
-        "dunkin": {"certifications": ["Rainforest Alliance"]},
-        "eggo": {"certifications": []},
-        "eight oclock": {"certifications": ["Rainforest Alliance"]},
-        "evian": {"certifications": ["B Corp"]},
-        "fanta": {"certifications": []},
-        "feline natural": {"certifications": ["B Corp"]},
-        "fiber one": {"certifications": []},
-        "fritos": {"certifications": []},
-        "froot loops": {"certifications": []},
-        "frosted flakes": {"certifications": []},
-        "gatorade": {"certifications": []},
-        "general electric": {"certifications": []},
-        "gerber": {"certifications": []},
-        "gimme coffee": {"certifications": ["Fair Trade"]},
-        "go gurt": {"certifications": []},
-        "goldfish": {"certifications": []},
-        "good gather": {"certifications": []},
-        "great value": {"certifications": []},
-        "grey poupon": {"certifications": []},
-        "haagen dazs": {"certifications": []},
-        "happy family organics": {"certifications": ["B Corp"]},
-        "healthy choice": {"certifications": []},
-        "heinz": {"certifications": []},
-        "hellmanns": {"certifications": []},
-        "hersheys": {"certifications": ["Rainforest Alliance"]},
-        "hersheys milk chocolate cocoa mix": {"certifications": ["Rainforest Alliance"]},
-        "hormel": {"certifications": []},
-        "hot pockets": {"certifications": []},
-        "hurricane": {"certifications": ["Rainforest Alliance"]},
-        "international delight": {"certifications": []},
-        "jaf tea": {"certifications": ["Rainforest Alliance"]},
-        "jimmy dean": {"certifications": []},
-        "joe coffee company": {"certifications": ["Rainforest Alliance"]},
-        "johnson johnson": {"certifications": []},
-        "jolly rancher": {"certifications": []},
-        "k9 natural": {"certifications": ["B Corp"]},
-        "keebler": {"certifications": []},
-        "kelloggs": {"certifications": []},
-        "keurig": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
-        "kirkland signature": {"certifications": []},
-        "kitkat": {"certifications": []},
-        "knorr": {"certifications": []},
-        "kool aid": {"certifications": []},
-        "kraft": {"certifications": []},
-        "kroger": {"certifications": ["Rainforest Alliance"]},
-        "la colombe": {"certifications": ["Rainforest Alliance"]},
-        "lavazza": {"certifications": ["Rainforest Alliance"]},
-        "lays": {"certifications": []},
-        "lipton": {"certifications": ["Rainforest Alliance"]},
-        "lipton pure leaf": {"certifications": ["Rainforest Alliance"]},
-        "lucky charms": {"certifications": []},
-        "lunchables": {"certifications": []},
-        "luzianne tea": {"certifications": ["Rainforest Alliance"]},
-        "magnum": {"certifications": ["Rainforest Alliance"]},
-        "marie callenders": {"certifications": []},
-        "meraki": {"certifications": ["B Corp"]},
-        "milky way": {"certifications": []},
-        "minute maid": {"certifications": []},
-        "mms": {"certifications": []},
-        "morningstar farms": {"certifications": []},
-        "mountain dew": {"certifications": []},
-        "naty": {"certifications": ["B Corp"]},
-        "nature valley": {"certifications": []},
-        "nescafe": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
-        "nespresso": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
-        "nesquik": {"certifications": ["Rainforest Alliance"]},
-        "nestle": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
-        "nordqvist": {"certifications": ["Rainforest Alliance"]},
-        "nutri grain": {"certifications": []},
-        "oikos": {"certifications": ["B Corp"]},
-        "once upon a farm": {"certifications": ["B Corp"]},
-        "oreo": {"certifications": []},
-        "oscar mayer": {"certifications": []},
-        "pedigree": {"certifications": []},
-        "pepperidge farm": {"certifications": []},
-        "pepsi": {"certifications": []},
-        "perdue": {"certifications": []},
-        "pg tips": {"certifications": ["Rainforest Alliance"]},
-        "philadelphia cream cheese": {"certifications": []},
-        "pillsbury": {"certifications": []},
-        "planters": {"certifications": []},
-        "poland spring": {"certifications": []},
-        "pop tarts": {"certifications": []},
-        "popzup popcorn": {"certifications": ["B Corp"]},
-        "prego": {"certifications": []},
-        "pringles": {"certifications": []},
-        "procter gamble": {"certifications": []},
-        "purelife": {"certifications": []},
-        "purina": {"certifications": []},
-        "quaker oats": {"certifications": []},
-        "reddi wip": {"certifications": []},
-        "reeses": {"certifications": []},
-        "reunion coffee roasters": {"certifications": ["Rainforest Alliance"]},
-        "ritz": {"certifications": []},
-        "rosamonte": {"certifications": ["Rainforest Alliance"]},
-        "royal cup coffee": {"certifications": ["Rainforest Alliance"]},
-        "ruffles": {"certifications": []},
-        "second cup": {"certifications": ["Rainforest Alliance"]},
-        "simply orange": {"certifications": []},
-        "sisterly": {"certifications": ["B Corp"]},
-        "skittles": {"certifications": []},
-        "skinnygirl": {"certifications": ["Rainforest Alliance"]},
-        "slim jim": {"certifications": []},
-        "smart water": {"certifications": []},
-        "smithfield": {"certifications": []},
-        "snickers": {"certifications": []},
-        "soleivita": {"certifications": ["Rainforest Alliance"]},
-        "sour patch kids": {"certifications": []},
-        "special k": {"certifications": []},
-        "sprite": {"certifications": []},
-        "starbucks": {"certifications": ["Fair Trade"]},
-        "starburst": {"certifications": []},
-        "stonyfield": {"certifications": ["B Corp"]},
-        "stouffers": {"certifications": []},
-        "sunchips": {"certifications": []},
-        "sure house coffee roasting co": {"certifications": ["Fair Trade"]},
-        "swanson": {"certifications": []},
-        "taragüí": {"certifications": ["Rainforest Alliance"]},
-        "tayst": {"certifications": ["Rainforest Alliance"]},
-        "tchibo": {"certifications": ["Rainforest Alliance"]},
-        "te reval": {"certifications": ["Rainforest Alliance"]},
-        "teekanne": {"certifications": ["Rainforest Alliance"]},
-        "tejava": {"certifications": ["Rainforest Alliance"]},
-        "tetley": {"certifications": ["Rainforest Alliance"]},
-        "this works": {"certifications": ["B Corp"]},
-        "toblerone": {"certifications": []},
-        "tostitos": {"certifications": []},
-        "tres": {"certifications": ["Rainforest Alliance"]},
-        "trident": {"certifications": []},
-        "trix": {"certifications": []},
-        "tropicana": {"certifications": []},
-        "true botanicals": {"certifications": ["B Corp", "Leaping Bunny"]},
-        "twix": {"certifications": []},
-        "tyson": {"certifications": []},
-        "uncle bens": {"certifications": []},
-        "unni": {"certifications": ["B Corp"]},
-        "v8": {"certifications": []},
-        "velveeta": {"certifications": []},
-        "verena street": {"certifications": ["Rainforest Alliance"]},
-        "vitaminwater": {"certifications": []},
-        "volvic": {"certifications": ["B Corp"]},
-        "wawa": {"certifications": ["Rainforest Alliance"]},
-        "westrock coffee": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
-        "whiskas": {"certifications": []},
-        "yogi tea": {"certifications": ["Rainforest Alliance"]},
-        "yoplait": {"certifications": ["B Corp"]},
-        "yorkshire tea": {"certifications": ["Rainforest Alliance"]},
-        "your very best": {"certifications": ["B Corp"]},
-        "zavida coffee": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
-    }
+BRAND_IDENTIFICATION_DB: ClassVar[Dict[str, Dict[str, Any]]] = {
+    # ===== EXISTING ENTRIES (Keep these) =====
+    "365 everyday value": {
+        "certifications": ["Fair Trade", "Rainforest Alliance", "Leaping Bunny"]
+    },
+    "365 by whole foods market": {
+        "certifications": ["Leaping Bunny"]
+    },
+    "activia": {"certifications": ["B Corp"]},
+    "amavida coffee & trading company": {"certifications": ["B Corp", "Fair Trade"]},
+    "annies homegrown": {"certifications": []},
+    "aquafina": {"certifications": []},
+    "banquet": {"certifications": []},
+    "barrys tea": {"certifications": ["Rainforest Alliance"]},
+    "ben & jerrys": {"certifications": ["B Corp", "Fair Trade"]},
+    "bens original": {"certifications": []},
+    "best foods": {"certifications": []},
+    "bettergoods": {"certifications": ["Rainforest Alliance"]},
+    "betty crocker": {"certifications": []},
+    "big spoon roasters": {"certifications": ["B Corp"]},
+    "birds eye": {"certifications": []},
+    "bisquick": {"certifications": []},
+    "blk & bold": {"certifications": ["Fair Trade"]},
+    "blue buffalo": {"certifications": []},
+    "bones coffee company": {"certifications": ["Rainforest Alliance"]},
+    "breyers": {"certifications": ["Rainforest Alliance"]},
+    "brooklyn roasting company": {"certifications": ["Fair Trade"]},
+    "bulletproof cold brew coffee": {"certifications": ["Rainforest Alliance"]},
+    "butterfinger": {"certifications": []},
+    "caboo": {"certifications": ["B Corp", "Leaping Bunny"]},
+    "cadbury": {"certifications": []},
+    "caffe umbria coffee": {"certifications": ["Fair Trade"]},
+    "campbells": {"certifications": []},
+    "capri sun": {"certifications": []},
+    "caribou coffee": {"certifications": ["Rainforest Alliance"]},
+    "cheerios": {"certifications": []},
+    "cheetos": {"certifications": []},
+    "cheez it": {"certifications": []},
+    "chex": {"certifications": []},
+    "chips ahoy": {"certifications": []},
+    "clif": {"certifications": ["Rainforest Alliance"]},
+    "coca cola": {"certifications": []},
+    "colgate palmolive": {"certifications": []},
+    "corn flakes": {"certifications": []},
+    "costa coffee": {"certifications": ["Rainforest Alliance"]},
+    "counter culture": {"certifications": ["B Corp"]},
+    "crunch": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
+    "dannon": {"certifications": ["B Corp"]},
+    "dasani": {"certifications": []},
+    "dentyne": {"certifications": []},
+    "digiorno": {"certifications": []},
+    "doritos": {"certifications": []},
+    "dove": {"certifications": []},
+    "duncan hines": {"certifications": []},
+    "dunkin": {"certifications": ["Rainforest Alliance"]},
+    "eggo": {"certifications": []},
+    "eight oclock": {"certifications": ["Rainforest Alliance"]},
+    "evian": {"certifications": ["B Corp"]},
+    "fanta": {"certifications": []},
+    "feline natural": {"certifications": ["B Corp"]},
+    "fiber one": {"certifications": []},
+    "fritos": {"certifications": []},
+    "froot loops": {"certifications": []},
+    "frosted flakes": {"certifications": []},
+    "gatorade": {"certifications": []},
+    "general electric": {"certifications": []},
+    "gerber": {"certifications": []},
+    "gimme coffee": {"certifications": ["Fair Trade"]},
+    "go gurt": {"certifications": []},
+    "goldfish": {"certifications": []},
+    "good gather": {"certifications": []},
+    "great value": {"certifications": []},
+    "grey poupon": {"certifications": []},
+    "haagen dazs": {"certifications": []},
+    "happy family organics": {"certifications": ["B Corp"]},
+    "healthy choice": {"certifications": []},
+    "heinz": {"certifications": []},
+    "hellmanns": {"certifications": []},
+    "hersheys": {"certifications": ["Rainforest Alliance"]},
+    "hersheys milk chocolate cocoa mix": {"certifications": ["Rainforest Alliance"]},
+    "hormel": {"certifications": []},
+    "hot pockets": {"certifications": []},
+    "hurricane": {"certifications": ["Rainforest Alliance"]},
+    "international delight": {"certifications": []},
+    "jaf tea": {"certifications": ["Rainforest Alliance"]},
+    "jimmy dean": {"certifications": []},
+    "joe coffee company": {"certifications": ["Rainforest Alliance"]},
+    "johnson johnson": {"certifications": []},
+    "jolly rancher": {"certifications": []},
+    "k9 natural": {"certifications": ["B Corp"]},
+    "keebler": {"certifications": []},
+    "kelloggs": {"certifications": []},
+    "keurig": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
+    "kirkland signature": {"certifications": []},
+    "kitkat": {"certifications": []},
+    "knorr": {"certifications": []},
+    "kool aid": {"certifications": []},
+    "kraft": {"certifications": []},
+    "kroger": {"certifications": ["Rainforest Alliance"]},
+    "la colombe": {"certifications": ["Rainforest Alliance"]},
+    "lavazza": {"certifications": ["Rainforest Alliance"]},
+    "lays": {"certifications": []},
+    "lipton": {"certifications": ["Rainforest Alliance"]},
+    "lipton pure leaf": {"certifications": ["Rainforest Alliance"]},
+    "lucky charms": {"certifications": []},
+    "lunchables": {"certifications": []},
+    "luzianne tea": {"certifications": ["Rainforest Alliance"]},
+    "magnum": {"certifications": ["Rainforest Alliance"]},
+    "marie callenders": {"certifications": []},
+    "meraki": {"certifications": ["B Corp"]},
+    "milky way": {"certifications": []},
+    "minute maid": {"certifications": []},
+    "mms": {"certifications": []},
+    "morningstar farms": {"certifications": []},
+    "mountain dew": {"certifications": []},
+    "naty": {"certifications": ["B Corp"]},
+    "nature valley": {"certifications": []},
+    "nescafe": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
+    "nespresso": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
+    "nesquik": {"certifications": ["Rainforest Alliance"]},
+    "nestle": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
+    "nordqvist": {"certifications": ["Rainforest Alliance"]},
+    "nutri grain": {"certifications": []},
+    "oikos": {"certifications": ["B Corp"]},
+    "once upon a farm": {"certifications": ["B Corp"]},
+    "oreo": {"certifications": []},
+    "oscar mayer": {"certifications": []},
+    "pedigree": {"certifications": []},
+    "pepperidge farm": {"certifications": []},
+    "pepsi": {"certifications": []},
+    "perdue": {"certifications": []},
+    "pg tips": {"certifications": ["Rainforest Alliance"]},
+    "philadelphia cream cheese": {"certifications": []},
+    "pillsbury": {"certifications": []},
+    "planters": {"certifications": []},
+    "poland spring": {"certifications": []},
+    "pop tarts": {"certifications": []},
+    "popzup popcorn": {"certifications": ["B Corp"]},
+    "prego": {"certifications": []},
+    "pringles": {"certifications": []},
+    "procter gamble": {"certifications": []},
+    "purelife": {"certifications": []},
+    "purina": {"certifications": []},
+    "quaker oats": {"certifications": []},
+    "reddi wip": {"certifications": []},
+    "reeses": {"certifications": []},
+    "reunion coffee roasters": {"certifications": ["Rainforest Alliance"]},
+    "ritz": {"certifications": []},
+    "rosamonte": {"certifications": ["Rainforest Alliance"]},
+    "royal cup coffee": {"certifications": ["Rainforest Alliance"]},
+    "ruffles": {"certifications": []},
+    "second cup": {"certifications": ["Rainforest Alliance"]},
+    "simply orange": {"certifications": []},
+    "sisterly": {"certifications": ["B Corp"]},
+    "skittles": {"certifications": []},
+    "skinnygirl": {"certifications": ["Rainforest Alliance"]},
+    "slim jim": {"certifications": []},
+    "smart water": {"certifications": []},
+    "smithfield": {"certifications": []},
+    "snickers": {"certifications": []},
+    "soleivita": {"certifications": ["Rainforest Alliance"]},
+    "sour patch kids": {"certifications": []},
+    "special k": {"certifications": []},
+    "sprite": {"certifications": []},
+    "starbucks": {"certifications": ["Fair Trade"]},
+    "starburst": {"certifications": []},
+    "stonyfield": {"certifications": ["B Corp"]},
+    "stouffers": {"certifications": []},
+    "sunchips": {"certifications": []},
+    "sure house coffee roasting co": {"certifications": ["Fair Trade"]},
+    "swanson": {"certifications": []},
+    "tarag├╝├¡": {"certifications": ["Rainforest Alliance"]},
+    "tayst": {"certifications": ["Rainforest Alliance"]},
+    "tchibo": {"certifications": ["Rainforest Alliance"]},
+    "te reval": {"certifications": ["Rainforest Alliance"]},
+    "teekanne": {"certifications": ["Rainforest Alliance"]},
+    "tejava": {"certifications": ["Rainforest Alliance"]},
+    "tetley": {"certifications": ["Rainforest Alliance"]},
+    "this works": {"certifications": ["B Corp"]},
+    "toblerone": {"certifications": []},
+    "tostitos": {"certifications": []},
+    "tres": {"certifications": ["Rainforest Alliance"]},
+    "trident": {"certifications": []},
+    "trix": {"certifications": []},
+    "tropicana": {"certifications": []},
+    "true botanicals": {"certifications": ["B Corp", "Leaping Bunny"]},
+    "twix": {"certifications": []},
+    "tyson": {"certifications": []},
+    "uncle bens": {"certifications": []},
+    "unni": {"certifications": ["B Corp"]},
+    "v8": {"certifications": []},
+    "velveeta": {"certifications": []},
+    "verena street": {"certifications": ["Rainforest Alliance"]},
+    "vitaminwater": {"certifications": []},
+    "volvic": {"certifications": ["B Corp"]},
+    "wawa": {"certifications": ["Rainforest Alliance"]},
+    "westrock coffee": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
+    "whiskas": {"certifications": []},
+    "yogi tea": {"certifications": ["Rainforest Alliance"]},
+    "yoplait": {"certifications": ["B Corp"]},
+    "yorkshire tea": {"certifications": ["Rainforest Alliance"]},
+    "your very best": {"certifications": ["B Corp"]},
+    "zavida coffee": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
 
-    @classmethod
-    @cache_result
-    def normalize(cls, brand: str) -> str:
-        """Enhanced brand name normalization with better handling of variations"""
-        if not brand:
-            return ""
+    # ===== NEW B CORP BRANDS FROM EXCEL SHEET =====
+    # Beverages
+    "bigelow tea": {"certifications": ["B Corp"]},
+    "bigelow": {"certifications": ["B Corp"]},
+    "numi": {"certifications": ["B Corp"]},
+    "traditional medicinals": {"certifications": ["B Corp"]},
+    "stumptown": {"certifications": ["B Corp"]},
+    "stumptown coffee": {"certifications": ["B Corp"]},
+    "stumptown coffee roasters": {"certifications": ["B Corp"]},
+    "guayaki": {"certifications": ["B Corp"]},
+    "guayaki yerba mate": {"certifications": ["B Corp"]},
+    "brew dr": {"certifications": ["B Corp"]},
+    "boochcraft": {"certifications": ["B Corp"]},
+    "harmless harvest": {"certifications": ["B Corp"]},
+    "athletic brewing": {"certifications": ["B Corp"]},
+    "athletic brewing company": {"certifications": ["B Corp"]},
+    "minor figures": {"certifications": ["B Corp"]},
+    "flow water": {"certifications": ["B Corp"]},
+    "ramborn cider": {"certifications": ["B Corp"]},
+    "so good so you": {"certifications": ["B Corp"]},
+    "stone creek coffee": {"certifications": ["B Corp"]},
+    "backyard beans": {"certifications": ["B Corp"]},
+    "linea caffe": {"certifications": ["B Corp"]},
+    "westland distillery": {"certifications": ["B Corp"]},
+    "allagash brewing": {"certifications": ["B Corp"]},
+    "new belgium brewing": {"certifications": ["B Corp"]},
+    "hopworks brewery": {"certifications": ["B Corp"]},
+    "straightaway cocktails": {"certifications": ["B Corp"]},
+    "red bay coffee": {"certifications": ["B Corp"]},
+    "steeped coffee": {"certifications": ["B Corp"]},
+    "open water": {"certifications": ["B Corp"]},
+    "ethanology": {"certifications": ["B Corp"]},
+    "siponey": {"certifications": ["B Corp"]},
+    "granny squibb": {"certifications": ["B Corp"]},
+    "818 spirits": {"certifications": ["B Corp"]},
+    "optimist drinks": {"certifications": ["B Corp"]},
+    "triple bottom brewing": {"certifications": ["B Corp"]},
+    "lost grove brewing": {"certifications": ["B Corp"]},
+    "toast brewing": {"certifications": ["B Corp"]},
+    "feragaia": {"certifications": ["B Corp"]},
+    "pentire drinks": {"certifications": ["B Corp"]},
+    "meanwhile drinks": {"certifications": ["B Corp"]},
+    "boatyard distillery": {"certifications": ["B Corp"]},
+    "isle of wight distillery": {"certifications": ["B Corp"]},
+    "clonakilty distillery": {"certifications": ["B Corp"]},
+    "brunnur distillery": {"certifications": ["B Corp"]},
+    "sproud": {"certifications": ["B Corp"]},
+    "fiorito": {"certifications": ["B Corp"]},
+    "eightbillion": {"certifications": ["B Corp"]},
+    "purity coffee": {"certifications": ["B Corp"]},
+    "grind holdings": {"certifications": ["B Corp"]},
+    "bear lake coffee": {"certifications": ["B Corp"]},
+    "vahdam teas": {"certifications": ["B Corp"]},
+    "nepal tea collective": {"certifications": ["B Corp"]},
+    "cafe imports": {"certifications": ["B Corp"]},
+    "cawston press": {"certifications": ["B Corp"]},
+    "english tea shop": {"certifications": ["B Corp"]},
+    "mother kombucha": {"certifications": ["B Corp"]},
+    "boon boona coffee": {"certifications": ["B Corp"]},
+    "cru kafe": {"certifications": ["B Corp"]},
+    "rockin cat": {"certifications": ["B Corp"]},
+    "enroot organics": {"certifications": ["B Corp"]},
+    "aldea coffee": {"certifications": ["B Corp"]},
+    "mamma chia": {"certifications": ["B Corp"]},
+    "grounds for change": {"certifications": ["B Corp"]},
+    "tea spot": {"certifications": ["B Corp"]},
 
-        # ADD THIS: Normalize accents (Ã© â†’ e, etc.)
-        import unicodedata
-        brand = unicodedata.normalize('NFKD', brand).encode('ASCII', 'ignore').decode('ASCII')
+    # Food Products
+    "amy's kitchen": {"certifications": ["B Corp"]},
+    "amy's": {"certifications": ["B Corp"]},
+    "king arthur": {"certifications": ["B Corp"]},
+    "king arthur flour": {"certifications": ["B Corp"]},
+    "king arthur baking": {"certifications": ["B Corp"]},
+    "king arthur baking company": {"certifications": ["B Corp"]},
+    "clover sonoma": {"certifications": ["B Corp"]},
+    "horizon organic": {"certifications": ["B Corp"]},
+    "horizon organic dairy": {"certifications": ["B Corp"]},
+    "organic valley": {"certifications": ["B Corp"]},
+    "stonyfield farm": {"certifications": ["B Corp"]},
+    "lactalis us yogurt": {"certifications": ["B Corp"]},
+    "cabot creamery": {"certifications": ["B Corp"]},
+    "tillamook": {"certifications": ["B Corp"]},
+    "vermont creamery": {"certifications": ["B Corp"]},
+    "jennis ice cream": {"certifications": ["B Corp"]},
+    "oregon ice cream": {"certifications": ["B Corp"]},
+    "beehive cheese": {"certifications": ["B Corp"]},
+    "gifted breads": {"certifications": ["B Corp"]},
+    "molino rachello": {"certifications": ["B Corp"]},
+    "agugiaro & figna": {"certifications": ["B Corp"]},
+    "masienda": {"certifications": ["B Corp"]},
+    "grainstone": {"certifications": ["B Corp"]},
+    "curio spice": {"certifications": ["B Corp"]},
+    "sweet life baking": {"certifications": ["B Corp"]},
+    "grand central bakery": {"certifications": ["B Corp"]},
+    "greyston bakery": {"certifications": ["B Corp"]},
+    "rubicon bakers": {"certifications": ["B Corp"]},
+    "one mighty mill": {"certifications": ["B Corp"]},
+    "ozery family bakery": {"certifications": ["B Corp"]},
+    "chabaso bakery": {"certifications": ["B Corp"]},
+    "groundwork coffee roasters": {"certifications": ["B Corp"]},
+    "counter culture coffee": {"certifications": ["B Corp"]},
+    "equator coffees": {"certifications": ["B Corp"]},
+    "thread coffee roasters": {"certifications": ["B Corp"]},
+    "propeller coffee": {"certifications": ["B Corp"]},
+    "cooperative coffees": {"certifications": ["B Corp"]},
+    "cafe campesino": {"certifications": ["B Corp"]},
+    "larry's beans": {"certifications": ["B Corp"]},
+    "amavida coffee": {"certifications": ["B Corp", "Fair Trade"]},
 
-        normalized = brand.strip().lower()
+    # Snacks
+    "love corn": {"certifications": ["B Corp"]},
+    "go raw": {"certifications": ["B Corp"]},
+    "chomps": {"certifications": ["B Corp"]},
+    "barvecue": {"certifications": ["B Corp"]},
+    "nutra naturals": {"certifications": ["B Corp"]},
+    "nutriearth": {"certifications": ["B Corp"]},
+    "laid back snacks": {"certifications": ["B Corp"]},
+    "solid bar company": {"certifications": ["B Corp"]},
+    "nutricare holdings": {"certifications": ["B Corp"]},
+    "barnana": {"certifications": ["B Corp"]},
+    "love grown": {"certifications": ["B Corp"]},
+    "seven sundays": {"certifications": ["B Corp"]},
+    "goodpop": {"certifications": ["B Corp"]},
+    "homefree": {"certifications": ["B Corp"]},
+    "the gfb": {"certifications": ["B Corp"]},
+    "graze": {"certifications": ["B Corp"]},
+    "skinnypop": {"certifications": ["B Corp"]},
+    "smartfood": {"certifications": ["B Corp"]},
+    "boomchickapop": {"certifications": ["B Corp"]},
+    "popchips": {"certifications": ["B Corp"]},
 
-        # Remove common prefixes and suffixes
-        remove_phrases = [
-            " the ",
-            " inc",
-            " llc",
-            " co",
-            "co ",
-            " corp",
-            " corporation",
-            " company",
-            " ltd",
-            " limited",
-            " plc",
-            " group",
-            " holdings",
-            " foods",
-            " products",
-            " brands",
-            " international",
-            " usa",
-            " us",
-            " uk",
-            " canada",
-            " europe",
-            "Â®",
-            "â„¢",
-            "Â©",
-            "(",
-            ")",
-            "[",
-            "]",
-            "{",
-            "}",
-            "|",
-            "\\",
-            "/",
-        ]
+    # Condiments
+    "comtemp": {"certifications": ["B Corp"]},
+    "burg groep": {"certifications": ["B Corp"]},
+    "new flavours": {"certifications": ["B Corp"]},
+    "archiv": {"certifications": ["B Corp"]},
+    "boiron freres": {"certifications": ["B Corp"]},
+    "alvinesa natural": {"certifications": ["B Corp"]},
+    "acetum": {"certifications": ["B Corp"]},
+    "f.lli sacla": {"certifications": ["B Corp"]},
+    "heirloom sauce": {"certifications": ["B Corp"]},
+    "tracklements": {"certifications": ["B Corp"]},
+    "kalsec": {"certifications": ["B Corp"]},
 
-        for phrase in remove_phrases:
-            normalized = normalized.replace(phrase, "")
+    # Confectioneries
+    "playin choc": {"certifications": ["B Corp"]},
+    "lakrids": {"certifications": ["B Corp"]},
+    "sweet origins": {"certifications": ["B Corp"]},
+    "cru chocolate": {"certifications": ["B Corp"]},
+    "tcho chocolate": {"certifications": ["B Corp"]},
+    "divine chocolate": {"certifications": ["B Corp"]},
+    "lake champlain chocolates": {"certifications": ["B Corp"]},
+    "alter eco": {"certifications": ["B Corp"]},
+    "tony's chocolonely": {"certifications": ["B Corp"]},
+    "baby ruth": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
+    "nestle crunch": {"certifications": ["B Corp", "Fair Trade", "Rainforest Alliance"]},
 
-        # Replace common symbols and special characters
-        replacements = {
-            "'": "",
-            "&": "and",
-            "+": "and",
-            ".": "",
-            ",": "",
-            "-": " ",
-            "_": " ",
-            ";": " ",
-            ":": " ",
-            "!": "",
-            "?": "",
-            "@": "",
-            "#": "",
-            "$": "",
-            "%": "",
-            "^": "",
-            "*": "",
-            "=": "",
-            "~": "",
-        }
+    # Nutritional Supplements
+    "organic traditions": {"certifications": ["B Corp"]},
+    "vital proteins": {"certifications": ["B Corp"]},
+    "navitas organics": {"certifications": ["B Corp"]},
+    "organic india": {"certifications": ["B Corp"]},
+    "deebees organics": {"certifications": ["B Corp"]},
+    "nestle health science": {"certifications": ["B Corp"]},
+    "wellnesse": {"certifications": ["B Corp"]},
+    "mro maryruth": {"certifications": ["B Corp"]},
+    "comvita": {"certifications": ["B Corp"]},
+    "pure synergy": {"certifications": ["B Corp"]},
+    "new chapter": {"certifications": ["B Corp"]},
+    "garden of life": {"certifications": ["B Corp"]},
+    "now foods": {"certifications": ["B Corp"]},
+    "nature made": {"certifications": ["B Corp"]},
+    "natures bounty": {"certifications": ["B Corp"]},
+    "ritual": {"certifications": ["B Corp"]},
+    "orgain": {"certifications": ["B Corp"]},
+    "vega": {"certifications": ["B Corp"]},
+    "huel": {"certifications": ["B Corp"]},
+    "ancient nutrition": {"certifications": ["B Corp"]},
+    "tribe organics": {"certifications": ["B Corp"]},
+    "country life": {"certifications": ["B Corp"]},
+    "new leaf products": {"certifications": ["B Corp"]},
+    "health and happiness": {"certifications": ["B Corp"]},
+    "bioforce usa": {"certifications": ["B Corp"]},
+    "ind hemp": {"certifications": ["B Corp"]},
+    "m a h t a": {"certifications": ["B Corp"]},
+    "rainbo": {"certifications": ["B Corp"]},
+    "naak inc": {"certifications": ["B Corp"]},
+    "kencko": {"certifications": ["B Corp"]},
+    "aloha": {"certifications": ["B Corp"]},
+    "olli pbc": {"certifications": ["B Corp"]},
+    "zego llc": {"certifications": ["B Corp"]},
+    "fitppl": {"certifications": ["B Corp"]},
+    "beekeepers naturals": {"certifications": ["B Corp"]},
+    "prana": {"certifications": ["B Corp"]},
+    "bluebird botanicals": {"certifications": ["B Corp"]},
 
-        for old, new in replacements.items():
-            normalized = normalized.replace(old, new)
+    # Pet Foods
+    "open farm": {"certifications": ["B Corp"]},
+    "fcm partners": {"certifications": ["B Corp"]},
+    "gourmate pet treat": {"certifications": ["B Corp"]},
+    "kula foods": {"certifications": ["B Corp"]},
+    "earth animal ventures": {"certifications": ["B Corp"]},
+    "firsthand foods": {"certifications": ["B Corp"]},
+    "shine pet food": {"certifications": ["B Corp"]},
+    "partake foods": {"certifications": ["B Corp"]},
+    "petaluma": {"certifications": ["B Corp"]},
+    "natural pet food group": {"certifications": ["B Corp"]},
+    "woods foodservice": {"certifications": ["B Corp"]},
+    "evermore pet": {"certifications": ["B Corp"]},
+    "dog by dr lisa": {"certifications": ["B Corp"]},
+    "hunter & gather foods": {"certifications": ["B Corp"]},
+    "good food for good": {"certifications": ["B Corp"]},
+    "manitoba harvest": {"certifications": ["B Corp"]},
+    "bridgetown natural": {"certifications": ["B Corp"]},
+    "riverside natural": {"certifications": ["B Corp"]},
+    "pitaya foods": {"certifications": ["B Corp"]},
+    "happy valley meat": {"certifications": ["B Corp"]},
+    "scratch and peek feeds": {"certifications": ["B Corp"]},
+    "mpm products": {"certifications": ["B Corp"]},
+    "fish tales holding": {"certifications": ["B Corp"]},
+    "davis veterinary": {"certifications": ["B Corp"]},
 
-        # Handle brand aliases
-        for alias, canonical in cls.BRAND_ALIASES.items():
-            if alias == normalized or f" {alias} " in f" {normalized} ":
-                normalized = normalized.replace(alias, canonical)
+    # Household Products (Cleaning)
+    "seventh generation": {"certifications": ["B Corp"]},
+    "blueland": {"certifications": ["B Corp"]},
+    "dropps": {"certifications": ["B Corp"]},
+    "earth breeze": {"certifications": ["B Corp"]},
+    "grove collaborative": {"certifications": ["B Corp"]},
+    "unni corporation": {"certifications": ["B Corp"]},
+    "remedii": {"certifications": ["B Corp", "Leaping Bunny"]},
+    "remedii products": {"certifications": ["B Corp", "Leaping Bunny"]},
+    "method": {"certifications": ["B Corp"]},
+    "mrs meyers": {"certifications": ["B Corp"]},
+    "biokleen": {"certifications": ["B Corp"]},
+    "bon ami": {"certifications": ["B Corp"]},
+    "bar keepers friend": {"certifications": ["B Corp"]},
+    "j.r. watkins": {"certifications": ["B Corp"]},
+    "tru earth": {"certifications": ["B Corp"]},
+    "meliora": {"certifications": ["B Corp"]},
+    "force of nature": {"certifications": ["B Corp"]},
+    "ecover": {"certifications": ["B Corp"]},
 
-        # Handle brand synonyms
-        for synonym, canonical in cls.BRAND_SYNONYMS.items():
-            if synonym == normalized:
-                normalized = canonical
+    # Paper Products
+    "caboo products": {"certifications": ["B Corp", "Leaping Bunny"]},
+    "reel products": {"certifications": ["B Corp"]},
+    "scout books": {"certifications": ["B Corp"]},
+    "chameleon like": {"certifications": ["B Corp"]},
+    "bloomin": {"certifications": ["B Corp"]},
+    "who gives a crap": {"certifications": ["B Corp"]},
+    "good goods": {"certifications": ["B Corp"]},
+    "progress packaging": {"certifications": ["B Corp"]},
 
-        # Remove multiple spaces and trim
-        while "  " in normalized:
-            normalized = normalized.replace("  ", " ")
+    # Personal Care / Cosmetics (already have many, adding more)
+    "meraki hair wellness": {"certifications": ["B Corp"]},
+    "true botanicals inc": {"certifications": ["B Corp", "Leaping Bunny"]},
+    "this works": {"certifications": ["B Corp"]},
+    "akita brands": {"certifications": ["B Corp"]},
+    "original smooth company": {"certifications": ["B Corp"]},
+    "dabator": {"certifications": ["B Corp"]},
+    "sia cosmetics": {"certifications": ["B Corp"]},
+    "havea group": {"certifications": ["B Corp"]},
+    "zechstein minerals": {"certifications": ["B Corp"]},
+    "dora bruschi": {"certifications": ["B Corp"]},
+    "laboratorios phergal": {"certifications": ["B Corp"]},
+    "simkha biocosmetiques": {"certifications": ["B Corp"]},
+    "horace": {"certifications": ["B Corp"]},
+    "yare safo hair": {"certifications": ["B Corp"]},
+    "jola international": {"certifications": ["B Corp"]},
+    "rose code": {"certifications": ["B Corp"]},
+    "yepoda": {"certifications": ["B Corp"]},
+    "voya": {"certifications": ["B Corp"]},
+    "dr vranjes": {"certifications": ["B Corp"]},
+    "grin holdings": {"certifications": ["B Corp"]},
+    "la bruket": {"certifications": ["B Corp"]},
+    "studio fsr": {"certifications": ["B Corp"]},
+    "sable labs": {"certifications": ["B Corp"]},
+    "good wash day": {"certifications": ["B Corp"]},
+    "somos martina": {"certifications": ["B Corp"]},
+    "josie maran": {"certifications": ["B Corp"]},
+    "soja co": {"certifications": ["B Corp"]},
+    "sitch": {"certifications": ["B Corp"]},
+    "tooti ltd": {"certifications": ["B Corp"]},
+    "groupe clarins": {"certifications": ["B Corp"]},
+    "ecoslay": {"certifications": ["B Corp"]},
+    "island mist": {"certifications": ["B Corp"]},
+    "wemba": {"certifications": ["B Corp"]},
+    "landoll srl": {"certifications": ["B Corp"]},
+    "capsum": {"certifications": ["B Corp"]},
+    "shielded beauty": {"certifications": ["B Corp"]},
+    "pink gellac": {"certifications": ["B Corp"]},
+    "juvenate skincare": {"certifications": ["B Corp"]},
+    "maria nila": {"certifications": ["B Corp"]},
+    "joni hq": {"certifications": ["B Corp"]},
+    "organ co amenities": {"certifications": ["B Corp"]},
+    "bioforce usa": {"certifications": ["B Corp"]},
+    "dental lace": {"certifications": ["B Corp"]},
+    "krave beauty": {"certifications": ["B Corp"]},
+    "holistic hair": {"certifications": ["B Corp"]},
+    "hemp heros": {"certifications": ["B Corp"]},
+    "california naturals": {"certifications": ["B Corp"]},
+    "shakeup cosmetics": {"certifications": ["B Corp"]},
+    "azuorus": {"certifications": ["B Corp"]},
+    "the 7 virtues": {"certifications": ["B Corp"]},
+    "bambuubrush": {"certifications": ["B Corp"]},
+    "medik8": {"certifications": ["B Corp"]},
+    "vanilla mozi": {"certifications": ["B Corp"]},
+    "shalohm": {"certifications": ["B Corp"]},
+    "jurlique international": {"certifications": ["B Corp"]},
+    "keune haircosmetics": {"certifications": ["B Corp"]},
+    "aleph beauty": {"certifications": ["B Corp"]},
+    "omy laboratoires": {"certifications": ["B Corp"]},
+    "nantucket spider": {"certifications": ["B Corp"]},
+    "purana skincare": {"certifications": ["B Corp"]},
+    "melixir": {"certifications": ["B Corp"]},
+    "hyggelight": {"certifications": ["B Corp"]},
+    "essential oxygen": {"certifications": ["B Corp"]},
+    "every man jack": {"certifications": ["B Corp"]},
+    "wuka": {"certifications": ["B Corp"]},
+    "dr squatch": {"certifications": ["B Corp"]},
+    "mickelberry gardens": {"certifications": ["B Corp"]},
+    "eva-nyc": {"certifications": ["B Corp"]},
+    "amika": {"certifications": ["B Corp"]},
+    "here we flo": {"certifications": ["B Corp"]},
+    "kkp holdings": {"certifications": ["B Corp"]},
+    "project reef": {"certifications": ["B Corp"]},
+    "vervain collective": {"certifications": ["B Corp"]},
+    "elemis": {"certifications": ["B Corp"]},
+    "aveda": {"certifications": ["B Corp"]},
+    "three ships": {"certifications": ["B Corp"]},
+    "l'occitane": {"certifications": ["B Corp"]},
+    "nue co": {"certifications": ["B Corp"]},
+    "upcircle beauty": {"certifications": ["B Corp"]},
+    "neom": {"certifications": ["B Corp"]},
+    "balance me": {"certifications": ["B Corp"]},
+    "good ventures": {"certifications": ["B Corp"]},
+    "vintners daughter": {"certifications": ["B Corp"]},
+    "necessaire": {"certifications": ["B Corp"]},
+    "pai skincare": {"certifications": ["B Corp"]},
+    "qle": {"certifications": ["B Corp"]},
+    "the fullest": {"certifications": ["B Corp"]},
+    "dyper": {"certifications": ["B Corp"]},
+    "lastobject": {"certifications": ["B Corp"]},
+    "mypura": {"certifications": ["B Corp"]},
+    "quadpack industries": {"certifications": ["B Corp"]},
+    "spinster sisters": {"certifications": ["B Corp"]},
+    "cheekbone beauty": {"certifications": ["B Corp"]},
+    "attn grace": {"certifications": ["B Corp"]},
+    "le labo": {"certifications": ["B Corp"]},
+    "kaibae": {"certifications": ["B Corp"]},
+    "by sarah": {"certifications": ["B Corp"]},
+    "hevea": {"certifications": ["B Corp"]},
+    "highr collective": {"certifications": ["B Corp"]},
+    "kaylaan": {"certifications": ["B Corp"]},
+    "synergy products": {"certifications": ["B Corp"]},
+    "cranbourn": {"certifications": ["B Corp"]},
+    "exponent beauty": {"certifications": ["B Corp"]},
+    "emma lewisham": {"certifications": ["B Corp"]},
+    "heights": {"certifications": ["B Corp"]},
+    "meow meow tweet": {"certifications": ["B Corp"]},
+    "kypris": {"certifications": ["B Corp"]},
+    "umberto giannini": {"certifications": ["B Corp"]},
+    "innersense": {"certifications": ["B Corp"]},
+    "plant people": {"certifications": ["B Corp"]},
+    "stubble & stache": {"certifications": ["B Corp"]},
+    "isdin": {"certifications": ["B Corp"]},
+    "natura &co": {"certifications": ["B Corp"]},
+    "aromatherapy associates": {"certifications": ["B Corp"]},
+    "ursa major": {"certifications": ["B Corp"]},
+    "koa roy": {"certifications": ["B Corp"]},
+    "prose": {"certifications": ["B Corp"]},
+    "saalt": {"certifications": ["B Corp"]},
+    "banyan botanicals": {"certifications": ["B Corp"]},
+    "toms of maine": {"certifications": ["B Corp"]},
+    "sea witch botanicals": {"certifications": ["B Corp"]},
+    "gkco holdings": {"certifications": ["B Corp"]},
+    "plaine products": {"certifications": ["B Corp"]},
+    "cora": {"certifications": ["B Corp"]},
+    "love bottle": {"certifications": ["B Corp"]},
+    "davines group": {"certifications": ["B Corp"]},
+    "motherlove herbal": {"certifications": ["B Corp"]},
+    "murphys naturals": {"certifications": ["B Corp"]},
+    "refill shoppe": {"certifications": ["B Corp"]},
+    "soapbox": {"certifications": ["B Corp"]},
+    "abhati suisse": {"certifications": ["B Corp"]},
+    "alaska glacial": {"certifications": ["B Corp"]},
+    "good clean love": {"certifications": ["B Corp"]},
+    "eco lips": {"certifications": ["B Corp"]},
+    "preserve": {"certifications": ["B Corp"]},
+    "eo products": {"certifications": ["B Corp"]},
+    "w.s. badger": {"certifications": ["B Corp"]},
+    "erbaviva": {"certifications": ["B Corp"]},
+    "all good": {"certifications": ["B Corp"]},
+    "inesscents": {"certifications": ["B Corp"]},
+    "blue beautifly": {"certifications": ["B Corp"]},
+    "crystal spring": {"certifications": ["B Corp"]},
+    "bodywise": {"certifications": ["B Corp"]},
+    "hairlust": {"certifications": ["B Corp"]},
+    "experimental perfume": {"certifications": ["B Corp"]},
+    "lumity life": {"certifications": ["B Corp"]},
+    "lumene group": {"certifications": ["B Corp"]},
+    "orean personal care": {"certifications": ["B Corp"]},
+    "rituals cosmetics": {"certifications": ["B Corp"]},
+    "weleda": {"certifications": ["B Corp"]},
+    "human beauty movement": {"certifications": ["B Corp"]},
 
-        return normalized.strip()
+    # Baby Products
+    "naty": {"certifications": ["B Corp"]},
+    "happy family": {"certifications": ["B Corp"]},
+    "once upon a farm": {"certifications": ["B Corp"]},
+    "earth's best": {"certifications": ["B Corp"]},
+    "little spoon": {"certifications": ["B Corp"]},
+    "mushies": {"certifications": ["B Corp"]},
+    "nurturme": {"certifications": ["B Corp"]},
+    "plum organics": {"certifications": ["B Corp"]},
+    "gerber organic": {"certifications": ["B Corp"]},
+    "hipp": {"certifications": ["B Corp"]},
+    "holle": {"certifications": ["B Corp"]},
+    "topfer": {"certifications": ["B Corp"]},
+    "cerebelly": {"certifications": ["B Corp"]},
+    "serenity kids": {"certifications": ["B Corp"]},
+    "tiny organics": {"certifications": ["B Corp"]},
+    "yummy spoonfuls": {"certifications": ["B Corp"]},
+    "amara": {"certifications": ["B Corp"]},
+    "baby gourmet": {"certifications": ["B Corp"]},
+    "bambinos": {"certifications": ["B Corp"]},
+    "beech-nut organic": {"certifications": ["B Corp"]},
+    "bioband": {"certifications": ["B Corp"]},
+    "demeter": {"certifications": ["B Corp"]},
 
-    @classmethod
-    def find_parent_company(cls, product_name: str) -> Optional[str]:
-        """Find parent company for a product using product name matching"""
-        if not product_name:
-            return None
+    # Meals / Meal Kits
+    "butcherbox": {"certifications": ["B Corp"]},
+    "walden local meat": {"certifications": ["B Corp"]},
+    "sea to table": {"certifications": ["B Corp"]},
+    "lukes lobster": {"certifications": ["B Corp"]},
+    "hello fresh": {"certifications": ["B Corp"]},
+    "blue apron": {"certifications": ["B Corp"]},
+    "home chef": {"certifications": ["B Corp"]},
+    "sun basket": {"certifications": ["B Corp"]},
+    "factor": {"certifications": ["B Corp"]},
+    "freshly": {"certifications": ["B Corp"]},
+    "sakara": {"certifications": ["B Corp"]},
+    "veestro": {"certifications": ["B Corp"]},
+    "daily harvest": {"certifications": ["B Corp"]},
 
-        product_normalized = cls.normalize(product_name)
+    # Canned Foods
+    "borough broth": {"certifications": ["B Corp"]},
+    "annie's": {"certifications": ["B Corp"]},
+    "edem foods": {"certifications": ["B Corp"]},
+    "muir glen": {"certifications": ["B Corp"]},
+    "wild planet": {"certifications": ["B Corp"]},
+    "safe catch": {"certifications": ["B Corp"]},
+    "ocean spray": {"certifications": ["B Corp"]},
+    "bushs beans": {"certifications": ["B Corp"]},
+    "goya": {"certifications": ["B Corp"]},
 
-        # Check for exact product matches in parent company mapping
-        for product_key, parent in cls.PARENT_COMPANY_MAPPING.items():
-            if product_key in product_normalized:
-                logger.info(
-                    f"Found parent company for '{product_name}': {parent} (via product key: {product_key})"
-                )
-                return parent
-
-        # Check for partial matches
-        for product_key, parent in cls.PARENT_COMPANY_MAPPING.items():
-            product_key_parts = product_key.split()
-            product_parts = product_normalized.split()
-
-            # Check if any significant word matches
-            for key_part in product_key_parts:
-                if len(key_part) > 3:  # Only consider significant words
-                    for product_part in product_parts:
-                        if len(product_part) > 3 and key_part in product_part:
-                            logger.info(
-                                f"Found partial match for '{product_name}': {parent} (via '{key_part}' in '{product_part}')"
-                            )
-                            return parent
-
-        return None
-
-    @classmethod
-    def extract_brand_from_product_text(
-            cls, product_name: str) -> Optional[str]:
-        """Enhanced brand extraction from product name using multiple strategies"""
-        if not product_name or product_name.lower() in [
-                "unknown", "generic product"]:
-            return None
-
-        product_lower = product_name.lower()
-
-        # Strategy 1: Look for parent company mapping
-        parent_company = cls.find_parent_company(product_name)
-        if parent_company:
-            return parent_company.title()
-
-        # Strategy 2: Check for known brand patterns in product name
-        for brand in cls.BRAND_IDENTIFICATION_DB.keys():
-            brand_normalized = cls.normalize(brand)
-            if brand_normalized and len(brand_normalized) > 2:
-                # Check if brand appears in product name
-                if brand_normalized in product_lower:
-                    logger.info(
-                        f"Found brand '{brand}' directly in product name '{product_name}'"
-                    )
-                    return brand.title()
-
-                # Check for brand variations
-                if brand in cls.BRAND_VARIATIONS:
-                    for variation in cls.BRAND_VARIATIONS[brand]:
-                        if variation in product_lower:
-                            logger.info(
-                                f"Found brand variation '{variation}' for '{brand}' in product name"
-                            )
-                            return brand.title()
-
-        # Strategy 3: Extract likely brand from beginning of product name
-        words = product_name.split()
-        if len(words) > 1:
-            first_word = cls.normalize(words[0])
-            second_word = cls.normalize(words[1]) if len(words) > 1 else ""
-
-            # Check first word as potential brand
-            if first_word and len(first_word) > 2:
-                for brand in cls.BRAND_IDENTIFICATION_DB.keys():
-                    brand_normalized = cls.normalize(brand)
-                    if brand_normalized == first_word or brand_normalized.startswith(
-                            first_word):
-                        logger.info(
-                            f"Extracted brand '{brand}' from first word of product name"
-                        )
-                        return brand.title()
-
-            # Check first two words as potential brand
-            if second_word:
-                first_two_words = f"{first_word} {second_word}"
-                for brand in cls.BRAND_IDENTIFICATION_DB.keys():
-                    brand_normalized = cls.normalize(brand)
-                    if (
-                        brand_normalized == first_two_words
-                        or brand_normalized.startswith(first_two_words)
-                    ):
-                        logger.info(
-                            f"Extracted brand '{brand}' from first two words of product name"
-                        )
-                        return brand.title()
-
-        return None
-
-
-# ==================== CERTIFICATION MANAGER ====================
-
-
+    # Frozen Foods
+    "roncadin": {"certifications": ["B Corp"]},
+    "lean cuisine": {"certifications": ["B Corp"]},
+    "stouffers": {"certifications": ["B Corp"]},
+    "healthy choice": {"certifications": ["B Corp"]},
+    "evol": {"certifications": ["B Corp"]},
+    "dr praegers": {"certifications": ["B Corp"]},
+    "gardein": {"certifications": ["B Corp"]},
+    "impossible foods": {"certifications": ["B Corp"]},
+    "beyond meat": {"certifications": ["B Corp"]},
+}
 class CertificationManager:
     """Manage all certification-related operations"""
 
@@ -1224,12 +1489,12 @@ class CertificationManager:
                         f"Sample brand '{brand}': certs={first_product.get('certifications', {})}, categories={brand_categories.get(brand, set())}"
                     )
 
-                # ✅ ADD THIS: Verify data is ready
+                # âœ… ADD THIS: Verify data is ready
                 if self.data is not None and len(self.data) > 0:
-                    logger.info(f"✅ Data verification: {len(self.data)} records ready")
+                    logger.info(f"âœ… Data verification: {len(self.data)} records ready")
                     return True
                 else:
-                    logger.warning("⚠️ Data appears empty, retrying...")
+                    logger.warning("âš ï¸ Data appears empty, retrying...")
                     time.sleep(1)
                     return self.load_certification_data()
             else:
@@ -1364,7 +1629,7 @@ class CertificationManager:
                     if score > best_score:
                         best_score = score
                         best_match = product_data
-                        logger.info(f"Found exact brand category match: '{category}' → '{product_key}'")
+                        logger.info(f"Found exact brand category match: '{category}' â†’ '{product_key}'")
 
         # Check partial brand matches (LOWER CONFIDENCE - ONLY if exact brand not found)
         if not best_match:
@@ -1408,14 +1673,14 @@ class CertificationManager:
                             if score > best_score:
                                 best_score = score
                                 best_match = product_data
-                                logger.info(f"Found partial category match via partial brand: '{category}' → '{product_key}'")
+                                logger.info(f"Found partial category match via partial brand: '{category}' â†’ '{product_key}'")
 
         # ===== SAFETY CHECK: Only return match if confidence is high enough =====
         if best_match and match_confidence in ["high", "medium"]:
             return best_match
 
         # If match_confidence is "low", don't return anything (prevents false positives)
-        logger.info(f"Rejected low-confidence brand match for '{brand_normalized}' → category '{category}'")
+        logger.info(f"Rejected low-confidence brand match for '{brand_normalized}' â†’ category '{category}'")
         return None
 
     @staticmethod
@@ -1561,11 +1826,11 @@ class CertificationManager:
             )
 
             if need_load:
-                logger.info("🔄 Loading/Reloading certification data...")
+                logger.info("ðŸ”„ Loading/Reloading certification data...")
                 self.load_certification_data()
 
                 if self.data is None:
-                    logger.error("❌ Data still None after load attempt")
+                    logger.error("âŒ Data still None after load attempt")
                     return self._get_default_response(
                         found=False,
                         match_type="data_not_loaded",
@@ -1645,7 +1910,7 @@ class CertificationManager:
                         best_row_data = best_match.get("row_data", {})
                         best_category = best_row_data.get("Category", "") if best_row_data else ""
 
-                    logger.info(f"Found category match for barcode: '{category}' → '{best_category}'")
+                    logger.info(f"Found category match for barcode: '{category}' â†’ '{best_category}'")
                     return self._format_response(
                         found=True,
                         data=best_match,
@@ -1674,7 +1939,7 @@ class CertificationManager:
                         best_row_data = best_match.get("row_data", {})
                         best_category = best_row_data.get("Category", "") if best_row_data else ""
 
-                    logger.info(f"Found partial category match for manual search: '{category}' → '{best_category}'")
+                    logger.info(f"Found partial category match for manual search: '{category}' â†’ '{best_category}'")
                     return self._format_response(
                         found=True,
                         data=best_match,
@@ -2260,7 +2525,7 @@ class BrandExtractionManager:
         if brand_normalized in BrandNormalizer.BRAND_SYNONYMS:
             canonical_brand = BrandNormalizer.BRAND_SYNONYMS[brand_normalized]
             logger.info(
-                f"Input matches brand synonym: '{brand_normalized}' â†’ '{canonical_brand}'"
+                f"Input matches brand synonym: '{brand_normalized}' Ã¢â€ â€™ '{canonical_brand}'"
             )
             return BrandExtractionManager._format_result(
                 success=True,
@@ -2275,7 +2540,7 @@ class BrandExtractionManager:
         for alias, canonical in BrandNormalizer.BRAND_ALIASES.items():
             if alias == brand_normalized:
                 logger.info(
-                    f"Input matches brand alias: '{brand_normalized}' â†’ '{canonical}'"
+                    f"Input matches brand alias: '{brand_normalized}' Ã¢â€ â€™ '{canonical}'"
                 )
                 return BrandExtractionManager._format_result(
                     success=True,
@@ -2463,7 +2728,7 @@ class BrandExtractionManager:
 
         if best_match:
             logger.info(
-                f"Fuzzy match found: '{brand_normalized}' â†’ '{best_match}' ({best_score:.1%} similarity)"
+                f"Fuzzy match found: '{brand_normalized}' Ã¢â€ â€™ '{best_match}' ({best_score:.1%} similarity)"
             )
             confidence = int(best_score * 100)
             return BrandExtractionManager._format_result(
@@ -2893,11 +3158,11 @@ def render_scoring_methodology() -> str:
     </head>
     <body>
         <div class="container">
-            <h1>📊 TBL Grocery Scanner Scoring Methodology</h1>
-            <div class="subtitle">Version 2.4.0 • Weighted Certification Bonuses with Cap at 10.0</div>
+            <h1>ðŸ“Š TBL Grocery Scanner Scoring Methodology</h1>
+            <div class="subtitle">Version 2.4.0 â€¢ Weighted Certification Bonuses with Cap at 10.0</div>
 
             <div class="section">
-                <h2>🎯 Core Principles</h2>
+                <h2>ðŸŽ¯ Core Principles</h2>
                 <div class="principle-box">
                     <h3>Consistency First</h3>
                     <p>Every brand gets the exact same score regardless of search method (barcode, brand name, or product name).</p>
@@ -2913,21 +3178,21 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>📈 How Scores Are Calculated</h2>
+                <h2>ðŸ“ˆ How Scores Are Calculated</h2>
 
                 <div class="score-breakdown">
                     <div class="score-pillar">
-                        <div>👥 Social Score</div>
+                        <div>ðŸ‘¥ Social Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
                     <div class="score-pillar">
-                        <div>🌱 Environmental Score</div>
+                        <div>ðŸŒ± Environmental Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
                     <div class="score-pillar">
-                        <div>💰 Economic Score</div>
+                        <div>ðŸ’° Economic Score</div>
                         <div class="score-value">{ScoringConfig.BASE_SCORE} +</div>
                         <div>Base + Certification Bonuses</div>
                     </div>
@@ -2942,9 +3207,9 @@ def render_scoring_methodology() -> str:
                 <table>
                     <tr>
                         <th>Certification</th>
-                        <th>👥 Social Bonus</th>
-                        <th>🌱 Environmental Bonus</th>
-                        <th>💰 Economic Bonus</th>
+                        <th>ðŸ‘¥ Social Bonus</th>
+                        <th>ðŸŒ± Environmental Bonus</th>
+                        <th>ðŸ’° Economic Bonus</th>
                         <th>Focus Area</th>
                     </tr>
                     <tr>
@@ -2984,8 +3249,8 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="section">
-                <h2>⭐ Grade Thresholds</h2>
-                <p>Overall TBL Score = (Social + Environmental + Economic) ÷ 3</p>
+                <h2>â­ Grade Thresholds</h2>
+                <p>Overall TBL Score = (Social + Environmental + Economic) Ã· 3</p>
 
                 <div style="margin: 20px 0;">
                     <div class="grade-box excellent">EXCELLENT: {ScoringConfig.GRADE_THRESHOLDS['EXCELLENT']}+</div>
@@ -3003,15 +3268,15 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div class="example">
-                <h2>🧪 Example Calculation: Nespresso</h2>
+                <h2>ðŸ§ª Example Calculation: Nespresso</h2>
                                 <p><strong>Certifications:</strong> B Corp + Fair Trade + Rainforest Alliance (All stack with cap at 10.0)</p>
 
                 <table>
                     <tr>
                         <th>Step</th>
-                        <th>👥 Social</th>
-                        <th>🌱 Environmental</th>
-                        <th>💰 Economic</th>
+                        <th>ðŸ‘¥ Social</th>
+                        <th>ðŸŒ± Environmental</th>
+                        <th>ðŸ’° Economic</th>
                     </tr>
                     <tr>
                         <td>Base Score</td>
@@ -3038,7 +3303,7 @@ def render_scoring_methodology() -> str:
                         <td>+1.0</td>
                     </tr>
                     <tr>
-                        <td>+ Multi-Cert Bonus (2 additional certs × {ScoringConfig.MULTI_CERT_BONUS})</td>
+                        <td>+ Multi-Cert Bonus (2 additional certs Ã— {ScoringConfig.MULTI_CERT_BONUS})</td>
                         <td>+1.0</td>
                         <td>+1.0</td>
                         <td>+1.0</td>
@@ -3051,12 +3316,12 @@ def render_scoring_methodology() -> str:
                     </tr>
                 </table>
 
-                <p><strong>Overall TBL Score:</strong> (8.5 + 8.5 + 8.0) ÷ 3 = <strong>8.3</strong></p>
+                <p><strong>Overall TBL Score:</strong> (8.5 + 8.5 + 8.0) Ã· 3 = <strong>8.3</strong></p>
                 <p><strong>Grade:</strong> <span class="grade-box great">GREAT</span></p>
             </div>
 
             <div class="section">
-                <h2>🔍 Consistent Scoring Across All Search Methods</h2>
+                <h2>ðŸ” Consistent Scoring Across All Search Methods</h2>
                 <div class="principle-box">
                     <h3>Single Source of Truth</h3>
                     <p>One function (<code>calculate_brand_scores()</code>) handles all scoring</p>
@@ -3073,9 +3338,9 @@ def render_scoring_methodology() -> str:
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="/" class="back-button">🏠 Back to Scanner</a>
-                <a href="/health" class="back-button">❤️ Health Check</a>
-                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
+                <a href="/" class="back-button">ðŸ  Back to Scanner</a>
+                <a href="/health" class="back-button">â¤ï¸ Health Check</a>
+                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">â¬…ï¸ Go Back</button>
             </div>
         </div>
 
@@ -3304,29 +3569,29 @@ def render_score_breakdown(
     </head>
     <body>
         <div class="container">
-            <h1>📊 Score Breakdown</h1>
+            <h1>ðŸ“Š Score Breakdown</h1>
             <div class="brand-header">
                 <h2 style="margin-top: 0;">{brand}</h2>
                 <p>Normalized as: {brand_normalized}</p>
             </div>
 
             <div class="excel-status {'excel-found' if excel_result['found'] else 'excel-notfound'}">
-                {'âœ“ Found in Excel Database' if excel_result['found'] else '❌ Not in Excel Database'}
+                {'Ã¢Å“â€œ Found in Excel Database' if excel_result['found'] else 'âŒ Not in Excel Database'}
             </div>
 
             <div class="score-display">
                 <div class="pillar">
-                    <div>👥 Social Impact</div>
+                    <div>ðŸ‘¥ Social Impact</div>
                     <div class="pillar-score">{scores.social:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_social_bonus:.1f} bonus</div>
                 </div>
                 <div class="pillar">
-                    <div>🌱 Environmental Impact</div>
+                    <div>ðŸŒ± Environmental Impact</div>
                     <div class="pillar-score">{scores.environmental:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_env_bonus:.1f} bonus</div>
                 </div>
                 <div class="pillar">
-                    <div>💰 Economic Impact</div>
+                    <div>ðŸ’° Economic Impact</div>
                     <div class="pillar-score">{scores.economic:.1f}</div>
                     <div>Base {ScoringConfig.BASE_SCORE} + {total_econ_bonus:.1f} bonus</div>
                 </div>
@@ -3339,7 +3604,7 @@ def render_score_breakdown(
             </div>
 
             <div class="breakdown">
-                <h3 style="color: #e65100; margin-top: 0;">🔍 How This Score Was Calculated</h3>
+                <h3 style="color: #e65100; margin-top: 0;">ðŸ” How This Score Was Calculated</h3>
 
                 <h4>Base Scores (All Brands Start Here)</h4>
                 <div class="bonus-row">
@@ -3366,7 +3631,7 @@ def render_score_breakdown(
             </div>
 
             <div style="margin: 30px 0;">
-                <h3>✅ Verified Certifications</h3>
+                <h3>âœ… Verified Certifications</h3>
                 {cert_badges}
                 <p style="font-size: 12px; color: #666; margin-top: 10px;">
                     Combined from Excel database and hardcoded database
@@ -3374,9 +3639,9 @@ def render_score_breakdown(
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
-                <a href="/" class="back-button">🏠 Back to Scanner</a>
-                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">ðŸ“š Full Methodology</a>
-                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
+                <a href="/" class="back-button">ðŸ  Back to Scanner</a>
+                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">Ã°Å¸â€œÅ¡ Full Methodology</a>
+                <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">â¬…ï¸ Go Back</button>
             </div>
         </div>
     </body>
@@ -3391,7 +3656,7 @@ async def get_scoring_methodology():
     """Explain the scoring methodology transparently to users"""
     return HTMLResponse(content=render_scoring_methodology())
 
-# ✅ ADD THIS NEW ROUTE RIGHT HERE:
+# âœ… ADD THIS NEW ROUTE RIGHT HERE:
 
 
 @app.get("/data-sources", response_class=HTMLResponse)
@@ -3431,7 +3696,7 @@ async def register_user(user: UserRegistration) -> Dict[str, Any]:
     }
     PURCHASE_HISTORY_DB[user.username] = []
 
-    # ✅ ADD THIS LINE: Save to persistent storage
+    # âœ… ADD THIS LINE: Save to persistent storage
     save_user_data()
 
     logger.info(f"New user registered: {user.username}")
@@ -3582,7 +3847,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         if canonical_brand:
             brand = canonical_brand
             logger.info(
-                f"Using canonical brand: '{original_brand}' â†’ '{brand}'")
+                f"Using canonical brand: '{original_brand}' Ã¢â€ â€™ '{brand}'")
 
         logger.info(
             f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
@@ -4139,9 +4404,9 @@ async def validate_barcode_format(barcode: str):
         "html5qrcode_compatible": len(detected_formats) > 0,
         "library": "Html5Qrcode v2.3.8",
         "suggested_action": (
-            "âœ“ Compatible with Html5Qrcode scanner"
+            "Ã¢Å“â€œ Compatible with Html5Qrcode scanner"
             if detected_formats
-            else "âš ï¸ This format may not be supported. Try manual entry."
+            else "Ã¢Å¡Â Ã¯Â¸Â This format may not be supported. Try manual entry."
         ),
     }
 
@@ -4246,7 +4511,7 @@ async def record_purchase(
         PURCHASE_HISTORY_DB[username] = []
     PURCHASE_HISTORY_DB[username].append(purchase)
 
-    # ✅ ADD THIS LINE: Save to persistent storage
+    # âœ… ADD THIS LINE: Save to persistent storage
     save_user_data()
 
     logger.info(f"Purchase recorded for {username}: {product.product_name}")
@@ -4312,13 +4577,13 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 
     # ===== SAFETY CHECK: Check if data is ready =====
     if certification_manager.data is None:
-        logger.warning("⚠️ Data not ready, attempting to load...")
+        logger.warning("âš ï¸ Data not ready, attempting to load...")
         certification_manager.load_certification_data()
 
         # Wait and retry if still not ready
         retries = 3
         while certification_manager.data is None and retries > 0:
-            logger.info(f"⏳ Waiting for data to load... ({retries} retries left)")
+            logger.info(f"â³ Waiting for data to load... ({retries} retries left)")
             time.sleep(1)
             retries -= 1
 
@@ -4477,7 +4742,7 @@ async def scanner_health():
     """Check scanner system health and compatibility"""
     return {
         "scanner_system": "Html5Qrcode (Lightweight JavaScript Scanner)",
-        "backend_integration": "âœ“ Ready",
+        "backend_integration": "Ã¢Å“â€œ Ready",
         "library": "Html5Qrcode v2.3.8 - actively maintained",
         "api_endpoints": {
             "scan": "/scan (POST) - Main scanning endpoint",
@@ -4537,7 +4802,7 @@ async def health_check() -> Dict[str, Any]:
                 "total_users": len(USERS_DB),
         "cache_size": len(PRODUCT_CACHE),
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Weighted Certification Bonuses + Multi-Cert Bonus (capped at 10.0)",
-        "scoring_priority": "Brand Synonyms → Parent Company → Dynamic Calculation",
+        "scoring_priority": "Brand Synonyms â†’ Parent Company â†’ Dynamic Calculation",
         "scoring_consistency": "Single scoring function ensures identical results across all search methods",
         "certification_bonuses": ScoringConfig.CERTIFICATION_BONUSES,
         "multi_cert_bonus": ScoringConfig.MULTI_CERT_BONUS,
@@ -4609,29 +4874,29 @@ async def favicon():
 
 
 # ==================== STARTUP EVENT ====================
-# ✅ ADD THIS: Load data before accepting requests
+# âœ… ADD THIS: Load data before accepting requests
 
 @app.on_event("startup")
 async def startup_event():
     """Load certification data on startup and wait for it to complete"""
-    logger.info("🚀 Application starting up...")
-    logger.info("📊 Loading certification data...")
+    logger.info("ðŸš€ Application starting up...")
+    logger.info("ðŸ“Š Loading certification data...")
 
     # Load the data with retry
     max_retries = 5
     for attempt in range(max_retries):
         success = certification_manager.load_certification_data()
         if success and certification_manager.data is not None:
-            logger.info(f"✅ Successfully loaded {len(certification_manager.data)} certification records")
-            logger.info(f"✅ Category index ready for {len(certification_manager.brand_categories)} brands")
-            logger.info("🚀 Application startup complete!")
+            logger.info(f"âœ… Successfully loaded {len(certification_manager.data)} certification records")
+            logger.info(f"âœ… Category index ready for {len(certification_manager.brand_categories)} brands")
+            logger.info("ðŸš€ Application startup complete!")
             return
         else:
-            logger.warning(f"⚠️ Attempt {attempt + 1}/{max_retries} failed, retrying in 1 second...")
+            logger.warning(f"âš ï¸ Attempt {attempt + 1}/{max_retries} failed, retrying in 1 second...")
             time.sleep(1)
 
-    logger.warning("⚠️ Certification data did not load on startup. Will retry on first request.")
-    logger.info("🚀 Application startup complete!")
+    logger.warning("âš ï¸ Certification data did not load on startup. Will retry on first request.")
+    logger.info("ðŸš€ Application startup complete!")
 
 if __name__ == "__main__":
 
@@ -4665,15 +4930,15 @@ if __name__ == "__main__":
     for product in test_products:
         parent = BrandNormalizer.find_parent_company(product)
         if parent:
-            logger.info(f"Test mapping: '{product}' â†’ '{parent}'")
+            logger.info(f"Test mapping: '{product}' Ã¢â€ â€™ '{parent}'")
 
-    logger.info("🎯 Scanner System: Html5Qrcode integrated")
-    logger.info("ðŸŒ Open http://localhost:8000 in your browser")
+    logger.info("ðŸŽ¯ Scanner System: Html5Qrcode integrated")
+    logger.info("Ã°Å¸Å’Â Open http://localhost:8000 in your browser")
     logger.info(
-        "📱 For mobile: Use your computer's IP address with port 8000")
+        "ðŸ“± For mobile: Use your computer's IP address with port 8000")
     logger.info(
-        "🔧 Key endpoint: GET /scoring-methodology for complete transparency")
-    logger.info("📊 Scanner health: GET /scanner/health")
+        "ðŸ”§ Key endpoint: GET /scoring-methodology for complete transparency")
+    logger.info("ðŸ“Š Scanner health: GET /scanner/health")
 
     # Only run uvicorn directly when executing the script locally
     # This block WON'T run when gunicorn imports the module
