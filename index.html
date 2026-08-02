@@ -485,7 +485,6 @@
             border-bottom: none;
         }
 
-        /* ===== ADD MOBILE FIXES HERE ===== */
         @media (max-width: 768px) {
             .suggestions {
                 position: fixed;
@@ -535,7 +534,6 @@
         .suggestions.show + .suggestions-overlay {
             display: block;
         }
-        /* ===== END MOBILE FIXES ===== */
 
         .user-section {
             background: rgba(46, 125, 50, 0.1);
@@ -551,7 +549,6 @@
             color: var(--primary);
         }
 
-        /* High contrast for accessibility */
         @media (prefers-contrast: high) {
             .btn-primary {
                 background: #000;
@@ -563,7 +560,6 @@
             }
         }
 
-        /* Responsive */
         @media (max-width: 480px) {
             .header h1 {
                 font-size: 20px;
@@ -649,6 +645,24 @@
             margin-left: 10px;
         }
 
+        /* Scanner animations */
+        @keyframes scan {
+            0% { top: 20%; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 80%; opacity: 0; }
+        }
+
+        .category-highlight {
+            border-color: #ff9800 !important;
+            background-color: #fff3e0 !important;
+            animation: pulse 0.5s ease-in-out 2;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.3); }
+            100% { transform: scale(1); }
+        }
     </style>
 
 </head>
@@ -681,48 +695,52 @@
                 <div class="input-group" id="categoryGroup" style="display: none;">
                     <label for="categorySelect">Product Category (optional):</label>
                     <select id="categorySelect">
-                    <option value="">-- Select category (optional) --</option>
-                    <option value="Baby">Baby</option>
-                    <option value="Baby Food">Baby Food</option>
-                    <option value="Baking & Cooking">Baking & Cooking</option>
-                    <option value="Beverages">Beverages</option>
-                    <option value="Breads">Breads</option>
-                    <option value="Breakfast Cereals">Breakfast Cereals</option>
-                    <option value="Breakfast Foods">Breakfast Foods</option>
-                    <option value="Candy & Chocolate">Candy & Chocolate</option>
-                    <option value="Canned & Packaged Goods">Canned & Packaged Goods</option>
-                    <option value="Cleaning & Household">Cleaning & Household</option>
-                    <option value="Coffee, Tea and Cocoa">Coffee, Tea and Cocoa</option>
-                    <option value="Condiments & Sauces">Condiments & Sauces</option>
-                    <option value="Cookies & Crackers">Cookies & Crackers</option>
-                    <option value="Cosmetics & Personal Care">Cosmetics & Personal Care</option>
-                    <option value="Dairy & Eggs">Dairy & Eggs</option>
-                    <option value="Feminine Hygiene Products">Feminine Hygiene Products</option>
-                    <option value="Frozen Foods">Frozen Foods</option>
-                    <option value="Health & Nutrition">Health & Nutrition</option>
-                    <option value="Natural & Organic">Natural & Organic</option>
-                    <option value="Nut Butters">Nut Butters</option>
-                    <option value="Paper Products">Paper Products</option>
-                    <option value="Pet Food">Pet Food</option>
-                    <option value="Snacks">Snacks</option>
-                </select>
-              </div>
+                        <option value="">-- Select category (optional) --</option>
+                        <option value="Baby">Baby</option>
+                        <option value="en:baby-foods">Baby Foods</option>
+                        <option value="en:baking-ingredients">Baking & Cooking</option>
+                        <option value="en:beverages">Beverages</option>
+                        <option value="en:biscuits">Biscuits</option>
+                        <option value="en:breads">Breads</option>
+                        <option value="en:breakfast-cereals">Breakfast Cereals</option>
+                        <option value="en:canned-foods">Canned & Packaged Goods</option>
+                        <option value="en:coffee">Coffee, Tea and Cocoa</option>
+                        <option value="en:condiments">Condiments & Sauces</option>
+                        <option value="en:confectioneries">Candy & Chocolate</option>
+                        <option value="en:cosmetics">Cosmetics & Personal Care</option>
+                        <option value="en:dairies">Dairy & Eggs</option>
+                        <option value="en:doughnuts">Doughnuts</option>
+                        <option value="en:feminine-hygiene">Feminine Hygiene Products</option>
+                        <option value="en:foods">Foods</option>
+                        <option value="en:frozen-foods">Frozen Foods</option>
+                        <option value="en:household-products">Cleaning & Household</option>
+                        <option value="en:meals">Meals</option>
+                        <option value="en:nut-butters">Nut Butters</option>
+                        <option value="en:nutritional-supplements">Health & Nutrition</option>
+                        <option value="en:paper-products">Paper Products</option>
+                        <option value="en:pet-foods">Pet Food</option>
+                        <option value="en:snacks">Snacks</option>
+                        <option value="en:vegetables">Vegetables</option>
+                    </select>
+                    <!-- Quick category selection buttons -->
+                    <div id="categoryQuickSelect" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;"></div>
+                </div>
 
-              <div class="info-section" id="categoryInfo" style="display: none; margin-top: 10px; font-size: 12px;">
-                  <strong>💡 Tip:</strong> Select a category to see certifications specific to that product type (e.g., Skinnygirl coffee). Without a category, you'll see the brand's overall profile - which may not apply to all products (e.g., Skinnygirl non-coffee items).
-              </div>
+                <div class="info-section" id="categoryInfo" style="display: none; margin-top: 10px; font-size: 12px;">
+                    <strong>💡 Tip:</strong> Select a category to see certifications specific to that product type (e.g., Skinnygirl coffee). Without a category, you'll see the brand's overall profile - which may not apply to all products (e.g., Skinnygirl non-coffee items).
+                </div>
 
-              <div class="input-group">
-                  <label for="searchInput" id="searchLabel">Enter Brand Name:</label>
-                  <div style="display: flex; gap: 8px;">
-                      <input type="text" id="searchInput" placeholder="e.g., Coca-Cola, Nestlé, Ben & Jerry's" style="flex: 1;">
-                      <button id="cameraScanBtn" onclick="openScanner()" style="background: var(--primary); color: white; border: none; border-radius: 10px; width: 48px; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Scan barcode">
-                          📷
-                      </button>
-                  </div>
-                  <div class="suggestions" id="suggestions"></div>
-                  <div class="suggestions-overlay" onclick="document.getElementById('suggestions').classList.remove('show')"></div>
-              </div>
+                <div class="input-group">
+                    <label for="searchInput" id="searchLabel">Enter Brand Name:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="searchInput" placeholder="e.g., Coca-Cola, Nestlé, Ben & Jerry's" style="flex: 1;">
+                        <button id="cameraScanBtn" onclick="openScanner()" style="background: var(--primary); color: white; border: none; border-radius: 10px; width: 48px; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Scan barcode">
+                            📷
+                        </button>
+                    </div>
+                    <div class="suggestions" id="suggestions"></div>
+                    <div class="suggestions-overlay" onclick="document.getElementById('suggestions').classList.remove('show')"></div>
+                </div>
 
                 <button class="btn btn-primary" onclick="searchProduct()">
                     🔍 Search
@@ -824,7 +842,6 @@
             <div class="card">
                 <h2 style="margin-bottom: 20px;">📋 Purchase History</h2>
 
-                <!-- EXPORT/IMPORT BUTTONS -->
                 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                     <button class="btn btn-secondary" onclick="exportPurchases()" style="flex: 1;">
                         📤 Export JSON
@@ -895,6 +912,124 @@
         </p>
     </div>
 
+    <!-- IMPORT MODAL -->
+    <div id="importModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-bottom: 20px;">📥 Import Purchase History</h3>
+            <p style="margin-bottom: 15px; color: var(--text-secondary);">
+                Paste your exported JSON file contents below:
+            </p>
+            <textarea id="importJsonText" placeholder="Paste JSON content here..."
+                      style="width: 100%; height: 200px; padding: 15px; border: 2px solid var(--border); border-radius: 10px; font-family: monospace; margin-bottom: 20px;"></textarea>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="btn btn-primary" onclick="processImport()" style="flex: 1;">
+                    Import
+                </button>
+                <button class="btn btn-secondary" onclick="hideImportModal()" style="flex: 1;">
+                    Cancel
+                </button>
+            </div>
+            <div id="importResult" style="display: none; padding: 15px; border-radius: 10px; margin-top: 15px;"></div>
+            <div style="font-size: 12px; color: var(--text-secondary);">
+                💡 Export your current data first as backup. Importing will replace all current local purchases.
+            </div>
+        </div>
+    </div>
+
+    <!-- DATA SOURCES MODAL -->
+    <div id="dataSourcesModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1001; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
+            <button onclick="hideDataSources()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
+            <h2 style="color: var(--primary); margin-bottom: 20px; padding-right: 30px;">📊 Data Sources & Certification References</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 25px;">
+                Our scoring system is based on verified third-party certifications from these trusted organizations:
+            </p>
+            <!-- B Corp -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #2e7d32;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🏢</div>
+                    <h3 style="color: var(--primary); margin: 0;">B Corp Certification</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">Certified B Corporations are businesses that meet the highest standards of verified social and environmental performance, public transparency, and legal accountability to balance profit and purpose.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.bcorporation.net/en-us/find-a-b-corp/" target="_blank" style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">🔗 Verify on B Corp Directory</a>
+                    <span style="background: #e8f5e9; color: var(--primary); padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">Score Impact: +3.5 to all pillars</span>
+                </div>
+            </div>
+            <!-- Fair Trade -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #ff9800;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">⚖️</div>
+                    <h3 style="color: var(--primary); margin: 0;">Fair Trade Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">Fair Trade certification ensures that products are made according to rigorous social, environmental, and economic standards that support safe working conditions, environmental protection, and sustainable livelihoods for farmers and workers.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.flocert.net/fairtrade-customer-search/" target="_blank" style="background: #ff9800; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">🔗 Verify on FLOCERT</a>
+                    <span style="background: #fff3e0; color: #e65100; padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">Score Impact: +2.0 social, +1.0 environmental, +2.0 economic</span>
+                </div>
+            </div>
+            <!-- Rainforest Alliance -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #4caf50;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🌳</div>
+                    <h3 style="color: var(--primary); margin: 0;">Rainforest Alliance Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">The Rainforest Alliance certification seal means that the product was produced using methods that support the three pillars of sustainability: social, economic, and environmental, with a focus on protecting forests, improving livelihoods, and promoting human rights.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.rainforest-alliance.org/find-certified/" target="_blank" style="background: #4caf50; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">🔗 Verify on Rainforest Alliance</a>
+                    <span style="background: #e8f5e9; color: var(--primary); padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">Score Impact: +1.0 social, +2.5 environmental, +1.0 economic</span>
+                </div>
+            </div>
+            <!-- Leaping Bunny -->
+            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #2196f3;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 24px; margin-right: 15px;">🐰</div>
+                    <h3 style="color: var(--primary); margin: 0;">Leaping Bunny Certified</h3>
+                </div>
+                <p style="margin-bottom: 15px; color: var(--text-primary);">The Leaping Bunny Program administers a cruelty-free standard and certification for companies producing cosmetic, personal care, and household products, ensuring no new animal testing is used in any phase of product development.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="https://www.leapingbunny.org/shopping-guide/" target="_blank" style="background: #2196f3; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">🔗 Verify on Leaping Bunny</a>
+                    <span style="background: #e3f2fd; color: #1565c0; padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">Score Impact: +1.0 social only</span>
+                </div>
+            </div>
+            <!-- Methodology Note -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 25px; border: 2px solid var(--border);">
+                <h4 style="color: var(--primary); margin-bottom: 10px;">📈 Scoring Methodology</h4>
+                <p style="color: var(--text-primary); margin-bottom: 10px;"><strong>Base Score:</strong> All brands start with 5.0 in each pillar (Social, Environmental, Economic).</p>
+                <p style="color: var(--text-primary); margin-bottom: 10px;"><strong>Certification Bonuses:</strong> Points are added only for verified third-party certifications.</p>
+                <p style="color: var(--text-primary); margin-bottom: 10px;"><strong>Multi-Certification Bonus:</strong> Brands with multiple certifications receive an additional +0.5 to each pillar for each certification beyond the first.</p>
+                <p style="color: var(--text-primary);"><strong>Maximum Score:</strong> All scores are capped at 10.0 per pillar.</p>
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="https://tbl-grocery-scanner.onrender.com/scoring-methodology" target="_blank" style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">📖 View Full Scoring Methodology</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BARCODE SCANNER MODAL -->
+    <div id="scannerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10002; align-items: center; justify-content: center; flex-direction: column;">
+        <div style="width: 100%; max-width: 600px; background: #000; border-radius: 15px; overflow: hidden; position: relative; margin: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div id="scanner-feed" style="width: 100%; min-height: 400px; background: #111;"></div>
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none;">
+                <div style="position: absolute; top: 30px; left: 30px; width: 50px; height: 50px; border-top: 4px solid #ff9800; border-left: 4px solid #ff9800;"></div>
+                <div style="position: absolute; top: 30px; right: 30px; width: 50px; height: 50px; border-top: 4px solid #ff9800; border-right: 4px solid #ff9800;"></div>
+                <div style="position: absolute; bottom: 30px; left: 30px; width: 50px; height: 50px; border-bottom: 4px solid #ff9800; border-left: 4px solid #ff9800;"></div>
+                <div style="position: absolute; bottom: 30px; right: 30px; width: 50px; height: 50px; border-bottom: 4px solid #ff9800; border-right: 4px solid #ff9800;"></div>
+                <div id="scanLine" style="position: absolute; left: 40px; right: 40px; height: 2px; background: linear-gradient(90deg, transparent, #ff9800, transparent); animation: scan 2s linear infinite;"></div>
+                <div style="position: absolute; top: 50%; left: 15%; right: 15%; height: 2px; background: rgba(255,255,255,0.2); transform: translateY(-50%);"></div>
+            </div>
+        </div>
+        <div id="scanner-status" style="color: white; font-size: 16px; margin: 15px 0; padding: 10px 25px; background: rgba(0,0,0,0.7); border-radius: 30px; border: 1px solid #444;">📷 Initializing camera...</div>
+        <div style="display: flex; gap: 15px; margin-top: 10px;">
+            <button onclick="closeScanner()" style="background: #f44336; color: white; border: none; padding: 12px 30px; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); min-width: 120px;">✕ Cancel</button>
+            <button id="torchBtn" onclick="toggleTorch()" style="display: none; background: #333; color: white; border: none; padding: 12px 30px; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); min-width: 120px;">🔦 Flash</button>
+        </div>
+        <div style="color: #aaa; font-size: 14px; margin-top: 25px; text-align: center; padding: 0 20px;">
+            <p>📱 Center barcode in the frame • Scanner closes automatically when detected</p>
+        </div>
+    </div>
+
+    <!-- ==================== JAVASCRIPT ==================== -->
     <script>
         const API_URL = 'https://tbl-grocery-scanner.onrender.com';
         let debounceTimer;
@@ -1202,7 +1337,6 @@
                     const serverData = await response.json();
                     if (serverData.purchases && serverData.purchases.length > 0) {
                         console.log(`Server backup has ${serverData.purchases.length} purchases`);
-                        // Could add merge logic here if desired
                     }
                 }
             } catch (error) {
@@ -1246,7 +1380,6 @@
         function processImport() {
             const jsonText = document.getElementById('importJsonText').value.trim();
             if (!jsonText) {
-                // Just show error in the result div directly
                 const resultDiv = document.getElementById('importResult');
                 resultDiv.innerHTML = `
                     <div class="error show" style="margin: 0;">
@@ -1268,7 +1401,6 @@
                 `;
                 resultDiv.style.display = 'block';
 
-                // Reload history display
                 setTimeout(() => {
                     loadHistory();
                     hideImportModal();
@@ -1283,7 +1415,6 @@
                 resultDiv.style.display = 'block';
             }
         }
-
 
         function clearLocalHistory() {
             if (!currentUser || !confirm('Are you sure? This will delete ALL your local purchase history and cannot be undone.')) {
@@ -1310,7 +1441,6 @@
                 certifications: lastSearchResult.certifications || []
             };
 
-            // Check if already in list
             if (!compareList.find(i => i.brand === item.brand)) {
                 compareList.push(item);
                 localStorage.setItem('compareList', JSON.stringify(compareList));
@@ -1421,7 +1551,6 @@
             }
         }
 
-        // Event delegation for suggestions (works on mobile)
         document.getElementById('suggestions').addEventListener('click', function(e) {
             const suggestionItem = e.target.closest('.suggestion-item');
             if (suggestionItem) {
@@ -1430,11 +1559,10 @@
             }
         });
 
-        // Also add touch event for faster response on mobile
         document.getElementById('suggestions').addEventListener('touchstart', function(e) {
             const suggestionItem = e.target.closest('.suggestion-item');
             if (suggestionItem) {
-                e.preventDefault(); // Prevent any default touch behavior
+                e.preventDefault();
                 const brand = suggestionItem.dataset.brand;
                 selectSuggestion(brand);
             }
@@ -1446,10 +1574,38 @@
             searchProduct();
         }
 
+        function selectAndSearchCategory(category) {
+            console.log('🔍 Category selected:', category);
+            const categorySelect = document.getElementById('categorySelect');
+            for (let option of categorySelect.options) {
+                if (option.value.toLowerCase() === category.toLowerCase()) {
+                    categorySelect.value = option.value;
+                    console.log('✅ Category dropdown set to:', categorySelect.value);
+                    break;
+                }
+            }
+            document.getElementById('categoryQuickSelect').innerHTML = '';
+            // Force the search to use the selected category
+            searchProduct();
+        }
+
         async function searchProduct() {
             const searchType = document.getElementById('searchType').value;
             const searchInput = document.getElementById('searchInput').value.trim();
-            const selectedCategory = document.getElementById('categorySelect').value;
+            let selectedCategory = document.getElementById('categorySelect').value;
+
+            // ===== FIX: If we're searching for a brand and a category is available, use it =====
+            // If the category dropdown is visible but has no value, check if we're in a "category_required" state
+            const categoryGroup = document.getElementById('categoryGroup');
+            if (searchType === 'brand' && categoryGroup.style.display === 'block' && !selectedCategory) {
+                // If no category is selected, the backend will return category_required
+                // This is fine - it will prompt the user to select one
+            }
+
+            // ===== FIX: Log the category being used =====
+            console.log('🔎 searchProduct - searchType:', searchType);
+            console.log('🔎 searchProduct - searchInput:', searchInput);
+            console.log('🔎 searchProduct - selectedCategory:', selectedCategory);
 
             if (!searchInput) {
                 showError('Please enter a search term');
@@ -1474,6 +1630,8 @@
                         category: searchType === 'brand' ? selectedCategory : ''
                     };
 
+                    console.log('📦 PAYLOAD being sent:', payload);
+
                     const response = await fetch(`${API_URL}/scan`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1484,24 +1642,16 @@
 
                 hideLoading();
 
-                // ===== DEBUG: Log what we got =====
                 console.log('🔍 SEARCHPRODUCT DATA:', data);
-                console.log('🔍 data.brand:', data.brand);
-                console.log('🔍 data.found:', data.found);
-                console.log('🔍 data.found_in_excel:', data.found_in_excel);
 
-                // ===== DISPLAY RESULTS =====
-                // Check if we have product data from OFF
                 if (data && data.found !== false) {
-                    // Always display results when product is found in OFF
                     displayResults(data);
                 } else if (data.match_type === 'category_required' && data.note) {
-                    // Show category dropdown
                     const categorySelect = document.getElementById('categorySelect');
-                    const categoryGroup = document.getElementById('categoryGroup');
-                    const categoryInfo = document.getElementById('categoryInfo');
-                    if (categoryGroup) categoryGroup.style.display = 'block';
-                    if (categoryInfo) categoryInfo.style.display = 'block';
+                    const categoryGroupEl = document.getElementById('categoryGroup');
+                    const categoryInfoEl = document.getElementById('categoryInfo');
+                    if (categoryGroupEl) categoryGroupEl.style.display = 'block';
+                    if (categoryInfoEl) categoryInfoEl.style.display = 'block';
                     categorySelect.classList.add('category-highlight');
                     categorySelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     showError(data.note);
@@ -1512,11 +1662,9 @@
                     }, 3000);
                     hideResults();
                 } else {
-                    // Fallback: try to display results anyway
                     displayResults(data);
                 }
 
-                // Show success message if category was used
                 if (searchType === 'brand' && selectedCategory && data.match_type !== 'category_required') {
                     showSuccess(`Showing certifications for ${selectedCategory} products from this brand`);
                     setTimeout(() => hideSuccess(), 3000);
@@ -1534,6 +1682,46 @@
                 return;
             }
 
+            // ===== HANDLE MULTI-CATEGORY BRANDS =====
+            if (data.match_type === 'category_required' && data.note) {
+                const categorySelect = document.getElementById('categorySelect');
+                const categoryGroup = document.getElementById('categoryGroup');
+                const categoryInfo = document.getElementById('categoryInfo');
+
+                if (categoryGroup) categoryGroup.style.display = 'block';
+                if (categoryInfo) categoryInfo.style.display = 'block';
+
+                categorySelect.classList.add('category-highlight');
+                categorySelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                showError(data.note);
+
+                document.getElementById('certBadges').innerHTML = '';
+                document.getElementById('overallScore').textContent = '-';
+                document.getElementById('brandName').textContent = data.brand || 'Unknown';
+                document.getElementById('productName').textContent = 'Please select a product category';
+
+                const categoriesMatch = data.note.match(/categories?:?\s*([^\.]+)/i);
+                if (categoriesMatch) {
+                    const categories = categoriesMatch[1].split(',').map(c => c.trim());
+                    const categoryList = document.getElementById('categoryQuickSelect');
+                    if (categoryList) {
+                        categoryList.innerHTML = categories.map(cat =>
+                            `<button class="btn btn-small btn-secondary" onclick="selectAndSearchCategory('${cat}')" style="margin: 3px;">
+                                ${cat}
+                            </button>`
+                        ).join('');
+                    }
+                }
+
+                setTimeout(() => {
+                    categorySelect.classList.remove('category-highlight');
+                }, 3000);
+
+                hideResults();
+                return;
+            }
+
             // ===== CHECK FOR LOADING/RETRY STATE =====
             if (data.loading === true || data.retry === true) {
                 document.getElementById('brandName').textContent = '⏳ Loading...';
@@ -1547,7 +1735,6 @@
                 document.getElementById('certBadges').innerHTML = '<p class="no-certs">⏳ Loading certifications...</p>';
                 document.getElementById('researchStatus').style.display = 'none';
 
-                // Remove old match info and details
                 const oldMatchInfo = document.getElementById('matchInfo');
                 if (oldMatchInfo) oldMatchInfo.remove();
                 const oldDetails = document.getElementById('productDetails');
@@ -1555,11 +1742,9 @@
 
                 showResults();
 
-                // Auto-retry after 2 seconds if retry flag is true
                 if (data.retry === true && data.barcode) {
                     console.log('🔄 Auto-retrying scan for barcode:', data.barcode);
                     setTimeout(() => {
-                        // Re-fetch the product
                         fetch(`${API_URL}/product/${encodeURIComponent(data.barcode)}`)
                             .then(r => r.json())
                             .then(retryData => {
@@ -1587,17 +1772,14 @@
 
             console.log('Product data:', data);
 
-            // ===== BRAND + CATEGORY (always from API) =====
             const brand = data.brand || 'Unknown';
             const category = data.category || data.matched_category || '';
             const brandDisplay = category ? `${brand} — ${category}` : brand;
             document.getElementById('brandName').textContent = brandDisplay || 'Unknown';
 
-            // ===== PRODUCT NAME (always from API) =====
             const productName = data.name || data.product_name || 'Unknown Product';
             document.getElementById('productName').textContent = productName;
 
-            // ===== SCORES =====
             document.getElementById('overallScore').textContent = (data.overall_tbl_score || 5.0).toFixed(1);
 
             const grade = data.grade || 'GOOD';
@@ -1609,7 +1791,6 @@
             document.getElementById('envScore').textContent = (data.environmental_score || 5.0).toFixed(1);
             document.getElementById('econScore').textContent = (data.economic_score || 5.0).toFixed(1);
 
-            // ===== CERTIFICATIONS =====
             const certBadges = document.getElementById('certBadges');
             let certs = data.certifications || [];
 
@@ -1626,7 +1807,6 @@
                 certBadges.innerHTML = `<p class="no-certs">No verified certifications found${notInSheet}</p>`;
             }
 
-            // ===== RESEARCH STATUS =====
             const researchStatus = document.getElementById('researchStatus');
             if (data.certifications_detailed?.research_complete === true) {
                 researchStatus.style.display = 'block';
@@ -1634,13 +1814,11 @@
                 researchStatus.style.display = 'none';
             }
 
-            // ===== REMOVE OLD MATCH INFO =====
             const oldMatchInfo = document.getElementById('matchInfo');
             if (oldMatchInfo) {
                 oldMatchInfo.remove();
             }
 
-            // ===== REMOVE OLD PRODUCT DETAILS =====
             const oldDetails = document.getElementById('productDetails');
             if (oldDetails) {
                 oldDetails.remove();
@@ -1714,7 +1892,6 @@
                 document.getElementById('suggestions').classList.remove('show');
             }
 
-            // Close import modal if clicking outside
             const modal = document.getElementById('importModal');
             if (modal.style.display === 'flex' && e.target === modal) {
                 hideImportModal();
@@ -1724,15 +1901,14 @@
         // Data Sources Modal Functions
         function showDataSources() {
             document.getElementById('dataSourcesModal').style.display = 'flex';
-            document.body.style.overflow = 'hidden'; // Prevent scrolling
+            document.body.style.overflow = 'hidden';
         }
 
         function hideDataSources() {
             document.getElementById('dataSourcesModal').style.display = 'none';
-            document.body.style.overflow = 'auto'; // Restore scrolling
+            document.body.style.overflow = 'auto';
         }
 
-        // Close modal when clicking outside content
         document.addEventListener('click', function(e) {
             const modal = document.getElementById('dataSourcesModal');
             if (modal.style.display === 'flex' && e.target === modal) {
@@ -1740,20 +1916,14 @@
             }
         });
 
-        // Close modals with Escape key - MERGED VERSION (handles all modals)
         document.addEventListener('keydown', function(e) {
             if (e.key !== 'Escape') return;
 
-            // Check data sources modal
             if (document.getElementById('dataSourcesModal').style.display === 'flex') {
                 hideDataSources();
-            }
-            // Check scanner modal
-            else if (scannerActive) {
+            } else if (scannerActive) {
                 closeScanner();
-            }
-            // Check import modal
-            else if (document.getElementById('importModal').style.display === 'flex') {
+            } else if (document.getElementById('importModal').style.display === 'flex') {
                 hideImportModal();
             }
         });
@@ -1761,8 +1931,6 @@
         // ==================== HTML5QRCODE BARCODE SCANNER ====================
         let scannerActive = false;
         let scanTimeout = null;
-        let videoStream = null;
-        let animationFrame = null;
         let html5Scanner = null;
 
         function isCameraSupported() {
@@ -1786,20 +1954,16 @@
                 scannerActive = true;
                 updateScannerStatus('📷 Initializing scanner...');
 
-                // Clear any existing content
                 document.getElementById('scanner-feed').innerHTML = '';
 
-                // Create the scanner instance and store globally
                 html5Scanner = new Html5Qrcode("scanner-feed");
 
-                // Success callback
                 const qrCodeSuccessCallback = (decodedText, decodedResult) => {
                     console.log('✅ RESULTS FOUND:', decodedText);
 
                     if (navigator.vibrate) navigator.vibrate(200);
                     updateScannerStatus(`✅ ${decodedText}`);
 
-                    // Wait 250ms before closing so user can see the barcode
                     setTimeout(() => {
                         if (html5Scanner) {
                             html5Scanner.stop().then(() => {
@@ -1813,10 +1977,9 @@
                                 closeScanner();
                             });
                         }
-                    }, 250); // 👈 250ms delay - long enough to see, short enough not to feel slow
+                    }, 250);
                 };
 
-                // Configuration
                 const config = {
                     fps: 10,
                     qrbox: { width: 250, height: 150 },
@@ -1828,14 +1991,11 @@
                     }
                 };
 
-                // Start scanning
                 await html5Scanner.start(
                     { facingMode: "environment" },
                     config,
                     qrCodeSuccessCallback,
                     (errorMessage) => {
-                        // Silent fail for continuous scanning errors
-                        // Only log occasionally to avoid console spam
                         if (Math.random() < 0.01) {
                             console.log('Scanning...');
                         }
@@ -1844,7 +2004,6 @@
 
                 updateScannerStatus('📷 Camera active - scanning...');
 
-                // Auto-stop after 30 seconds
                 scanTimeout = setTimeout(() => {
                     if (scannerActive && html5Scanner) {
                         html5Scanner.stop().then(() => {
@@ -1857,7 +2016,6 @@
                 console.error('Camera error:', error);
                 updateScannerStatus('❌ Camera failed: ' + (error.message || 'Unknown error'));
 
-                // Stop scanner if it was created
                 if (html5Scanner) {
                     html5Scanner.stop().then(() => {
                         closeScanner();
@@ -1873,23 +2031,19 @@
         function closeScanner() {
             if (scanTimeout) clearTimeout(scanTimeout);
 
-            // Stop the scanner if it exists
             if (html5Scanner) {
                 try {
                     html5Scanner.stop().catch(e => {
-                        // Ignore errors on stop
                         console.log('Scanner stop error (ignored):', e);
                     });
-                } catch (e) {
-                    // Ignore any other errors
-                }
-                html5Scanner = null; // Clear the reference
+                } catch (e) {}
+                html5Scanner = null;
             }
 
             scannerActive = false;
             document.getElementById('scannerModal').style.display = 'none';
             document.body.style.overflow = 'auto';
-            document.getElementById('scanner-feed').innerHTML = ''; // Clear content
+            document.getElementById('scanner-feed').innerHTML = '';
             updateScannerStatus('📷 Initializing camera...');
         }
 
@@ -1898,7 +2052,6 @@
             if (el) el.textContent = msg;
         }
 
-        // Hide button if no camera
         window.addEventListener('load', function() {
             if (!isCameraSupported()) {
                 const btn = document.getElementById('cameraScanBtn');
@@ -1906,211 +2059,6 @@
             }
         });
     </script>
-
-    <!-- IMPORT MODAL -->
-    <div id="importModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
-            <h3 style="margin-bottom: 20px;">📥 Import Purchase History</h3>
-            <p style="margin-bottom: 15px; color: var(--text-secondary);">
-                Paste your exported JSON file contents below:
-            </p>
-            <textarea id="importJsonText" placeholder="Paste JSON content here..."
-                      style="width: 100%; height: 200px; padding: 15px; border: 2px solid var(--border); border-radius: 10px; font-family: monospace; margin-bottom: 20px;"></textarea>
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <button class="btn btn-primary" onclick="processImport()" style="flex: 1;">
-                    Import
-                </button>
-                <button class="btn btn-secondary" onclick="hideImportModal()" style="flex: 1;">
-                    Cancel
-                </button>
-            </div>
-            <div id="importResult" style="display: none; padding: 15px; border-radius: 10px; margin-top: 15px;"></div>
-            <div style="font-size: 12px; color: var(--text-secondary);">
-                💡 Export your current data first as backup. Importing will replace all current local purchases.
-            </div>
-        </div>
-    </div>
-
-    <!-- DATA SOURCES MODAL -->
-    <div id="dataSourcesModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1001; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative;">
-            <button onclick="hideDataSources()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
-
-            <h2 style="color: var(--primary); margin-bottom: 20px; padding-right: 30px;">📊 Data Sources & Certification References</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 25px;">
-                Our scoring system is based on verified third-party certifications from these trusted organizations:
-            </p>
-
-            <!-- B Corp -->
-            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #2e7d32;">
-                <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                    <div style="font-size: 24px; margin-right: 15px;">🏢</div>
-                    <h3 style="color: var(--primary); margin: 0;">B Corp Certification</h3>
-                </div>
-                <p style="margin-bottom: 15px; color: var(--text-primary);">
-                    Certified B Corporations are businesses that meet the highest standards of verified social and environmental performance, public transparency, and legal accountability to balance profit and purpose.
-                </p>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <a href="https://www.bcorporation.net/en-us/find-a-b-corp/" target="_blank"
-                       style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                        🔗 Verify on B Corp Directory
-                    </a>
-                    <span style="background: #e8f5e9; color: var(--primary); padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
-                        Score Impact: +3.5 to all pillars
-                    </span>
-                </div>
-            </div>
-
-            <!-- Fair Trade -->
-            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #ff9800;">
-                <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                    <div style="font-size: 24px; margin-right: 15px;">⚖️</div>
-                    <h3 style="color: var(--primary); margin: 0;">Fair Trade Certified</h3>
-                </div>
-                <p style="margin-bottom: 15px; color: var(--text-primary);">
-                    Fair Trade certification ensures that products are made according to rigorous social, environmental, and economic standards that support safe working conditions, environmental protection, and sustainable livelihoods for farmers and workers.
-                </p>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <a href="https://www.flocert.net/fairtrade-customer-search/" target="_blank"
-                       style="background: #ff9800; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                        🔗 Verify on FLOCERT
-                    </a>
-                    <span style="background: #fff3e0; color: #e65100; padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
-                        Score Impact: +2.0 social, +1.0 environmental, +2.0 economic
-                    </span>
-                </div>
-            </div>
-
-            <!-- Rainforest Alliance -->
-            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #4caf50;">
-                <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                    <div style="font-size: 24px; margin-right: 15px;">🌳</div>
-                    <h3 style="color: var(--primary); margin: 0;">Rainforest Alliance Certified</h3>
-                </div>
-                <p style="margin-bottom: 15px; color: var(--text-primary);">
-                    The Rainforest Alliance certification seal means that the product was produced using methods that support the three pillars of sustainability: social, economic, and environmental, with a focus on protecting forests, improving livelihoods, and promoting human rights.
-                </p>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <a href="https://www.rainforest-alliance.org/find-certified/" target="_blank"
-                       style="background: #4caf50; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                        🔗 Verify on Rainforest Alliance
-                    </a>
-                    <span style="background: #e8f5e9; color: var(--primary); padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
-                        Score Impact: +1.0 social, +2.5 environmental, +1.0 economic
-                    </span>
-                </div>
-            </div>
-
-            <!-- Leaping Bunny -->
-            <div class="source-card" style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #2196f3;">
-                <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                    <div style="font-size: 24px; margin-right: 15px;">🐰</div>
-                    <h3 style="color: var(--primary); margin: 0;">Leaping Bunny Certified</h3>
-                </div>
-                <p style="margin-bottom: 15px; color: var(--text-primary);">
-                    The Leaping Bunny Program administers a cruelty-free standard and certification for companies producing cosmetic, personal care, and household products, ensuring no new animal testing is used in any phase of product development.
-                </p>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <a href="https://www.leapingbunny.org/shopping-guide/" target="_blank"
-                       style="background: #2196f3; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                        🔗 Verify on Leaping Bunny
-                    </a>
-                    <span style="background: #e3f2fd; color: #1565c0; padding: 5px 12px; border-radius: 15px; font-size: 13px; font-weight: 600;">
-                        Score Impact: +1.0 social only
-                    </span>
-                </div>
-            </div>
-
-            <!-- Methodology Note -->
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 25px; border: 2px solid var(--border);">
-                <h4 style="color: var(--primary); margin-bottom: 10px;">📈 Scoring Methodology</h4>
-                <p style="color: var(--text-primary); margin-bottom: 10px;">
-                    <strong>Base Score:</strong> All brands start with 5.0 in each pillar (Social, Environmental, Economic).
-                </p>
-                <p style="color: var(--text-primary); margin-bottom: 10px;">
-                    <strong>Certification Bonuses:</strong> Points are added only for verified third-party certifications.
-                </p>
-                <p style="color: var(--text-primary); margin-bottom: 10px;">
-                    <strong>Multi-Certification Bonus:</strong> Brands with multiple certifications receive an additional +0.5 to each pillar for each certification beyond the first.
-                </p>
-                <p style="color: var(--text-primary);">
-                    <strong>Maximum Score:</strong> All scores are capped at 10.0 per pillar.
-                </p>
-                <div style="text-align: center; margin-top: 15px;">
-                    <a href="https://tbl-grocery-scanner.onrender.com/scoring-methodology" target="_blank"
-                       style="background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-                        📖 View Full Scoring Methodology
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- BARCODE SCANNER MODAL - Add this before </body> -->
-    <div id="scannerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10002; align-items: center; justify-content: center; flex-direction: column;">
-
-        <!-- Camera Container -->
-        <div style="width: 100%; max-width: 600px; background: #000; border-radius: 15px; overflow: hidden; position: relative; margin: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <div id="scanner-feed" style="width: 100%; min-height: 400px; background: #111;"></div>
-
-            <!-- Scanner Overlay Guide -->
-            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none;">
-                <!-- Corner markers -->
-                <div style="position: absolute; top: 30px; left: 30px; width: 50px; height: 50px; border-top: 4px solid #ff9800; border-left: 4px solid #ff9800;"></div>
-                <div style="position: absolute; top: 30px; right: 30px; width: 50px; height: 50px; border-top: 4px solid #ff9800; border-right: 4px solid #ff9800;"></div>
-                <div style="position: absolute; bottom: 30px; left: 30px; width: 50px; height: 50px; border-bottom: 4px solid #ff9800; border-left: 4px solid #ff9800;"></div>
-                <div style="position: absolute; bottom: 30px; right: 30px; width: 50px; height: 50px; border-bottom: 4px solid #ff9800; border-right: 4px solid #ff9800;"></div>
-
-                <!-- Animated scan line -->
-                <div id="scanLine" style="position: absolute; left: 40px; right: 40px; height: 2px; background: linear-gradient(90deg, transparent, #ff9800, transparent); animation: scan 2s linear infinite;"></div>
-
-                <!-- Center guideline -->
-                <div style="position: absolute; top: 50%; left: 15%; right: 15%; height: 2px; background: rgba(255,255,255,0.2); transform: translateY(-50%);"></div>
-            </div>
-        </div>
-
-        <!-- Status Message -->
-        <div id="scanner-status" style="color: white; font-size: 16px; margin: 15px 0; padding: 10px 25px; background: rgba(0,0,0,0.7); border-radius: 30px; border: 1px solid #444;">
-            📷 Initializing camera...
-        </div>
-
-        <!-- Controls -->
-        <div style="display: flex; gap: 15px; margin-top: 10px;">
-            <button onclick="closeScanner()" style="background: #f44336; color: white; border: none; padding: 12px 30px; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); min-width: 120px;">
-                ✕ Cancel
-            </button>
-            <button id="torchBtn" onclick="toggleTorch()" style="display: none; background: #333; color: white; border: none; padding: 12px 30px; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); min-width: 120px;">
-                🔦 Flash
-            </button>
-        </div>
-
-        <!-- Instructions -->
-        <div style="color: #aaa; font-size: 14px; margin-top: 25px; text-align: center; padding: 0 20px;">
-            <p>📱 Center barcode in the frame • Scanner closes automatically when detected</p>
-        </div>
-    </div>
-
-    <!-- Animation keyframes - Add this in a <style> tag if you don't have one -->
-        <style>
-        @keyframes scan {
-            0% { top: 20%; opacity: 0; }
-            50% { opacity: 1; }
-            100% { top: 80%; opacity: 0; }
-        }
-
-        /* Category highlight animation */
-        .category-highlight {
-            border-color: #ff9800 !important;
-            background-color: #fff3e0 !important;
-            animation: pulse 0.5s ease-in-out 2;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.3); }
-            100% { transform: scale(1); }
-        }
-    </style>
 
 </body>
 </html>

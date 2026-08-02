@@ -1278,7 +1278,6 @@ class CertificationManager:
                 "Cruelty Free",
                 "leapingbunny",
             ],
-            # ADD THIS NEW ENTRY:
             "research_complete": [
                 "Research_Complete",
                 "Research Complete",
@@ -1288,8 +1287,18 @@ class CertificationManager:
             ],
         }
 
-        # LAZY load pandas before using it
         pd = get_pandas()
+
+        # ===== ADD DEBUGGING =====
+        logger.info(f"🔍 DEBUG: Columns in Excel: {columns}")
+        # Log the specific columns we care about
+        for cert_type, possible_names in cert_mapping.items():
+            for col_name in possible_names:
+                if col_name in columns:
+                    logger.info(f"🔍 DEBUG: Found column '{col_name}' for '{cert_type}'")
+                    cell_value = row.get(col_name)
+                    logger.info(f"🔍 DEBUG: Value for '{col_name}': {cell_value}, type: {type(cell_value)}")
+        # ===== END DEBUGGING =====
 
         certifications = {}
         for cert_type, possible_names in cert_mapping.items():
@@ -1297,21 +1306,26 @@ class CertificationManager:
             for col_name in possible_names:
                 if col_name in columns:
                     cell_value = row.get(col_name)
-                    if pd.isna(cell_value):  # Now uses lazy-loaded pd
+                    logger.info(f"Checking {cert_type} in column '{col_name}': cell_value={cell_value}, type={type(cell_value)}")
+                    if pd.isna(cell_value):
                         value = False
                     elif isinstance(cell_value, bool):
                         value = cell_value
+                        logger.info(f"✅ {cert_type} is boolean: {value}")
                     elif isinstance(cell_value, (int, float)):
                         value = bool(cell_value)
+                        logger.info(f"✅ {cert_type} is number: {value}")
                     elif isinstance(cell_value, str):
                         cell_value_lower = cell_value.strip().lower()
                         if cell_value_lower in ["true", "yes", "y", "1", "t"]:
                             value = True
                         elif cell_value_lower in ["false", "no", "n", "0", "f"]:
                             value = False
+                        logger.info(f"✅ {cert_type} is string: {value}")
                     break
             certifications[cert_type] = value
 
+        logger.info(f"🔍 DEBUG: Extracted certifications: {certifications}")
         return certifications
 
     def _get_brand_categories(self, brand_normalized: str) -> List[str]:
@@ -1790,7 +1804,6 @@ class CertificationManager:
             response["search_brand_used"] = search_brand
 
         return response
-
 
 # ==================== SCORING MANAGER ====================
 
@@ -3317,11 +3330,12 @@ def render_score_breakdown(
             <div class="brand-header">
                 <h2 style="margin-top: 0;">{brand}</h2>
                 <p>Normalized as: {brand_normalized}</p>
+                {f'<p style="color: #666; font-size: 14px;">Category: {excel_result["matched_category"]}</p>' if excel_result.get("matched_category") else ''}
             </div>
 
-            <div class="excel-status {'excel-found' if excel_result['found'] else 'excel-notfound'}">
-                {'✓ Found in Excel Database' if excel_result['found'] else '❌ Not in Excel Database'}
-            </div>
+        <div class="excel-status {'excel-found' if excel_result['found'] else 'excel-notfound'}">
+            {'✓ Found in Excel Database' + (' (Category: ' + excel_result['matched_category'] + ')' if excel_result.get('matched_category') else '') if excel_result['found'] else '❌ Not in Excel Database'}
+        </div>
 
             <div class="score-display">
                 <div class="pillar">
@@ -3412,14 +3426,39 @@ async def get_data_sources():
 
 
 @app.get("/test/scoring/{brand}")
-async def test_scoring_methodology(brand: str):
+async def test_scoring_methodology(brand: str, category: str = None):
     """Test the scoring methodology for a specific brand - returns HTML"""
-    scores = scoring_manager.calculate_brand_scores(brand)
+    # Try to get certifications with provided category
+    excel_result = certification_manager.get_certifications(brand, category)
+
+    # If category is required, find the best one
+    if not excel_result.get("found") and excel_result.get("match_type") == "category_required":
+        brand_normalized = BrandNormalizer.normalize(brand)
+        categories = certification_manager.brand_categories.get(brand_normalized, [])
+
+        if categories:
+            # Prefer categories with certifications
+            best_category = None
+            for cat in categories:
+                test_result = certification_manager.get_certifications(brand, cat)
+                if test_result.get("found") and any(test_result.get("certifications", {}).values()):
+                    best_category = cat
+                    break
+
+            # If no certified category found, use the first one
+            if not best_category:
+                best_category = categories[0]
+
+            logger.info(f"Auto-selected category '{best_category}' for brand '{brand}'")
+            excel_result = certification_manager.get_certifications(brand, best_category)
+
+    # Calculate scores with the category that was used (if any)
+    used_category = excel_result.get("matched_category") if excel_result.get("found") else category
+    scores = scoring_manager.calculate_brand_scores(brand, used_category)
     tbl = calculate_overall_score(
         scores.social,
         scores.environmental,
         scores.economic)
-    excel_result = certification_manager.get_certifications(brand)  # Remove category parameter
 
     return HTMLResponse(
         content=render_score_breakdown(brand, scores, tbl, excel_result)
@@ -3500,8 +3539,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
 
         # If brand is empty/Unknown but product_name is provided, try to
         # extract brand
-        if (not brand or brand ==
-                "Unknown") and product_name and product_name != "Generic Product":
+        if (not brand or brand == "Unknown") and product_name and product_name != "Generic Product":
             logger.info(
                 f"Attempting to extract brand from product name: {product_name}")
             try:
@@ -3517,20 +3555,12 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                     # Update extraction info
                     brand_extraction_info = {
                         "extracted_from_name": True,
-                        "confidence": brand_extraction.get(
-                            "confidence",
-                            0.5),
-                        "method": brand_extraction.get(
-                            "method",
-                            "unknown"),
+                        "confidence": brand_extraction.get("confidence", 0.5),
+                        "method": brand_extraction.get("method", "unknown"),
                         "parent_company": brand_extraction.get("parent_company"),
                         "warning": brand_extraction.get("warning"),
-                        "alternative_brands": brand_extraction.get(
-                            "alternative_brands",
-                            []),
-                        "search_results": brand_extraction.get(
-                            "search_results",
-                            {}),
+                        "alternative_brands": brand_extraction.get("alternative_brands", []),
+                        "search_results": brand_extraction.get("search_results", {}),
                     }
                 else:
                     logger.warning(
@@ -3544,9 +3574,39 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                 logger.error(f"Brand extraction error: {e}")
                 brand = product_name if product_name != "Generic Product" else "Unknown"
 
-        # Get scores - ensure this doesn't fail
+        # ===== STEP 1: Get certifications FIRST (to get the correct category) =====
         try:
-            scores = scoring_manager.calculate_brand_scores(brand)
+            # Determine source based on whether barcode was used
+            source = "barcode" if (barcode and barcode.strip() != "") else "manual"
+            cert_result = certification_manager.get_certifications(brand, category, source=source)
+
+            # ===== DEBUG: Log the certification result =====
+            logger.info(f"🔍 CERT_RESULT from get_certifications: {cert_result}")
+            logger.info(f"🔍 cert_result.get('certifications'): {cert_result.get('certifications')}")
+            logger.info(f"🔍 b_corp value: {cert_result.get('certifications', {}).get('b_corp')}")
+            logger.info(f"🔍 research_complete value: {cert_result.get('certifications', {}).get('research_complete')}")
+            # ===== END DEBUG =====
+
+        except Exception as e:
+            logger.error(f"Certification lookup error: {e}")
+            cert_result = {
+                "found": False,
+                "details": {},
+                "search_brand_used": brand
+            }
+
+        # ===== STEP 2: Update category if a matched category was returned =====
+        if cert_result.get("matched_category"):
+            category = cert_result.get("matched_category")
+            logger.info(f"Updated category to matched category: '{category}'")
+
+        # ===== STEP 3: Calculate scores with the CORRECT category =====
+        try:
+            category_for_scores = category or None
+            scores = scoring_manager.calculate_brand_scores(brand, category_for_scores)
+            logger.info(f"🔍 Scores calculated with category: {category_for_scores}")
+            logger.info(f"🔍 Scores: social={scores.social}, env={scores.environmental}, econ={scores.economic}")
+            logger.info(f"🔍 Certifications from scores: {scores.certifications}")
         except Exception as e:
             logger.error(f"Score calculation error for brand '{brand}': {e}")
             # Return default scores
@@ -3560,50 +3620,34 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                 notes=f"Error calculating scores: {str(e)}"
             )
 
-        # Calculate overall score
+        # ===== STEP 4: Calculate overall score =====
         tbl = calculate_overall_score(
             scores.social,
             scores.environmental,
             scores.economic)
-
-        # Get certifications
-        try:
-            # Determine source based on whether barcode was used
-            source = "barcode" if (barcode and barcode.strip() != "") else "manual"
-            cert_result = certification_manager.get_certifications(brand, category, source=source)
-
-        except Exception as e:
-            logger.error(f"Certification lookup error: {e}")
-            cert_result = {
-                "found": False,
-                "details": {},
-                "search_brand_used": brand
-            }
-
-        # Update category if a matched category was returned
-        if cert_result.get("matched_category"):
-            category = cert_result.get("matched_category")
-            logger.info(f"Updated category to matched category: '{category}'")
 
         # Use canonical brand if available
         original_brand = brand
         canonical_brand = cert_result.get("canonical_brand")
         if canonical_brand:
             brand = canonical_brand
-            logger.info(
-                f"Using canonical brand: '{original_brand}' â†’ '{brand}'")
+            logger.info(f"Using canonical brand: '{original_brand}' → '{brand}'")
 
         logger.info(
             f"Scan result for {brand}: score={tbl['overall_score']}, certs={scores.certifications}")
 
         # Build response - ensure all values are not None
-        # Get certifications once to avoid repeated checks
         certifications = list(getattr(scores, 'certifications', []))
+
+        # ===== DEBUG: Log what's going into the response =====
+        logger.info(f"🔍 certifications list: {certifications}")
+        logger.info(f"🔍 'B Corp' in certifications: {'B Corp' in certifications}")
+        # ===== END DEBUG =====
 
         response_data = {
             "barcode": barcode or "",
             "brand": brand or "Unknown",
-            "brand_display": f"{brand} ({category})" if category else brand,  # ADD THIS LINE
+            "brand_display": f"{brand} ({category})" if category else brand,
             "product_name": product_name or "Unknown Product",
             "category": category or "",
             "social_score": safe_float(getattr(scores, 'social', 0.0)),
