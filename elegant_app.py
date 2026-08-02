@@ -733,6 +733,8 @@ class BrandNormalizer:
         "nestle crunch": "nestle",
     }
 
+    # ===== BRAND IDENTIFICATION DATABASE (DISABLED - Using Excel only) =====
+    """
     BRAND_IDENTIFICATION_DB: ClassVar[Dict[str, Dict[str, Any]]] = {
         "365 everyday value": {
             "certifications": ["Fair Trade", "Rainforest Alliance", "Leaping Bunny"]
@@ -936,6 +938,9 @@ class BrandNormalizer:
         "your very best": {"certifications": ["B Corp"]},
         "zavida coffee": {"certifications": ["Fair Trade", "Rainforest Alliance"]},
     }
+    """
+    BRAND_IDENTIFICATION_DB: ClassVar[Dict[str, Dict[str, Any]]] = {}
+
 
     @classmethod
     @cache_result
@@ -1069,73 +1074,77 @@ class BrandNormalizer:
     @classmethod
     def extract_brand_from_product_text(
             cls, product_name: str) -> Optional[str]:
-        """Enhanced brand extraction from product name using multiple strategies"""
-        if not product_name or product_name.lower() in [
-                "unknown", "generic product"]:
-            return None
+            """Enhanced brand extraction from product name using multiple strategies"""
+            if not product_name or product_name.lower() in [
+                    "unknown", "generic product"]:
+                return None
 
-        product_lower = product_name.lower()
+            product_lower = product_name.lower()
 
-        # Strategy 1: Look for parent company mapping
-        parent_company = cls.find_parent_company(product_name)
-        if parent_company:
-            return parent_company.title()
+            # Strategy 1: Look for parent company mapping
+            parent_company = cls.find_parent_company(product_name)
+            if parent_company:
+                return parent_company.title()
 
-        # Strategy 2: Check for known brand patterns in product name
-        for brand in cls.BRAND_IDENTIFICATION_DB.keys():
-            brand_normalized = cls.normalize(brand)
-            if brand_normalized and len(brand_normalized) > 2:
-                # Check if brand appears in product name
-                if brand_normalized in product_lower:
-                    logger.info(
-                        f"Found brand '{brand}' directly in product name '{product_name}'"
-                    )
-                    return brand.title()
-
-                # Check for brand variations
-                if brand in cls.BRAND_VARIATIONS:
-                    for variation in cls.BRAND_VARIATIONS[brand]:
-                        if variation in product_lower:
+            # Strategy 2: Check for known brand patterns in product name (Excel data only)
+            # Use the global certification_manager instance
+            if certification_manager.data is not None:
+                for brand in certification_manager.data.keys():
+                    brand_normalized = brand  # Already normalized from Excel
+                    if brand_normalized and len(brand_normalized) > 2:
+                        # Check if brand appears in product name
+                        if brand_normalized in product_lower:
+                            # Get the original brand name from Excel data
+                            first_product = next(iter(certification_manager.data[brand].values()))
+                            original_brand = first_product.get("original_brand", brand.title())
                             logger.info(
-                                f"Found brand variation '{variation}' for '{brand}' in product name"
+                                f"Found brand '{original_brand}' directly in product name '{product_name}'"
                             )
-                            return brand.title()
+                            return original_brand
 
-        # Strategy 3: Extract likely brand from beginning of product name
-        words = product_name.split()
-        if len(words) > 1:
-            first_word = cls.normalize(words[0])
-            second_word = cls.normalize(words[1]) if len(words) > 1 else ""
+                        # Check for brand variations
+                        if brand in cls.BRAND_VARIATIONS:
+                            for variation in cls.BRAND_VARIATIONS[brand]:
+                                if variation in product_lower:
+                                    first_product = next(iter(certification_manager.data[brand].values()))
+                                    original_brand = first_product.get("original_brand", brand.title())
+                                    logger.info(
+                                        f"Found brand variation '{variation}' for '{brand}' in product name"
+                                    )
+                                    return original_brand
 
-            # Check first word as potential brand
-            if first_word and len(first_word) > 2:
-                for brand in cls.BRAND_IDENTIFICATION_DB.keys():
-                    brand_normalized = cls.normalize(brand)
-                    if brand_normalized == first_word or brand_normalized.startswith(
-                            first_word):
-                        logger.info(
-                            f"Extracted brand '{brand}' from first word of product name"
-                        )
-                        return brand.title()
+            # Strategy 3: Extract likely brand from beginning of product name
+            words = product_name.split()
+            if len(words) > 1 and certification_manager.data is not None:
+                first_word = cls.normalize(words[0])
+                second_word = cls.normalize(words[1]) if len(words) > 1 else ""
 
-            # Check first two words as potential brand
-            if second_word:
-                first_two_words = f"{first_word} {second_word}"
-                for brand in cls.BRAND_IDENTIFICATION_DB.keys():
-                    brand_normalized = cls.normalize(brand)
-                    if (
-                        brand_normalized == first_two_words
-                        or brand_normalized.startswith(first_two_words)
-                    ):
-                        logger.info(
-                            f"Extracted brand '{brand}' from first two words of product name"
-                        )
-                        return brand.title()
+                # Check first word as potential brand
+                if first_word and len(first_word) > 2:
+                    for brand in certification_manager.data.keys():
+                        brand_normalized = brand  # Already normalized from Excel
+                        if brand_normalized == first_word or brand_normalized.startswith(first_word):
+                            first_product = next(iter(certification_manager.data[brand].values()))
+                            original_brand = first_product.get("original_brand", brand.title())
+                            logger.info(
+                                f"Extracted brand '{original_brand}' from first word of product name"
+                            )
+                            return original_brand
 
-        return None
+                # Check first two words as potential brand
+                if second_word:
+                    first_two_words = f"{first_word} {second_word}"
+                    for brand in certification_manager.data.keys():
+                        brand_normalized = brand  # Already normalized from Excel
+                        if brand_normalized == first_two_words or brand_normalized.startswith(first_two_words):
+                            first_product = next(iter(certification_manager.data[brand].values()))
+                            original_brand = first_product.get("original_brand", brand.title())
+                            logger.info(
+                                f"Extracted brand '{original_brand}' from first two words of product name"
+                            )
+                            return original_brand
 
-
-# ==================== CERTIFICATION MANAGER ====================
+            return None
 
 
 class CertificationManager:
@@ -1793,7 +1802,7 @@ class ScoringManager:
         """
         Calculate scores for a brand using priority order:
         1. Parent company identification (for product search)
-        2. Dynamic calculation from certifications (Excel + BRAND_IDENTIFICATION_DB)
+        2. Dynamic calculation from certifications (Excel)
         """
         # Handle empty/unknown brand
         if not brand or brand == "Unknown":
@@ -1882,32 +1891,25 @@ class ScoringManager:
 
     @staticmethod
     def _get_all_certifications(brand: str, category: str = None) -> List[str]:
-        """Get all certifications from combined sources"""
-        brand_normalized = BrandNormalizer.normalize(brand)
+            """Get all certifications from Excel database only"""
+            brand_normalized = BrandNormalizer.normalize(brand)
 
-        # Get certifications from Excel database
-        excel_certs = certification_manager.get_certifications(brand, category)  # Need to add category parameter throughout the chain
+            # Get certifications from Excel database
+            excel_certs = certification_manager.get_certifications(brand, category)
 
-        # Also check hardcoded identification database for certifications
-        hardcoded_certs = []
-        if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
-            hardcoded_certs = BrandNormalizer.BRAND_IDENTIFICATION_DB[
-                brand_normalized
-            ].get("certifications", [])
+            # Build certification list from Excel data only
+            excel_cert_list = []
+            if excel_certs["certifications"]["b_corp"]:
+                excel_cert_list.append("B Corp")
+            if excel_certs["certifications"]["fair_trade"]:
+                excel_cert_list.append("Fair Trade")
+            if excel_certs["certifications"]["rainforest_alliance"]:
+                excel_cert_list.append("Rainforest Alliance")
+            if excel_certs["certifications"]["leaping_bunny"]:
+                excel_cert_list.append("Leaping Bunny")
 
-        # Combine certifications from both sources
-        excel_cert_list = []
-        if excel_certs["certifications"]["b_corp"]:
-            excel_cert_list.append("B Corp")
-        if excel_certs["certifications"]["fair_trade"]:
-            excel_cert_list.append("Fair Trade")
-        if excel_certs["certifications"]["rainforest_alliance"]:
-            excel_cert_list.append("Rainforest Alliance")
-        if excel_certs["certifications"]["leaping_bunny"]:
-            excel_cert_list.append("Leaping Bunny")
-
-        # Combine all certifications, removing duplicates
-        return list(set(hardcoded_certs + excel_cert_list))
+            # Return Excel certifications only
+            return excel_cert_list
 
 
 # ==================== OPEN FOOD FACTS CLIENT ====================
@@ -2240,74 +2242,83 @@ class BrandExtractionManager:
 
     @staticmethod
     def _check_direct_brand_match(product_name: str) -> Dict[str, Any]:
-        """Check if input is already a known brand"""
+        """Check if input is already a known brand (from Excel data only)"""
         brand_normalized = BrandNormalizer.normalize(product_name)
 
-        # Check if the input is already a known brand
-        if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
-            logger.info(
-                f"Input is already a known brand: '{brand_normalized}'")
-            return BrandExtractionManager._format_result(
-                success=True,
-                message=f"Input recognized as brand: '{brand_normalized}'",
-                extracted_brand=brand_normalized.title(),
-                confidence=90,
-                method="direct_brand_recognition",
-                reason=f"'{brand_normalized}' is a known brand in our database",
-            )
-
-        # Check for brand synonyms and aliases
-        if brand_normalized in BrandNormalizer.BRAND_SYNONYMS:
-            canonical_brand = BrandNormalizer.BRAND_SYNONYMS[brand_normalized]
-            logger.info(
-                f"Input matches brand synonym: '{brand_normalized}' â†’ '{canonical_brand}'"
-            )
-            return BrandExtractionManager._format_result(
-                success=True,
-                message=f"Brand synonym recognized: '{canonical_brand}'",
-                extracted_brand=canonical_brand.title(),
-                confidence=85,
-                method="brand_synonym_match",
-                reason=f"'{brand_normalized}' is a synonym for '{canonical_brand}'",
-            )
-
-        # Check for brand aliases
-        for alias, canonical in BrandNormalizer.BRAND_ALIASES.items():
-            if alias == brand_normalized:
+        # Check if the input is in the Excel data
+        if certification_manager.data is not None:
+            # Check exact match
+            if brand_normalized in certification_manager.data:
+                first_product = next(iter(certification_manager.data[brand_normalized].values()))
+                original_brand = first_product.get("original_brand", brand_normalized.title())
                 logger.info(
-                    f"Input matches brand alias: '{brand_normalized}' â†’ '{canonical}'"
+                    f"Input is a known brand in Excel: '{original_brand}'"
                 )
                 return BrandExtractionManager._format_result(
                     success=True,
-                    message=f"Brand alias recognized: '{canonical}'",
-                    extracted_brand=canonical.title(),
-                    confidence=85,
-                    method="brand_alias_match",
-                    reason=f"'{brand_normalized}' is an alias for '{canonical}'",
+                    message=f"Input recognized as brand: '{original_brand}'",
+                    extracted_brand=original_brand,
+                    confidence=90,
+                    method="direct_brand_recognition",
+                    reason=f"'{original_brand}' found in Excel certification database",
                 )
 
-        # Check if the input contains a known brand name - find the longest match
-        longest_match = None
-        longest_match_key = None
-        for brand_key in BrandNormalizer.BRAND_IDENTIFICATION_DB.keys():
-            brand_key_normalized = BrandNormalizer.normalize(brand_key)
-            if brand_key_normalized and len(brand_key_normalized) > 2:
-                if brand_key_normalized in brand_normalized:
-                    if longest_match is None or len(brand_key_normalized) > len(longest_match):
-                        longest_match = brand_key_normalized
-                        longest_match_key = brand_key
+            # Check for brand synonyms and aliases
+            if brand_normalized in BrandNormalizer.BRAND_SYNONYMS:
+                canonical_brand = BrandNormalizer.BRAND_SYNONYMS[brand_normalized]
+                # Only use if canonical brand exists in Excel
+                if canonical_brand in certification_manager.data:
+                    logger.info(
+                        f"Input matches brand synonym: '{brand_normalized}' → '{canonical_brand}'"
+                    )
+                    return BrandExtractionManager._format_result(
+                        success=True,
+                        message=f"Brand synonym recognized: '{canonical_brand}'",
+                        extracted_brand=canonical_brand.title(),
+                        confidence=85,
+                        method="brand_synonym_match",
+                        reason=f"'{brand_normalized}' is a synonym for '{canonical_brand}'",
+                    )
 
-        if longest_match_key:
-            logger.info(
-                f"Found brand '{longest_match_key}' in input: '{product_name}'")
-            return BrandExtractionManager._format_result(
-                success=True,
-                message=f"Brand '{longest_match_key}' found in input",
-                extracted_brand=longest_match_key.title(),
-                confidence=80,
-                method="brand_in_input",
-                reason=f"Brand '{longest_match_key}' found within input text",
-            )
+            # Check for brand aliases
+            for alias, canonical in BrandNormalizer.BRAND_ALIASES.items():
+                if alias == brand_normalized and canonical in certification_manager.data:
+                    logger.info(
+                        f"Input matches brand alias: '{brand_normalized}' → '{canonical}'"
+                    )
+                    return BrandExtractionManager._format_result(
+                        success=True,
+                        message=f"Brand alias recognized: '{canonical}'",
+                        extracted_brand=canonical.title(),
+                        confidence=85,
+                        method="brand_alias_match",
+                        reason=f"'{brand_normalized}' is an alias for '{canonical}'",
+                    )
+
+            # Check if the input contains a known brand name - find the longest match
+            longest_match = None
+            longest_match_key = None
+            for brand_key in certification_manager.data.keys():
+                brand_key_normalized = brand_key  # Already normalized from Excel
+                if brand_key_normalized and len(brand_key_normalized) > 2:
+                    if brand_key_normalized in brand_normalized:
+                        if longest_match is None or len(brand_key_normalized) > len(longest_match):
+                            longest_match = brand_key_normalized
+                            longest_match_key = brand_key
+
+            if longest_match_key:
+                first_product = next(iter(certification_manager.data[longest_match_key].values()))
+                original_brand = first_product.get("original_brand", longest_match_key.title())
+                logger.info(
+                    f"Found brand '{original_brand}' in input: '{product_name}'")
+                return BrandExtractionManager._format_result(
+                    success=True,
+                    message=f"Brand '{original_brand}' found in input",
+                    extracted_brand=original_brand,
+                    confidence=80,
+                    method="brand_in_input",
+                    reason=f"Brand '{original_brand}' found within input text",
+                )
 
         return BrandExtractionManager._format_result(
             success=False,
@@ -2442,39 +2453,42 @@ class BrandExtractionManager:
 
     @staticmethod
     async def _handle_single_word_input(product_name: str) -> Dict[str, Any]:
-        """Handle single word input - likely a brand name"""
+        """Handle single word input - likely a brand name (from Excel data only)"""
         brand_normalized = BrandNormalizer.normalize(product_name)
 
-        # Check for fuzzy matches with known brands
+        # Check for fuzzy matches with brands from Excel
         best_match = None
         best_score = 0.0
 
-        for brand_key in BrandNormalizer.BRAND_IDENTIFICATION_DB.keys():
-            brand_key_normalized = BrandNormalizer.normalize(brand_key)
-            similarity = SequenceMatcher(
-                None, brand_normalized, brand_key_normalized
-            ).ratio()
+        if certification_manager.data is not None:
+            for brand_key in certification_manager.data.keys():
+                brand_key_normalized = brand_key  # Already normalized from Excel
+                similarity = SequenceMatcher(
+                    None, brand_normalized, brand_key_normalized
+                ).ratio()
 
-            if (
-                similarity > best_score and similarity >= 0.7
-            ):  # 70% similarity threshold
-                best_score = similarity
-                best_match = brand_key
+                if (
+                    similarity > best_score and similarity >= 0.7
+                ):  # 70% similarity threshold
+                    best_score = similarity
+                    best_match = brand_key
 
-        if best_match:
-            logger.info(
-                f"Fuzzy match found: '{brand_normalized}' â†’ '{best_match}' ({best_score:.1%} similarity)"
-            )
-            confidence = int(best_score * 100)
-            return BrandExtractionManager._format_result(
-                success=True,
-                message=f"Fuzzy match found for '{product_name}'",
-                extracted_brand=best_match.title(),
-                confidence=confidence,
-                method="fuzzy_match",
-                warning=f"Using fuzzy match ({best_score:.1%} similarity)",
-                reason=f"'{product_name}' closely matches known brand '{best_match}'",
-            )
+            if best_match:
+                first_product = next(iter(certification_manager.data[best_match].values()))
+                original_brand = first_product.get("original_brand", best_match.title())
+                logger.info(
+                    f"Fuzzy match found: '{brand_normalized}' → '{original_brand}' ({best_score:.1%} similarity)"
+                )
+                confidence = int(best_score * 100)
+                return BrandExtractionManager._format_result(
+                    success=True,
+                    message=f"Fuzzy match found for '{product_name}'",
+                    extracted_brand=original_brand,
+                    confidence=confidence,
+                    method="fuzzy_match",
+                    warning=f"Using fuzzy match ({best_score:.1%} similarity)",
+                    reason=f"'{product_name}' closely matches known brand '{original_brand}'",
+                )
 
         # If we get here, we couldn't identify the brand
         return BrandExtractionManager._format_result(
@@ -2484,7 +2498,7 @@ class BrandExtractionManager:
             confidence=0,
             method="failed",
             warning="Input could not be identified as a brand or product",
-            reason="No matches found in brand database or product search",
+            reason="No matches found in Excel certification database or product search",
         )
 
     @staticmethod
@@ -3060,7 +3074,7 @@ def render_scoring_methodology() -> str:
                 <div class="principle-box">
                     <h3>Single Source of Truth</h3>
                     <p>One function (<code>calculate_brand_scores()</code>) handles all scoring</p>
-                    <p>Combines certifications from Excel database AND hardcoded database</p>
+                    <p>Uses certifications from Excel database only</p>
                     <p>Always applies multi-certification bonus correctly</p>
                 </div>
 
@@ -3101,12 +3115,7 @@ def render_score_breakdown(
     total_env_bonus = scores.environmental - base_score
     total_econ_bonus = scores.economic - base_score
 
-    # Get certifications from both sources
-    hardcoded_certs = []
-    if brand_normalized in BrandNormalizer.BRAND_IDENTIFICATION_DB:
-        hardcoded_certs = BrandNormalizer.BRAND_IDENTIFICATION_DB[brand_normalized].get(
-            "certifications", [])
-
+    # Get certifications from Excel only (hardcoded DB removed)
     excel_cert_list = []
     if excel_result["certifications"]["b_corp"]:
         excel_cert_list.append("B Corp")
@@ -3117,8 +3126,8 @@ def render_score_breakdown(
     if excel_result["certifications"]["leaping_bunny"]:
         excel_cert_list.append("Leaping Bunny")
 
-    # Combine both sources
-    all_certs = list(set(hardcoded_certs + excel_cert_list))
+    # Use Excel certifications only
+    all_certs = excel_cert_list
 
     # Generate certification badges HTML
     cert_badges = (
@@ -3311,7 +3320,7 @@ def render_score_breakdown(
             </div>
 
             <div class="excel-status {'excel-found' if excel_result['found'] else 'excel-notfound'}">
-                {'âœ“ Found in Excel Database' if excel_result['found'] else '❌ Not in Excel Database'}
+                {'✓ Found in Excel Database' if excel_result['found'] else '❌ Not in Excel Database'}
             </div>
 
             <div class="score-display">
@@ -3369,13 +3378,13 @@ def render_score_breakdown(
                 <h3>✅ Verified Certifications</h3>
                 {cert_badges}
                 <p style="font-size: 12px; color: #666; margin-top: 10px;">
-                    Combined from Excel database and hardcoded database
+                    From Excel certification database only
                 </p>
             </div>
 
             <div style="text-align: center; margin-top: 40px;">
                 <a href="/" class="back-button">🏠 Back to Scanner</a>
-                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">ðŸ“š Full Methodology</a>
+                <a href="/scoring-methodology" class="back-button" style="background: linear-gradient(135deg, #ff9800 0%, #e65100 100%);">📚 Full Methodology</a>
                 <button onclick="window.history.back()" class="back-button" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">⬅️ Go Back</button>
             </div>
         </div>
@@ -3611,7 +3620,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
                 "leaping_bunny": "Leaping Bunny" in certifications,
                 "research_complete": cert_result.get("certifications", {}).get("research_complete", False) if cert_result.get("certifications") else False,
             },
-            "certification_source": "Hardcoded Database (pre-calculated) + Excel Database (combined)",
+            "certification_source": "Excel Database (single source of truth)",
             "scoring_method": getattr(scores, 'scoring_method', 'error_fallback'),
             "notes": getattr(scores, 'notes', 'Error processing request'),
             "found_in_excel": cert_result.get("found", False),
@@ -4533,8 +4542,8 @@ async def health_check() -> Dict[str, Any]:
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "total_brands": len(BrandNormalizer.BRAND_IDENTIFICATION_DB),
-                "total_users": len(USERS_DB),
+        "total_brands": len(certification_manager.data) if certification_manager.data else 0,  # ← CHANGED
+        "total_users": len(USERS_DB),
         "cache_size": len(PRODUCT_CACHE),
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Weighted Certification Bonuses + Multi-Cert Bonus (capped at 10.0)",
         "scoring_priority": "Brand Synonyms → Parent Company → Dynamic Calculation",
@@ -4561,7 +4570,7 @@ async def health_check() -> Dict[str, Any]:
         "brand_synonyms": len(BrandNormalizer.BRAND_SYNONYMS),
         "scoring_methodology_endpoint": "/scoring-methodology (HTML)",
         "version": "2.4.0",
-        "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Excel + Dynamic)",
+        "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Excel-only data)",  # ← CHANGED
     }
 
 
@@ -4635,9 +4644,13 @@ async def startup_event():
 
 if __name__ == "__main__":
 
-    logger.info(
-        f"Brand identification database has {len(BrandNormalizer.BRAND_IDENTIFICATION_DB)} brands"
-    )
+    # Check if Excel data is loaded
+    if certification_manager.data is not None:
+        logger.info(
+            f"Excel certification database loaded with {len(certification_manager.data)} brands"
+        )
+    else:
+        logger.info("Excel certification database not yet loaded (will load on first request)")
     logger.info(
         "Scoring Consistency: Weighted certification bonuses with cap at 10.0"
     )
