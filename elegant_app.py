@@ -3897,6 +3897,22 @@ async def search_brand(q: str = Query(...), category: str = Query(None)):
 # ==================== EXCEL MANAGEMENT ENDPOINTS ====================
 
 
+@app.get("/categories")
+async def get_categories():
+    """Get all unique categories from Excel"""
+    if certification_manager.data is None:
+        return {"categories": []}
+
+    all_categories = set()
+    for brand, products in certification_manager.data.items():
+        for product_key in products.keys():
+            if product_key != "_default":
+                all_categories.add(product_key)
+
+    return {
+        "categories": sorted(list(all_categories))
+    }
+
 @app.get("/certifications/status")
 async def get_certification_status():
     """Get status of certification data"""
