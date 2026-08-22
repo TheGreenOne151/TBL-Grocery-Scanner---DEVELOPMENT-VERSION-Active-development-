@@ -2574,9 +2574,36 @@ USERS_DB = {}
 PURCHASE_HISTORY_DB = {}
 PRODUCT_CACHE = {}
 
+# ==================== SEARCH CACHE ====================
+SEARCH_CACHE = {}
+
+def get_cached_certifications(brand: str, category: str = None, source: str = "manual") -> Dict[str, Any]:
+    """Cache certification lookups to avoid repeated expensive operations"""
+    # Create a cache key from the parameters
+    cache_key = f"{brand}_{category}_{source}" if category else f"{brand}_{source}"
+
+    # Check if we have a cached result
+    if cache_key in SEARCH_CACHE:
+        logger.info(f"🔄 Cache hit for '{cache_key}'")
+        return SEARCH_CACHE[cache_key]
+
+    # Cache miss - perform the actual lookup
+    logger.info(f"🔄 Cache miss for '{cache_key}' - performing lookup...")
+    result = certification_manager.get_certifications(brand, category, source)
+
+    # Store in cache (limit cache size to prevent memory issues)
+    if len(SEARCH_CACHE) > 1000:
+        # Remove oldest entry (first item)
+        oldest_key = next(iter(SEARCH_CACHE))
+        del SEARCH_CACHE[oldest_key]
+        logger.info(f"🧹 Cache size limit reached, removed oldest entry: '{oldest_key}'")
+
+    SEARCH_CACHE[cache_key] = result
+    logger.info(f"✅ Cached result for '{cache_key}' (cache size: {len(SEARCH_CACHE)})")
+
+    return result
+
 # Simple user database class (optional)
-
-
 class UserDatabase:
     def __init__(self):
         self.users = {}
@@ -3578,7 +3605,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         try:
             # Determine source based on whether barcode was used
             source = "barcode" if (barcode and barcode.strip() != "") else "manual"
-            cert_result = certification_manager.get_certifications(brand, category, source=source)
+            cert_result = get_cached_certifications(brand, category, source=source)
 
             # ===== DEBUG: Log the certification result =====
             logger.info(f"🔍 CERT_RESULT from get_certifications: {cert_result}")
@@ -4451,7 +4478,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         brand_name = brand_name.replace("The ", "").strip()
 
     # ===== GET CERTIFICATIONS FROM EXCEL (if available) =====
-    cert_result = certification_manager.get_certifications(brand_name, product.get("category"), source="barcode")
+    cert_result = get_cached_certifications(brand_name, product.get("category"), source="barcode")
     found_in_excel = cert_result.get("found", False)
 
     # ===== ALWAYS USE OFF BRAND AND PRODUCT NAME =====
@@ -4676,6 +4703,26 @@ async def favicon():
 
     return Response(content=transparent_png, media_type="image/png")
 
+@app.post("/cache/clear")
+async def clear_cache():
+    """Clear the search cache - useful after updating Excel data"""
+    global SEARCH_CACHE
+    cache_size = len(SEARCH_CACHE)
+    SEARCH_CACHE = {}
+    logger.info(f"🧹 Search cache cleared (removed {cache_size} entries)")
+    return {
+        "status": "success",
+        "message": f"Search cache cleared (removed {cache_size} entries)",
+        "cache_size_before": cache_size
+    }
+
+@app.get("/cache/stats")
+async def cache_stats():
+    """Get search cache statistics"""
+    return {
+        "cache_size": len(SEARCH_CACHE),
+        "cache_keys_sample": list(SEARCH_CACHE.keys())[:10] if SEARCH_CACHE else []
+    }
 
 # ==================== STARTUP EVENT ====================
 # ✅ ADD THIS: Load data before accepting requests
