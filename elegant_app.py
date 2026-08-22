@@ -1937,7 +1937,7 @@ class OpenFoodFactsClient:
     ) -> Dict[str, Any]:
         """Enhanced search Open Food Facts by product name with better brand extraction"""
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=5.0) as client:
                 encoded_name = quote(product_name)
                 url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={encoded_name}&search_simple=1&action=process&json=1&page_size={max_results}"
 
@@ -2620,6 +2620,26 @@ def get_cached_certifications(brand: str, category: str = None, source: str = "m
 
     SEARCH_CACHE[cache_key] = result
     logger.info(f"✅ Cached result for '{cache_key}' (cache size: {len(SEARCH_CACHE)})")
+
+    return result
+
+# ==================== BRAND EXTRACTION CACHE ====================
+BRAND_EXTRACTION_CACHE = {}
+
+async def get_cached_brand_extraction(product_name: str) -> Dict[str, Any]:
+    """Cache brand extraction results to avoid repeated expensive API calls"""
+    # Check if we have a cached result
+    if product_name in BRAND_EXTRACTION_CACHE:
+        logger.info(f"🔄 Brand extraction cache hit for: '{product_name}'")
+        return BRAND_EXTRACTION_CACHE[product_name]
+
+    # Cache miss - perform the actual extraction
+    logger.info(f"🔄 Brand extraction cache miss for: '{product_name}' - calling API...")
+    result = await brand_extraction_manager.extract_brand_from_product_name(product_name)
+
+    # Store in cache
+    BRAND_EXTRACTION_CACHE[product_name] = result
+    logger.info(f"✅ Brand extraction cached for: '{product_name}' (cache size: {len(BRAND_EXTRACTION_CACHE)})")
 
     return result
 
@@ -3590,7 +3610,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             logger.info(
                 f"Attempting to extract brand from product name: {product_name}")
             try:
-                brand_extraction = await brand_extraction_manager.extract_brand_from_product_name(product_name)
+                brand_extraction = await get_cached_brand_extraction(product_name)
 
                 if brand_extraction["success"]:
                     extracted_brand = brand_extraction["extracted_brand"]
@@ -4726,17 +4746,20 @@ async def favicon():
 @app.post("/cache/clear")
 async def clear_cache():
     """Clear all caches - useful after updating Excel data"""
-    global SEARCH_CACHE, OFF_CACHE
+    global SEARCH_CACHE, OFF_CACHE, BRAND_EXTRACTION_CACHE
     search_size = len(SEARCH_CACHE)
     off_size = len(OFF_CACHE)
+    brand_extraction_size = len(BRAND_EXTRACTION_CACHE)
     SEARCH_CACHE = {}
     OFF_CACHE = {}
-    logger.info(f"🧹 Caches cleared (removed {search_size} search entries, {off_size} OFF entries)")
+    BRAND_EXTRACTION_CACHE = {}
+    logger.info(f"🧹 Caches cleared (removed {search_size} search, {off_size} OFF, {brand_extraction_size} brand extraction entries)")
     return {
         "status": "success",
-        "message": f"Caches cleared",
+        "message": "All caches cleared",
         "search_cache_cleared": search_size,
-        "off_cache_cleared": off_size
+        "off_cache_cleared": off_size,
+        "brand_extraction_cache_cleared": brand_extraction_size
     }
 
 @app.get("/cache/stats")
@@ -4746,7 +4769,9 @@ async def cache_stats():
         "search_cache_size": len(SEARCH_CACHE),
         "search_cache_keys_sample": list(SEARCH_CACHE.keys())[:10] if SEARCH_CACHE else [],
         "off_cache_size": len(OFF_CACHE),
-        "off_cache_keys_sample": list(OFF_CACHE.keys())[:10] if OFF_CACHE else []
+        "off_cache_keys_sample": list(OFF_CACHE.keys())[:10] if OFF_CACHE else [],
+        "brand_extraction_cache_size": len(BRAND_EXTRACTION_CACHE),
+        "brand_extraction_keys_sample": list(BRAND_EXTRACTION_CACHE.keys())[:10] if BRAND_EXTRACTION_CACHE else []
     }
 
 # ==================== STARTUP EVENT ====================
