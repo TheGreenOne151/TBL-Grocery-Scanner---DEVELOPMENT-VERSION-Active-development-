@@ -2574,6 +2574,26 @@ USERS_DB = {}
 PURCHASE_HISTORY_DB = {}
 PRODUCT_CACHE = {}
 
+# ==================== OPEN FOOD FACTS CACHE ====================
+OFF_CACHE = {}
+
+async def get_cached_off_product(barcode: str) -> Dict[str, Any]:
+    """Cache Open Food Facts lookups to avoid repeated API calls"""
+    # Check if we have a cached result
+    if barcode in OFF_CACHE:
+        logger.info(f"🔄 OFF Cache hit for barcode: {barcode}")
+        return OFF_CACHE[barcode]
+
+    # Cache miss - perform the actual API lookup
+    logger.info(f"🔄 OFF Cache miss for barcode: {barcode} - calling API...")
+    result = await OpenFoodFactsClient.lookup_barcode(barcode)
+
+    # Store in cache
+    OFF_CACHE[barcode] = result
+    logger.info(f"✅ OFF Cached result for barcode: {barcode} (cache size: {len(OFF_CACHE)})")
+
+    return result
+
 # ==================== SEARCH CACHE ====================
 SEARCH_CACHE = {}
 
@@ -3551,10 +3571,10 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         barcode = product.barcode or ""
         category = product.category or ""
 
-        # If barcode provided, try to get product info from Open Food Facts
+        # If barcode provided, try to get product info from Open Food Facts (with caching)
         if barcode and barcode.strip() != "":
             try:
-                product_info = await food_facts_client.lookup_barcode(barcode)
+                product_info = await get_cached_off_product(barcode)
                 if product_info.get("found"):
                     # Use data from Open Food Facts
                     brand = product_info.get("brand", brand)
@@ -4445,7 +4465,7 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         logger.warning(f"Short barcode detected: {barcode}. May be misread.")
 
     # ===== GET PRODUCT FROM OFF FIRST =====
-    product = await food_facts_client.lookup_barcode(barcode)
+    product = await get_cached_off_product(barcode)
 
     # Enhanced logging for debugging scanner issues
     logger.info(
@@ -4705,23 +4725,28 @@ async def favicon():
 
 @app.post("/cache/clear")
 async def clear_cache():
-    """Clear the search cache - useful after updating Excel data"""
-    global SEARCH_CACHE
-    cache_size = len(SEARCH_CACHE)
+    """Clear all caches - useful after updating Excel data"""
+    global SEARCH_CACHE, OFF_CACHE
+    search_size = len(SEARCH_CACHE)
+    off_size = len(OFF_CACHE)
     SEARCH_CACHE = {}
-    logger.info(f"🧹 Search cache cleared (removed {cache_size} entries)")
+    OFF_CACHE = {}
+    logger.info(f"🧹 Caches cleared (removed {search_size} search entries, {off_size} OFF entries)")
     return {
         "status": "success",
-        "message": f"Search cache cleared (removed {cache_size} entries)",
-        "cache_size_before": cache_size
+        "message": f"Caches cleared",
+        "search_cache_cleared": search_size,
+        "off_cache_cleared": off_size
     }
 
 @app.get("/cache/stats")
 async def cache_stats():
-    """Get search cache statistics"""
+    """Get all cache statistics"""
     return {
-        "cache_size": len(SEARCH_CACHE),
-        "cache_keys_sample": list(SEARCH_CACHE.keys())[:10] if SEARCH_CACHE else []
+        "search_cache_size": len(SEARCH_CACHE),
+        "search_cache_keys_sample": list(SEARCH_CACHE.keys())[:10] if SEARCH_CACHE else [],
+        "off_cache_size": len(OFF_CACHE),
+        "off_cache_keys_sample": list(OFF_CACHE.keys())[:10] if OFF_CACHE else []
     }
 
 # ==================== STARTUP EVENT ====================
