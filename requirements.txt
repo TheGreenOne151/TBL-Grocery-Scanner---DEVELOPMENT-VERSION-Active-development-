@@ -27,3 +27,6 @@ asyncio==3.4.3
 
 # Gunicorn for production
 gunicorn==21.2.0
+
+# Redis for persistent caching
+redis>=5.0.0
