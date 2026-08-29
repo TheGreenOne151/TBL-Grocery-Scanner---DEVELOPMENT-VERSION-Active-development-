@@ -44,6 +44,26 @@ from pydantic import BaseModel, field_validator
 # If you're changing this, test with ALL these cases!
 # =======================================================
 
+# Add this function near the top of elegant_app.py
+def normalize_barcode(barcode: str) -> str:
+    """Normalize barcode for consistent caching
+
+    - Removes leading zeros (UPC/EAN normalization)
+    - Trims whitespace
+    - Returns normalized string
+    """
+    if not barcode:
+        return barcode
+
+    # Strip whitespace first
+    normalized = barcode.strip()
+
+    # Remove leading zeros (but keep at least one digit)
+    normalized = normalized.lstrip('0')
+    if not normalized:  # If it was all zeros, keep one zero
+        normalized = '0'
+
+    return normalized
 
 def safe_float(value, default=0.0):
     """Convert any value to a JSON-safe float - prevents NaN and Infinity errors"""
@@ -2579,19 +2599,25 @@ OFF_CACHE = {}
 
 async def get_cached_off_product(barcode: str) -> Dict[str, Any]:
     """Cache Open Food Facts lookups to avoid repeated API calls"""
+    # Normalize barcode for consistent caching
+    normalized_barcode = normalize_barcode(barcode)
+
+    # Log what happened
+    if normalized_barcode != barcode:
+        logger.info(f"🔍 Normalized barcode: '{barcode}' → '{normalized_barcode}'")
+
     # Check if we have a cached result
-    if barcode in OFF_CACHE:
-        logger.info(f"🔄 OFF Cache hit for barcode: {barcode}")
-        return OFF_CACHE[barcode]
+    if normalized_barcode in OFF_CACHE:
+        logger.info(f"🔄 OFF Cache HIT for barcode: {normalized_barcode}")
+        return OFF_CACHE[normalized_barcode]
 
     # Cache miss - perform the actual API lookup
-    logger.info(f"🔄 OFF Cache miss for barcode: {barcode} - calling API...")
-    result = await OpenFoodFactsClient.lookup_barcode(barcode)
+    logger.info(f"🔄 OFF Cache MISS for barcode: {normalized_barcode} - calling API...")
+    result = await OpenFoodFactsClient.lookup_barcode(normalized_barcode)
 
-    # Store in cache
-    OFF_CACHE[barcode] = result
-    logger.info(f"✅ OFF Cached result for barcode: {barcode} (cache size: {len(OFF_CACHE)})")
-
+    # Store in cache using the NORMALIZED barcode as the key
+    OFF_CACHE[normalized_barcode] = result  # ← USE normalized_barcode, NOT barcode
+    logger.info(f"✅ OFF Cached result for barcode: {normalized_barcode}")
     return result
 
 # ==================== SEARCH CACHE ====================
