@@ -2597,20 +2597,6 @@ PRODUCT_CACHE = {}
 
 # ==================== OPEN FOOD FACTS CACHE ====================
 
-# Initialize Redis connection for persistent caching
-redis_client = None
-try:
-    redis_url = os.getenv('REDIS_URL')
-    if redis_url:
-        redis_client = redis.Redis.from_url(redis_url)
-        redis_client.ping()
-        logger.info("✅ Redis connection established successfully")
-    else:
-        logger.info("ℹ️ REDIS_URL not set, using in-memory cache only")
-except Exception as e:
-    logger.warning(f"⚠️ Redis connection failed: {e}, using in-memory cache only")
-    redis_client = None
-
 OFF_CACHE = {}
 
 async def get_cached_off_product(barcode: str) -> Dict[str, Any]:
@@ -4884,6 +4870,25 @@ async def startup_event():
     """Load certification data on startup and wait for it to complete"""
     logger.info("🚀 Application starting up...")
     logger.info("📊 Loading certification data...")
+
+    # 🔥 ADD THIS: Initialize Redis connection
+    global redis_client
+    try:
+        redis_url = os.getenv('REDIS_URL')
+        if redis_url:
+            # Log the URL (without password)
+            safe_url = redis_url.split(':')[0] + '://' + redis_url.split('@')[-1] if '@' in redis_url else redis_url
+            logger.info(f"🔗 Connecting to Redis: {safe_url}")
+            redis_client = redis.Redis.from_url(redis_url)
+            redis_client.ping()
+            logger.info("✅ Redis connection established successfully")
+        else:
+            logger.info("ℹ️ REDIS_URL not set, using in-memory cache only")
+            redis_client = None
+    except Exception as e:
+        logger.error(f"❌ Redis connection failed: {e}")
+        logger.warning("⚠️ Using in-memory cache only")
+        redis_client = None
 
     # Load the data with retry
     max_retries = 5
