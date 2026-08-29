@@ -4677,15 +4677,34 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
 @app.get("/scanner/health")
 async def scanner_health():
     """Check scanner system health and compatibility"""
+    # Get Redis status
+    redis_status = "not_configured"
+    if redis_client:
+        try:
+            redis_client.ping()
+            redis_status = "connected"
+            keys_count = len(redis_client.keys("product:*"))
+        except Exception as e:
+            redis_status = f"error: {str(e)}"
+            keys_count = 0
+    else:
+        keys_count = 0
+
     return {
         "scanner_system": "Html5Qrcode (Lightweight JavaScript Scanner)",
-        "backend_integration": "âœ“ Ready",
+        "backend_integration": "✅ Ready",
         "library": "Html5Qrcode v2.3.8 - actively maintained",
+        "redis": {
+            "status": redis_status,
+            "cached_products": keys_count,
+            "url_configured": bool(os.getenv('REDIS_URL'))
+        },
         "api_endpoints": {
             "scan": "/scan (POST) - Main scanning endpoint",
             "product_lookup": "/product/{barcode} (GET)",
             "barcode_validation": "/validate/barcode/{barcode} (GET)",
             "health": "/scanner/health (GET)",
+            "cache_stats": "/cache/stats (GET)",
         },
         "supported_formats": [
             "EAN-13",
@@ -4830,14 +4849,31 @@ async def clear_cache():
 
 @app.get("/cache/stats")
 async def cache_stats():
-    """Get all cache statistics"""
+    """Get all cache statistics including Redis"""
+    # Get Redis info if available
+    redis_info = {}
+    if redis_client:
+        try:
+            # Get Redis stats
+            keys = redis_client.keys("product:*")
+            redis_info = {
+                "connected": True,
+                "keys_count": len(keys),
+                "sample_keys": [k.decode('utf-8') for k in keys[:5]] if keys else []
+            }
+        except Exception as e:
+            redis_info = {"connected": False, "error": str(e)}
+    else:
+        redis_info = {"connected": False, "reason": "REDIS_URL not set or connection failed"}
+
     return {
         "search_cache_size": len(SEARCH_CACHE),
         "search_cache_keys_sample": list(SEARCH_CACHE.keys())[:10] if SEARCH_CACHE else [],
         "off_cache_size": len(OFF_CACHE),
         "off_cache_keys_sample": list(OFF_CACHE.keys())[:10] if OFF_CACHE else [],
         "brand_extraction_cache_size": len(BRAND_EXTRACTION_CACHE),
-        "brand_extraction_keys_sample": list(BRAND_EXTRACTION_CACHE.keys())[:10] if BRAND_EXTRACTION_CACHE else []
+        "brand_extraction_keys_sample": list(BRAND_EXTRACTION_CACHE.keys())[:10] if BRAND_EXTRACTION_CACHE else [],
+        "redis": redis_info
     }
 
 # ==================== STARTUP EVENT ====================
