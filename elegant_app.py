@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import redis
 import os
 import re
 import io
@@ -2595,6 +2596,21 @@ PURCHASE_HISTORY_DB = {}
 PRODUCT_CACHE = {}
 
 # ==================== OPEN FOOD FACTS CACHE ====================
+
+# Initialize Redis connection for persistent caching
+redis_client = None
+try:
+    redis_url = os.getenv('REDIS_URL')
+    if redis_url:
+        redis_client = redis.Redis.from_url(redis_url)
+        redis_client.ping()
+        logger.info("✅ Redis connection established successfully")
+    else:
+        logger.info("ℹ️ REDIS_URL not set, using in-memory cache only")
+except Exception as e:
+    logger.warning(f"⚠️ Redis connection failed: {e}, using in-memory cache only")
+    redis_client = None
+
 OFF_CACHE = {}
 
 async def get_cached_off_product(barcode: str) -> Dict[str, Any]:
@@ -2606,7 +2622,17 @@ async def get_cached_off_product(barcode: str) -> Dict[str, Any]:
     if normalized_barcode != barcode:
         logger.info(f"🔍 Normalized barcode: '{barcode}' → '{normalized_barcode}'")
 
-    # Check if we have a cached result
+    # Check Redis first (persistent cache)
+    if redis_client:
+        try:
+            cached = redis_client.get(f'product:{normalized_barcode}')
+            if cached:
+                logger.info(f"🔄 Redis Cache HIT for barcode: {normalized_barcode}")
+                return json.loads(cached)
+        except Exception as e:
+            logger.warning(f"Redis read error: {e}")
+
+    # Check in-memory cache (fallback)
     if normalized_barcode in OFF_CACHE:
         logger.info(f"🔄 OFF Cache HIT for barcode: {normalized_barcode}")
         return OFF_CACHE[normalized_barcode]
@@ -2615,9 +2641,23 @@ async def get_cached_off_product(barcode: str) -> Dict[str, Any]:
     logger.info(f"🔄 OFF Cache MISS for barcode: {normalized_barcode} - calling API...")
     result = await OpenFoodFactsClient.lookup_barcode(normalized_barcode)
 
-    # Store in cache using the NORMALIZED barcode as the key
-    OFF_CACHE[normalized_barcode] = result  # ← USE normalized_barcode, NOT barcode
+    # Store in Redis first (persistent)
+    if redis_client:
+        try:
+            # Store with 30-day expiration (2592000 seconds)
+            redis_client.setex(
+                f'product:{normalized_barcode}',
+                2592000,  # 30 days in seconds
+                json.dumps(result)
+            )
+            logger.info(f"✅ Redis Cached result for barcode: {normalized_barcode}")
+        except Exception as e:
+            logger.warning(f"Redis write error: {e}")
+
+    # Also store in in-memory cache (fast access)
+    OFF_CACHE[normalized_barcode] = result
     logger.info(f"✅ OFF Cached result for barcode: {normalized_barcode}")
+
     return result
 
 # ==================== SEARCH CACHE ====================
