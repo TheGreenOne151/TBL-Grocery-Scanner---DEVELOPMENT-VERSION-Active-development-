@@ -4877,15 +4877,34 @@ async def cache_stats():
     }
 
 # ==================== STARTUP EVENT ====================
-# ✅ ADD THIS: Load data before accepting requests
 
 @app.on_event("startup")
 async def startup_event():
-    """Load certification data on startup and wait for it to complete"""
+    """Initialize Redis and load certification data on startup"""
+    logger.info("🚀 STARTUP_EVENT IS RUNNING!")
     logger.info("🚀 Application starting up...")
     logger.info("📊 Loading certification data...")
 
-    # Load the data with retry
+    # 🔥 Initialize Redis connection
+    global redis_client
+    try:
+        redis_url = os.getenv('REDIS_URL')
+        if redis_url:
+            # Log the URL (without password)
+            safe_url = redis_url.split(':')[0] + '://' + redis_url.split('@')[-1] if '@' in redis_url else redis_url
+            logger.info(f"🔗 Connecting to Redis: {safe_url}")
+            redis_client = redis.Redis.from_url(redis_url)
+            redis_client.ping()
+            logger.info("✅ Redis connection established successfully")
+        else:
+            logger.info("ℹ️ REDIS_URL not set, using in-memory cache only")
+            redis_client = None
+    except Exception as e:
+        logger.error(f"❌ Redis connection failed: {e}")
+        logger.warning("⚠️ Using in-memory cache only")
+        redis_client = None
+
+    # Load certification data with retry
     max_retries = 5
     for attempt in range(max_retries):
         success = certification_manager.load_certification_data()
