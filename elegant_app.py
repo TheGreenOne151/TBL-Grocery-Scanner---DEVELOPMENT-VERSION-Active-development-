@@ -2597,6 +2597,20 @@ PRODUCT_CACHE = {}
 
 # ==================== OPEN FOOD FACTS CACHE ====================
 
+# Initialize Redis connection for persistent caching
+redis_client = None
+try:
+    redis_url = os.getenv('REDIS_URL')
+    if redis_url:
+        redis_client = redis.Redis.from_url(redis_url)
+        redis_client.ping()
+        logger.info("✅ Redis connection established successfully")
+    else:
+        logger.info("ℹ️ REDIS_URL not set, using in-memory cache only")
+except Exception as e:
+    logger.warning(f"⚠️ Redis connection failed: {e}, using in-memory cache only")
+    redis_client = None
+
 OFF_CACHE = {}
 
 async def get_cached_off_product(barcode: str) -> Dict[str, Any]:
@@ -4867,11 +4881,12 @@ async def cache_stats():
 
 @app.on_event("startup")
 async def startup_event():
-    """Load certification data on startup and wait for it to complete"""
+    """Initialize Redis and load certification data on startup"""
+    logger.info("🚀 STARTUP_EVENT IS RUNNING!")
     logger.info("🚀 Application starting up...")
     logger.info("📊 Loading certification data...")
 
-    # 🔥 ADD THIS: Initialize Redis connection
+    # 🔥 Initialize Redis connection
     global redis_client
     try:
         redis_url = os.getenv('REDIS_URL')
@@ -4890,7 +4905,7 @@ async def startup_event():
         logger.warning("⚠️ Using in-memory cache only")
         redis_client = None
 
-    # Load the data with retry
+    # Load certification data with retry
     max_retries = 5
     for attempt in range(max_retries):
         success = certification_manager.load_certification_data()
@@ -4942,10 +4957,10 @@ if __name__ == "__main__":
     for product in test_products:
         parent = BrandNormalizer.find_parent_company(product)
         if parent:
-            logger.info(f"Test mapping: '{product}' â†’ '{parent}'")
+            logger.info(f"Test mapping: '{product}' → '{parent}'")
 
     logger.info("🎯 Scanner System: Html5Qrcode integrated")
-    logger.info("ðŸŒ Open http://localhost:8000 in your browser")
+    logger.info("🌐 Open http://localhost:8000 in your browser")
     logger.info(
         "📱 For mobile: Use your computer's IP address with port 8000")
     logger.info(
