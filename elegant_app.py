@@ -4751,10 +4751,20 @@ async def health_check() -> Dict[str, Any]:
     script_exists = os.path.exists(FileConfig.CREATE_EXCEL_SCRIPT)
     script_status = "found" if script_exists else "not found"
 
+    # Check Redis status
+    redis_status = "not_configured"
+    redis_url_set = bool(os.getenv('REDIS_URL'))
+    if redis_client:
+        try:
+            redis_client.ping()
+            redis_status = "connected"
+        except Exception as e:
+            redis_status = f"error: {str(e)}"
+
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "total_brands": len(certification_manager.data) if certification_manager.data else 0,  # ← CHANGED
+        "total_brands": len(certification_manager.data) if certification_manager.data else 0,
         "total_users": len(USERS_DB),
         "cache_size": len(PRODUCT_CACHE),
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Weighted Certification Bonuses + Multi-Cert Bonus (capped at 10.0)",
@@ -4782,7 +4792,11 @@ async def health_check() -> Dict[str, Any]:
         "brand_synonyms": len(BrandNormalizer.BRAND_SYNONYMS),
         "scoring_methodology_endpoint": "/scoring-methodology (HTML)",
         "version": "2.4.0",
-        "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Excel-only data)",  # ← CHANGED
+        "message": "TBL Grocery Scanner API with Consistent Scoring Across All Search Methods (Excel-only data)",
+        # 🔥 NEW Redis fields
+        "redis_status": redis_status,
+        "redis_url_set": redis_url_set,
+        "redis_connected": redis_client is not None
     }
 
 
