@@ -1552,7 +1552,7 @@ class CertificationManager:
                 word1 = search_remaining[0]
                 word2 = stored_remaining[0]
                 similarity = SequenceMatcher(None, word1, word2).ratio()
-                if similarity >= 0.75 and (len(word1) >= 4 or len(word2) >= 4):
+                if similarity >= 0.8 and (len(word1) >= 4 or len(word2) >= 4):
                     return True
 
             # Also check if one contains the other
@@ -2502,7 +2502,7 @@ class BrandExtractionManager:
                 ).ratio()
 
                 if (
-                    similarity > best_score and similarity >= 0.7
+                    similarity > best_score and similarity >= 0.8
                 ):  # 70% similarity threshold
                     best_score = similarity
                     best_match = brand_key
