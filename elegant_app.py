@@ -1246,14 +1246,6 @@ class CertificationManager:
                 logger.info(f"Loaded {len(cert_data)} certification records")
                 logger.info(f"Loaded category index for {len(brand_categories)} brands")
 
-                # Log some sample data for debugging
-                sample_brands = list(cert_data.keys())[:3]
-                for brand in sample_brands:
-                    first_product = next(iter(cert_data[brand].values()))
-                    logger.info(
-                        f"Sample brand '{brand}': certs={first_product.get('certifications', {})}, categories={brand_categories.get(brand, set())}"
-                    )
-
                 # ✅ ADD THIS: Verify data is ready
                 if self.data is not None and len(self.data) > 0:
                     logger.info(f"✅ Data verification: {len(self.data)} records ready")
@@ -1310,43 +1302,27 @@ class CertificationManager:
 
         pd = get_pandas()
 
-        # ===== ADD DEBUGGING =====
-        logger.info(f"🔍 DEBUG: Columns in Excel: {columns}")
-        # Log the specific columns we care about
-        for cert_type, possible_names in cert_mapping.items():
-            for col_name in possible_names:
-                if col_name in columns:
-                    logger.info(f"🔍 DEBUG: Found column '{col_name}' for '{cert_type}'")
-                    cell_value = row.get(col_name)
-                    logger.info(f"🔍 DEBUG: Value for '{col_name}': {cell_value}, type: {type(cell_value)}")
-        # ===== END DEBUGGING =====
-
         certifications = {}
         for cert_type, possible_names in cert_mapping.items():
             value = False
             for col_name in possible_names:
                 if col_name in columns:
                     cell_value = row.get(col_name)
-                    logger.info(f"Checking {cert_type} in column '{col_name}': cell_value={cell_value}, type={type(cell_value)}")
                     if pd.isna(cell_value):
                         value = False
                     elif isinstance(cell_value, bool):
                         value = cell_value
-                        logger.info(f"✅ {cert_type} is boolean: {value}")
                     elif isinstance(cell_value, (int, float)):
                         value = bool(cell_value)
-                        logger.info(f"✅ {cert_type} is number: {value}")
                     elif isinstance(cell_value, str):
                         cell_value_lower = cell_value.strip().lower()
                         if cell_value_lower in ["true", "yes", "y", "1", "t"]:
                             value = True
                         elif cell_value_lower in ["false", "no", "n", "0", "f"]:
                             value = False
-                        logger.info(f"✅ {cert_type} is string: {value}")
                     break
             certifications[cert_type] = value
 
-        logger.info(f"🔍 DEBUG: Extracted certifications: {certifications}")
         return certifications
 
     def _get_brand_categories(self, brand_normalized: str) -> List[str]:
@@ -1601,7 +1577,7 @@ class CertificationManager:
             need_load = (
                 self.data is None
                 or self.last_loaded is None
-                or (datetime.now() - self.last_loaded).seconds > 300
+                or (datetime.now() - self.last_loaded).seconds > 3600
             )
 
             if need_load:
