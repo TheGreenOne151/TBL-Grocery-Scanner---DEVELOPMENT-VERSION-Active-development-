@@ -2108,9 +2108,6 @@ class OpenFoodFactsClient:
     @staticmethod
     async def lookup_barcode(barcode: str) -> Dict[str, Any]:
         """Lookup product from Open Food Facts with comprehensive data extraction"""
-        if barcode in PRODUCT_CACHE:
-            return PRODUCT_CACHE[barcode]
-
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # List of APIs to check in order
@@ -2228,7 +2225,6 @@ class OpenFoodFactsClient:
             "last_updated": product.get("last_modified_t"),
         }
 
-        PRODUCT_CACHE[barcode] = product_info
         return product_info
 
 
@@ -2593,7 +2589,6 @@ brand_extraction_manager = BrandExtractionManager()
 # Initialize in-memory caches
 USERS_DB = {}
 PURCHASE_HISTORY_DB = {}
-PRODUCT_CACHE = {}
 
 # ==================== OPEN FOOD FACTS CACHE ====================
 
@@ -4766,7 +4761,7 @@ async def health_check() -> Dict[str, Any]:
         "timestamp": datetime.utcnow().isoformat(),
         "total_brands": len(certification_manager.data) if certification_manager.data else 0,
         "total_users": len(USERS_DB),
-        "cache_size": len(PRODUCT_CACHE),
+        "off_cache_size": len(OFF_CACHE),
         "scoring_methodology": f"Base {ScoringConfig.BASE_SCORE} + Weighted Certification Bonuses + Multi-Cert Bonus (capped at 10.0)",
         "scoring_priority": "Brand Synonyms → Parent Company → Dynamic Calculation",
         "scoring_consistency": "Single scoring function ensures identical results across all search methods",
