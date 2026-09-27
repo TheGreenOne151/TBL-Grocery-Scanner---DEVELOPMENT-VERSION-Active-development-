@@ -2634,10 +2634,37 @@ async def get_cached_off_product(barcode: str) -> Dict[str, Any]:
 # ==================== SEARCH CACHE ====================
 SEARCH_CACHE = {}
 
-def get_cached_certifications(brand: str, category: str = None, source: str = "manual") -> Dict[str, Any]:
-    """Cache certification lookups to avoid repeated expensive operations"""
-    # Create a cache key from the parameters
-    cache_key = f"{brand}_{category}_{source}" if category else f"{brand}_{source}"
+
+def get_cached_certifications(
+    brand: str,
+    category: str = None,
+    source: str = "manual",
+    barcode: str = None,
+) -> Dict[str, Any]:
+    """Cache certification lookups to avoid repeated expensive operations.
+
+    Cache key granularity:
+      - barcode provided  → "<brand>_<category>_<source>_<barcode>"
+        Distinct barcodes get distinct cache entries so two products
+        from the same brand and category cannot collide.
+      - barcode absent    → "<brand>_<category>_<source>" (or "<brand>_<source>")
+        Brand-level lookup; shared across all products of that brand.
+
+    The barcode is normalized before being included in the key so that
+    the same physical product scanned as UPC-A vs. GTIN-14 does not
+    produce two entries.
+    """
+    # Normalize barcode if present so different physical encodings of
+    # the same product collapse to one cache entry.
+    normalized_barcode = normalize_barcode(barcode) if barcode else None
+
+    # Build cache key with correct granularity.
+    if normalized_barcode:
+        cache_key = f"{brand}_{category or ''}_{source}_{normalized_barcode}"
+    elif category:
+        cache_key = f"{brand}_{category}_{source}"
+    else:
+        cache_key = f"{brand}_{source}"
 
     # Check if we have a cached result
     if cache_key in SEARCH_CACHE:
@@ -3682,7 +3709,7 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         try:
             # Determine source based on whether barcode was used
             source = "barcode" if (barcode and barcode.strip() != "") else "manual"
-            cert_result = get_cached_certifications(brand, category, source=source)
+            cert_result = get_cached_certifications(brand, category, source=source, barcode=barcode)
 
             # ===== DEBUG: Log the certification result =====
             logger.info(f"🔍 CERT_RESULT from get_certifications: {cert_result}")
@@ -4555,7 +4582,12 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
         brand_name = brand_name.replace("The ", "").strip()
 
     # ===== GET CERTIFICATIONS FROM EXCEL (if available) =====
-    cert_result = get_cached_certifications(brand_name, product.get("category"), source="barcode")
+    cert_result = get_cached_certifications(
+        brand_name,
+        product.get("category"),
+        source="barcode",
+        barcode=barcode,
+    )
     found_in_excel = cert_result.get("found", False)
 
     # ===== ALWAYS USE OFF BRAND AND PRODUCT NAME =====
