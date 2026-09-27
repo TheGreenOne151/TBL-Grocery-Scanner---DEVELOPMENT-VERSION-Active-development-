@@ -1808,16 +1808,25 @@ class ScoringManager:
     """Manage all scoring-related operations"""
 
     @staticmethod
-    def calculate_brand_scores(brand: str, category: str = None) -> BrandData:
+    def calculate_brand_scores(
+        brand: str,
+        category: str = None,
+        cert_result: Dict[str, Any] = None,
+    ) -> BrandData:
         """
         Calculate scores for a brand using priority order:
         1. Parent company identification (for product search)
         2. Dynamic calculation from certifications (Excel)
+
+        If cert_result is provided, it is reused instead of performing
+        a second certification lookup inside the scoring path. Callers
+        that have already fetched certifications (e.g. scan_product and
+        get_product_info) should pass it in to avoid double work.
         """
         # Handle empty/unknown brand
         if not brand or brand == "Unknown":
             return BrandData(
-                brand=brand,  # Add this line
+                brand=brand,
                 social=safe_float(ScoringConfig.BASE_SCORE),
                 environmental=safe_float(ScoringConfig.BASE_SCORE),
                 economic=safe_float(ScoringConfig.BASE_SCORE),
@@ -1848,10 +1857,14 @@ class ScoringManager:
         logger.info(
             f"Brand '{brand_normalized}' calculating dynamically"
         )
-        return ScoringManager._calculate_dynamic_scores(brand, category)
+        return ScoringManager._calculate_dynamic_scores(brand, category, cert_result)
 
     @staticmethod
-    def _calculate_dynamic_scores(brand: str, category: str = None) -> BrandData:
+    def _calculate_dynamic_scores(
+        brand: str,
+        category: str = None,
+        cert_result: Dict[str, Any] = None,
+    ) -> BrandData:
         """Calculate scores dynamically from certifications"""
         # Start with base score
         social_score = ScoringConfig.BASE_SCORE
@@ -1859,7 +1872,7 @@ class ScoringManager:
         economic_score = ScoringConfig.BASE_SCORE
 
         # Get all certifications from combined sources
-        all_certifications = ScoringManager._get_all_certifications(brand, category)
+        all_certifications = ScoringManager._get_all_certifications(brand, category, cert_result)
 
         # Apply certification bonuses
         bonus_applied = False
@@ -1885,7 +1898,7 @@ class ScoringManager:
         economic_score = min(10.0, economic_score)
 
         return BrandData(
-            brand=brand,  # Add this line
+            brand=brand,
             social=safe_float(social_score),
             environmental=safe_float(environmental_score),
             economic=safe_float(economic_score),
@@ -1900,26 +1913,41 @@ class ScoringManager:
         )
 
     @staticmethod
-    def _get_all_certifications(brand: str, category: str = None) -> List[str]:
-            """Get all certifications from Excel database only"""
-            brand_normalized = BrandNormalizer.normalize(brand)
+    def _get_all_certifications(
+        brand: str,
+        category: str = None,
+        cert_result: Dict[str, Any] = None,
+    ) -> List[str]:
+        """Get all certifications from Excel database only.
 
-            # Get certifications from Excel database
+        If cert_result is provided, it is used directly. Otherwise a
+        fresh lookup is performed via certification_manager.
+        cert_result is the dict returned by
+        certification_manager.get_certifications, with a
+        "certifications" sub-dict keyed by b_corp, fair_trade,
+        rainforest_alliance, leaping_bunny, research_complete.
+        """
+        brand_normalized = BrandNormalizer.normalize(brand)
+
+        # Use the caller-provided result if available; otherwise look up.
+        if cert_result is not None:
+            excel_certs = cert_result
+        else:
             excel_certs = certification_manager.get_certifications(brand, category)
 
-            # Build certification list from Excel data only
-            excel_cert_list = []
-            if excel_certs["certifications"]["b_corp"]:
-                excel_cert_list.append("B Corp")
-            if excel_certs["certifications"]["fair_trade"]:
-                excel_cert_list.append("Fair Trade")
-            if excel_certs["certifications"]["rainforest_alliance"]:
-                excel_cert_list.append("Rainforest Alliance")
-            if excel_certs["certifications"]["leaping_bunny"]:
-                excel_cert_list.append("Leaping Bunny")
+        # Build certification list from Excel data only
+        excel_cert_list = []
+        if excel_certs["certifications"]["b_corp"]:
+            excel_cert_list.append("B Corp")
+        if excel_certs["certifications"]["fair_trade"]:
+            excel_cert_list.append("Fair Trade")
+        if excel_certs["certifications"]["rainforest_alliance"]:
+            excel_cert_list.append("Rainforest Alliance")
+        if excel_certs["certifications"]["leaping_bunny"]:
+            excel_cert_list.append("Leaping Bunny")
 
-            # Return Excel certifications only
-            return excel_cert_list
+        # Return Excel certifications only
+        return excel_cert_list
 
 
 # ==================== OPEN FOOD FACTS CLIENT ====================
@@ -3585,7 +3613,7 @@ async def test_scoring_methodology(brand: str, category: str = None):
 
     # Calculate scores with the category that was used (if any)
     used_category = excel_result.get("matched_category") if excel_result.get("found") else category
-    scores = scoring_manager.calculate_brand_scores(brand, used_category)
+    scores = scoring_manager.calculate_brand_scores(brand, used_category, excel_result)
     tbl = calculate_overall_score(
         scores.social,
         scores.environmental,
@@ -3734,7 +3762,11 @@ async def scan_product(product: Product) -> Dict[str, Any]:
         # ===== STEP 3: Calculate scores with the CORRECT category =====
         try:
             category_for_scores = category or None
-            scores = scoring_manager.calculate_brand_scores(brand, category_for_scores)
+            scores = scoring_manager.calculate_brand_scores(
+                brand,
+                category_for_scores,
+                cert_result,
+            )
             logger.info(f"🔍 Scores calculated with category: {category_for_scores}")
             logger.info(f"🔍 Scores: social={scores.social}, env={scores.environmental}, econ={scores.economic}")
             logger.info(f"🔍 Certifications from scores: {scores.certifications}")
@@ -4595,9 +4627,12 @@ async def get_product_info(barcode: str) -> Dict[str, Any]:
     display_brand = brand_name if brand_name != "Unknown" else product.get("brand", "Unknown")
 
     # ===== CALCULATE SCORES =====
-    # If found in Excel, use Excel scores; otherwise use default 5.0
     if found_in_excel:
-        scores = scoring_manager.calculate_brand_scores(display_brand)
+        scores = scoring_manager.calculate_brand_scores(
+            display_brand,
+            product.get("category") or None,
+            cert_result,
+        )
     else:
         # Use default scores but mark as "Not in database"
         scores = BrandData(
