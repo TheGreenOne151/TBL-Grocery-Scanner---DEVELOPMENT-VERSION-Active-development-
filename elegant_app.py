@@ -511,7 +511,6 @@ class BrandNormalizer:
         "egg": "kelloggs",
         "nutri grain": "kelloggs",
         "morningstar farms": "kelloggs",
-        "veggie": "kelloggs",
         # Mondelez products
         "oreo": "mondelez",
         "chips ahoy": "mondelez",
@@ -1061,34 +1060,61 @@ class BrandNormalizer:
 
     @classmethod
     def find_parent_company(cls, product_name: str) -> Optional[str]:
-        """Find parent company for a product using product name matching"""
+        """Find parent company for a product using word-boundary matching.
+
+        Matching strategy (in order):
+          1. Whole-key phrase match: the entire product key must appear
+             as a contiguous sequence of whole words in the product name.
+             "raisin bran" matches "Raisin Bran Cereal" but not "testbrand".
+          2. First-word anchor match: for multi-word keys where the first
+             word is at least 4 characters, match if that first word
+             appears as a whole word. Handles truncated product names
+             like "Cinnamon Toast" for the key "cinnamon toast crunch".
+
+        We deliberately do NOT do substring matching. A previous version
+        matched "bran" inside "testbrand" and "egg" inside "veggie",
+        producing wrong parent-company attributions on real products.
+        """
         if not product_name:
             return None
 
         product_normalized = cls.normalize(product_name)
 
-        # Check for exact product matches in parent company mapping
+        # Precompute the set of whole words in the product name once.
+        product_words = set(product_normalized.split())
+
+        # --- Pass 1: whole-key phrase match ---
         for product_key, parent in cls.PARENT_COMPANY_MAPPING.items():
-            if product_key in product_normalized:
+            if not product_key:
+                continue
+
+            pattern = r"\b" + re.escape(product_key) + r"\b"
+            if re.search(pattern, product_normalized):
                 logger.info(
-                    f"Found parent company for '{product_name}': {parent} (via product key: {product_key})"
+                    f"Found parent company for '{product_name}': {parent} "
+                    f"(via whole-key match: '{product_key}')"
                 )
                 return parent
 
-        # Check for partial matches
+        # --- Pass 2: first-word anchor for multi-word keys ---
         for product_key, parent in cls.PARENT_COMPANY_MAPPING.items():
-            product_key_parts = product_key.split()
-            product_parts = product_normalized.split()
+            if not product_key:
+                continue
 
-            # Check if any significant word matches
-            for key_part in product_key_parts:
-                if len(key_part) > 3:  # Only consider significant words
-                    for product_part in product_parts:
-                        if len(product_part) > 3 and key_part in product_part:
-                            logger.info(
-                                f"Found partial match for '{product_name}': {parent} (via '{key_part}' in '{product_part}')"
-                            )
-                            return parent
+            key_parts = product_key.split()
+            if len(key_parts) < 2:
+                continue
+
+            first_word = key_parts[0]
+            if len(first_word) < 4:
+                continue
+
+            if first_word in product_words:
+                logger.info(
+                    f"Found parent company for '{product_name}': {parent} "
+                    f"(via first-word anchor: '{first_word}' in '{product_key}')"
+                )
+                return parent
 
         return None
 
