@@ -552,7 +552,7 @@ class BrandNormalizer:
         "dasani": "coca cola",
         "smartwater": "coca cola",
         "fairlife": "coca cola",
-        # NestlÃ© products
+        # Nestle products
         "nescafe": "nestle",
         "nesquik": "nestle",
         "stouffers": "nestle",
@@ -574,7 +574,7 @@ class BrandNormalizer:
         "rexona": "unilever",
         "vaseline": "unilever",
         "lipton": "unilever",
-        # "ben jerrys": "unilever",  # â† Remove this line
+        # "ben jerrys": "unilever",  # removed - Ben & Jerry's is independent
         "magnum": "unilever",
         "breyers": "unilever",
         "klondike": "unilever",
@@ -717,7 +717,7 @@ class BrandNormalizer:
         "mondelez": ["mondelez international", "kraft foods"],
         "pepsico": ["pepsi", "pepsi co", "pepsico inc"],
         "coca cola": ["coca-cola", "coke", "coca cola company"],
-        "nestle": ["nestlÃ©", "nestle sa"],
+        "nestle": ["nestle", "nestle sa"],
         "unilever": ["unilever plc", "unilever nv"],
         "kraft heinz": ["kraft", "heinz", "kraft heinz company"],
         "mars": ["mars inc", "mars incorporated"],
@@ -1014,7 +1014,10 @@ class BrandNormalizer:
         ]
 
         for phrase in remove_phrases:
-            normalized = normalized.replace(phrase, "")
+            phrase = phrase.strip()
+            if not phrase:
+                continue
+            normalized = re.sub(r"\b" + re.escape(phrase) + r"\b", "", normalized)
 
         # Replace common symbols and special characters
         replacements = {
@@ -1044,8 +1047,13 @@ class BrandNormalizer:
 
         # Handle brand aliases
         for alias, canonical in cls.BRAND_ALIASES.items():
-            if alias == normalized or f" {alias} " in f" {normalized} ":
-                normalized = normalized.replace(alias, canonical)
+            # Skip single-character aliases — they cause false positives
+            # inside unrelated brand names (e.g. 'k' matching the 'k' in
+            # 'special k' and turning it into 'special kelloggs').
+            if len(alias) < 2:
+                continue
+            if alias == normalized or re.search(r"\b" + re.escape(alias) + r"\b", normalized):
+                normalized = re.sub(r"\b" + re.escape(alias) + r"\b", canonical, normalized)
 
         # Handle brand synonyms
         for synonym, canonical in cls.BRAND_SYNONYMS.items():
@@ -1192,6 +1200,101 @@ class BrandNormalizer:
                             return original_brand
 
             return None
+
+# =====================================================================
+# GENERIC_WORDS
+#
+# Words that appear across many unrelated brand names and therefore
+# cannot, on their own, establish that two brands are the same.
+#
+# Built empirically from the actual brand corpus. Every word here was
+# observed co-occurring across multiple unrelated brands in the
+# grocery dataset. If you add a word to this set, you are asserting
+# that two brands sharing ONLY this word should NOT be treated as a
+# match. That is the correct default for category nouns ("body",
+# "beauty"), function words ("the", "and"), and geographic modifiers
+# ("new", "california"), but the WRONG default for brand tokens.
+#
+# When in doubt, do not add. False negatives (a real match rejected)
+# are harder to notice than false positives (an unrelated brand
+# inheriting certifications), but both are bugs. Prefer to err on
+# the side of NOT adding unless the corpus clearly shows the word
+# spanning unrelated brands.
+# =====================================================================
+GENERIC_WORDS = frozenset({
+    # --- function words / articles ---
+    "a", "an", "the", "and", "or", "of", "for", "with", "by", "to",
+    "at", "in", "on", "as", "is", "it", "its", "my", "your", "our",
+    "we", "us", "you", "they", "them", "this", "that", "these", "those",
+
+    # --- product categories (nouns describing what the product IS) ---
+    "body", "beauty", "skin", "skincare", "hair", "haircare", "care",
+    "cosmetic", "cosmetics", "makeup", "nail", "nails", "lip", "lips",
+    "eye", "eyes", "face", "facial", "hand", "hands", "foot", "feet",
+    "bodycare", "bath", "soap", "soaps", "shampoo", "conditioner",
+    "lotion", "cream", "balm", "oil", "oils", "serum", "serums",
+    "cleanser", "toner", "mask", "masks", "scrub", "spa", "wellness",
+    "health", "nutrition", "supplement", "supplements", "vitamin",
+    "vitamins", "protein", "snack", "snacks", "candy", "chocolate",
+    "coffee", "tea", "teas", "juice", "juices", "soda", "water",
+    "milk", "yogurt", "cheese", "butter", "bread", "breads", "cereal",
+    "cereals", "pasta", "sauce", "sauces", "dressing", "dressings",
+    "condiment", "condiments", "seasoning", "seasonings", "spice",
+    "spices", "herb", "herbs", "salt", "pepper", "sugar", "sweetener",
+    "sweeteners", "syrup", "syrups", "flour", "flours", "baking",
+    "cookies", "cracker", "crackers", "biscuit", "biscuits", "chip",
+    "chips", "pretzel", "pretzels", "popcorn", "granola", "bar",
+    "bars", "gum", "mint", "mints", "pet", "pets", "dog", "dogs",
+    "cat", "cats", "food", "foods", "beverage", "beverages", "drink",
+    "drinks", "meal", "meals", "kitchen", "dinner", "lunch",
+    "breakfast", "recipe",
+
+    # --- marketing / adjective words (positive-sounding, non-identifying) ---
+    "natural", "naturals", "naturally", "organic", "organics",
+    "fresh", "freshly", "pure", "purely", "simple", "simply",
+    "clean", "cleaner", "cleaning", "clear", "bright", "bold",
+    "good", "better", "best", "great", "grand", "green", "happy",
+    "honest", "kind", "little", "modern", "native", "new", "open",
+    "original", "prime", "proper", "proud", "real", "rebel", "smart",
+    "sole", "sun", "super", "sweet", "true", "wild", "wise", "world",
+    "love", "lovely", "joy", "peace", "free", "freedom", "golden",
+    "gold", "silver", "silky", "smooth", "soft", "warm", "cool",
+    "white", "black", "red", "blue", "yellow", "orange", "brown",
+    "artisan", "artisanal", "craft", "crafted", "handmade", "homemade",
+    "premium", "classic", "traditional", "vintage", "retro",
+    "essential", "essentials", "quality", "value", "select",
+    "choice", "signature", "reserve", "heritage",
+    "urban", "rural", "country", "coast", "coastal", "mountain",
+    "river", "valley", "garden", "farm", "farmhouse", "homestead",
+    "forest", "meadow", "field", "grove", "orchard", "ranch",
+
+    # --- geographic (too generic to identify a brand) ---
+    "york", "california", "brooklyn", "paris", "london",
+    "north", "south", "east", "west", "american", "america", "usa",
+    "san", "los", "angeles", "city", "island", "hawaii", "hawai'i",
+    "texas", "vegas", "florida", "chicago", "boston",
+    "seattle", "portland", "denver", "austin", "nashville",
+    "canada", "canadian", "mexico", "mexican", "italy", "italian",
+    "france", "french", "spain", "spanish", "germany", "german",
+    "japan", "japanese", "china", "chinese", "india", "indian",
+    "korea", "korean", "thai", "vietnam", "vietnamese",
+
+    # --- business / corporate (survive normalization in some forms) ---
+    "brand", "brands", "store", "stores", "market", "markets",
+    "shop", "shops", "company", "companies", "group", "groups",
+    "holdings", "industries", "industry", "enterprises", "ventures",
+    "solutions", "systems", "products", "product", "ingredients",
+    "labs", "lab", "laboratories", "laboratory", "trading", "distillers",
+    "distillery", "brewery", "brewing", "roasters", "roasting",
+    "manufacturing", "wholesale", "retail", "distribution", "logistics",
+    "international", "global", "national", "united",
+    "standard", "excellence",
+
+    # --- time / calendar ---
+    "day", "days", "daily", "night", "morning", "evening", "summer",
+    "winter", "spring", "autumn", "fall", "week", "weekend", "sunday",
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
+})
 
 
 class CertificationManager:
@@ -1416,33 +1519,22 @@ class CertificationManager:
         if not best_match:
             for stored_brand, products in self.data.items():
                 if self._improved_partial_match(brand_normalized, stored_brand):
-                    # Check if this is a high-confidence partial match (2+ words)
+                    # Check if this is a high-confidence partial match (2+ words).
+                    # Uses the module-level GENERIC_WORDS set so this filter
+                    # stays in sync with _improved_partial_match.
                     search_words = set(brand_normalized.split())
                     stored_words = set(stored_brand.split())
                     common_words = search_words & stored_words
-                    meaningful_common = [w for w in common_words if w not in {
-                        "value", "brand", "store", "market", "everyday", "organic",
-                        "natural", "premium", "select", "choice", "essential",
-                        "basic", "original", "classic", "traditional", "regular",
-                        "quality", "fresh", "pure", "simple", "smart", "total",
-                        "complete", "farm", "food", "house", "good", "great"
-                    }]
+                    meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
 
-                    # Only use partial match if at least 2 meaningful words match
+                    # Only use partial match if at least 2 meaningful words match.
                     if len(meaningful_common) >= 2:
                         match_confidence = "medium"
                     else:
-                        # Single word match - only use if it's a distinctive word
-                        distinctive_words = {
-                            "nestle", "unilever", "pepsico", "coca", "cola",
-                            "mars", "hershey", "kellogg", "danone", "campbell",
-                            "pepperidge", "smucker", "quaker", "kraft", "heinz"
-                        }
-                        if meaningful_common and meaningful_common[0] in distinctive_words:
-                            match_confidence = "medium"
-                        else:
-                            match_confidence = "low"
-                            continue  # Skip low-confidence partial matches
+                        # A single shared word is not enough to establish
+                        # brand identity in this code path either. Skip.
+                        match_confidence = "low"
+                        continue  # Skip low-confidence partial matches
 
                     for product_key, product_data in products.items():
                         if product_key == "_default":
@@ -1466,127 +1558,44 @@ class CertificationManager:
 
     @staticmethod
     def _improved_partial_match(search_brand: str, stored_brand: str) -> bool:
-        """Improved brand matching with hybrid approach to prevent generic word mismatches"""
+        """Improved brand matching that refuses single-word matches on
+        generic words.
 
-        # ===== DEFINED AT TOP (available everywhere) =====
-        distinctive_words = {
-            "nespresso", "dannon", "activia", "oikos", "evian",
-            "volvic", "starbucks", "cadbury", "dunkin", "hershey",
-            "coca", "cola", "pepsi", "kraft", "heinz", "general",
-            "mills", "kellogg", "mondelez", "unilever", "procter",
-            "gamble", "johnson", "campbell", "tyson", "hormel",
-            "danone", "nestle", "mars", "pepperidge", "smucker",
-            "quaker", "kroger", "safeway", "traders", "joes"
-        }
+        Rule:
+          1. Exact match                                    -> True
+          2. Two or more non-generic shared words           -> True
+          3. Exactly one non-generic shared word            -> True only if the
+             two full strings are near-identical or one is a
+             contiguous substring of the other
+          4. Zero non-generic shared words (only generic)   -> False
 
-        # Generic words that shouldn't trigger matches alone
-        GENERIC_WORDS = {
-            "value", "brand", "store", "market", "everyday", "organic",
-            "natural", "premium", "select", "choice", "essential",
-            "basic", "original", "classic", "traditional", "regular",
-            "quality", "fresh", "pure", "simple", "smart", "total",
-            "complete", "farm", "food", "house", "good", "great",
-            "best", "finest", "fresh", "home", "family", "country",
-            "american", "old", "new", "world", "nature", "harvest"
-        }
-
-        # ===== STEP 1: EXACT MATCH =====
+        The single-word branch deliberately does NOT use an allowlist of
+        "distinctive" brand names. Such a list cannot be comprehensive.
+        Instead it relies on substring containment and string similarity,
+        which are properties of the two strings being compared, not of a
+        hardcoded vocabulary.
+        """
         if search_brand == stored_brand:
             return True
 
-        # ===== STEP 2: SUBSTRING CHECK WITH SAFEGUARDS =====
-        if stored_brand in search_brand or search_brand in stored_brand:
-            # Split into words
-            search_words = set(search_brand.split())
-            stored_words = set(stored_brand.split())
-            common_words = search_words & stored_words
-
-            # Remove generic words from consideration
-            meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
-
-            # Rule 1: At least 2 meaningful words match - SAFE
-            if len(meaningful_common) >= 2:
-                return True
-
-            # Rule 2: Single meaningful word match - require it to be distinctive
-            if len(meaningful_common) == 1:
-                word = next(iter(meaningful_common))
-
-                # Reject if word is short and generic
-                if len(word) < 5 and word not in distinctive_words:
-                    return False
-
-                if word in distinctive_words:
-                    return True
-
-                # For single-word brands, use similarity with high threshold
-                if len(search_words) == 1 and len(stored_words) == 1:
-                    similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
-                    return similarity >= 0.85
-
-            # Substring match with only generic words = NO MATCH
-            return False
-
-        # ===== STEP 3: WORD OVERLAP CHECK =====
         search_words = set(search_brand.split())
         stored_words = set(stored_brand.split())
-        common_words = search_words & stored_words
-        meaningful_common = [w for w in common_words if w not in GENERIC_WORDS]
+        common = search_words & stored_words
+        meaningful = {w for w in common if w not in GENERIC_WORDS}
 
-        # Rule 3: At least 2 meaningful words overlap - SAFE
-        if len(meaningful_common) >= 2:
+        # Two or more non-generic words in common -> match.
+        if len(meaningful) >= 2:
             return True
 
-        # Rule 4: Single meaningful word overlap - require distinctiveness
-        if len(meaningful_common) == 1:
-            word = meaningful_common[0]
-
-            # Reject short/generic words
-            if len(word) < 4 and word not in {"coca", "cola", "pepsi", "mars"}:
-                return False
-
-            # Get remaining words for fuzzy matching
-            search_remaining = [w for w in search_words if w not in GENERIC_WORDS and w != word]
-            stored_remaining = [w for w in stored_words if w not in GENERIC_WORDS and w != word]
-
-            # If we have one word remaining in each, check similarity
-            if len(search_remaining) == 1 and len(stored_remaining) == 1:
-                word1 = search_remaining[0]
-                word2 = stored_remaining[0]
-                similarity = SequenceMatcher(None, word1, word2).ratio()
-                if similarity >= 0.8 and (len(word1) >= 4 or len(word2) >= 4):
-                    return True
-
-            # Also check if one contains the other
-            if search_remaining and stored_remaining:
-                for s_word in search_remaining:
-                    for t_word in stored_remaining:
-                        if s_word in t_word or t_word in s_word:
-                            if len(s_word) >= 4 or len(t_word) >= 4:
-                                return True
-
-        # ===== STEP 4: SINGLE-WORD BRAND MATCH (STRICT) =====
-        if len(search_words) == 1 and len(stored_words) == 1:
-            word1 = search_brand
-            word2 = stored_brand
-
-            # Exact single word match
-            if word1 == word2:
+        # Exactly one non-generic word in common -> require near-identity
+        # or substring containment.
+        if len(meaningful) == 1:
+            if search_brand in stored_brand or stored_brand in search_brand:
                 return True
+            similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
+            return similarity >= 0.85
 
-            # Similarity check with high threshold (85%)
-            similarity = SequenceMatcher(None, word1, word2).ratio()
-            if similarity >= 0.85:
-                return True
-
-            # Also allow if the word is distinctive and matches partially
-            if word1 in distinctive_words or word2 in distinctive_words:
-                if word1 in word2 or word2 in word1:
-                    return True
-
-            return False
-
-        # ===== NO MATCH =====
+        # All shared words are generic -> no match.
         return False
 
     def get_certifications(self, brand: str, category: str = None, source: str = "manual") -> Dict[str, Any]:
