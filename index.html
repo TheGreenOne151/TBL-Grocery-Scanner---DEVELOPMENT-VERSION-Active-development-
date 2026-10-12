@@ -1661,11 +1661,27 @@
                         categorySelect.classList.remove('category-highlight');
                     }, 3000);
                     hideResults();
+                } else if (data.match_type === 'ambiguous_brand' && data.note) {
+                    showError(data.note);
+                    hideResults();
                 } else {
                     displayResults(data);
                 }
 
-                if (searchType === 'brand' && selectedCategory && data.match_type !== 'category_required') {
+                // Only show the "showing category X" success banner when the
+                // request actually resolved to a brand + category result.
+                // Exclude the two informational match types that carry a
+                // note instead of a result card: category_required (ask
+                // the user to pick a category) and ambiguous_brand (ask
+                // the user to be more specific). Without the exclusion,
+                // an ambiguous response would flash a success banner and
+                // then overwrite it with the error, which is confusing.
+                if (
+                    searchType === 'brand'
+                    && selectedCategory
+                    && data.match_type !== 'category_required'
+                    && data.match_type !== 'ambiguous_brand'
+                ) {
                     showSuccess(`Showing certifications for ${selectedCategory} products from this brand`);
                     setTimeout(() => hideSuccess(), 3000);
                 }
@@ -1679,6 +1695,13 @@
         function displayResults(data) {
             if (!data || data.grade === 'ERROR') {
                 showError(data?.notes || 'Unable to find product information');
+                return;
+            }
+
+            // ===== HANDLE AMBIGUOUS BRANDS =====
+            if (data.match_type === 'ambiguous_brand' && data.note) {
+                showError(data.note);
+                hideResults();
                 return;
             }
 

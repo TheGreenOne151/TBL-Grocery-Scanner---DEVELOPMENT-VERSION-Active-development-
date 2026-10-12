@@ -1114,7 +1114,12 @@ class BrandNormalizer:
                 continue
 
             first_word = key_parts[0]
-            if len(first_word) < 4:
+
+            # Do not anchor on generic words. See is_brand_token() for
+            # the classification rule. This is the same filter used by
+            # _improved_partial_match, so both prefix-based matchers
+            # respect a single vocabulary boundary.
+            if not is_brand_token(first_word):
                 continue
 
             if first_word in product_words:
@@ -1127,79 +1132,87 @@ class BrandNormalizer:
         return None
 
     @classmethod
+    @classmethod
     def extract_brand_from_product_text(
-            cls, product_name: str) -> Optional[str]:
-            """Enhanced brand extraction from product name using multiple strategies"""
-            if not product_name or product_name.lower() in [
-                    "unknown", "generic product"]:
-                return None
-
-            product_lower = product_name.lower()
-
-            # Strategy 1: Look for parent company mapping
-            parent_company = cls.find_parent_company(product_name)
-            if parent_company:
-                return parent_company.title()
-
-            # Strategy 2: Check for known brand patterns in product name (Excel data only)
-            # Use the global certification_manager instance
-            if certification_manager.data is not None:
-                for brand in certification_manager.data.keys():
-                    brand_normalized = brand  # Already normalized from Excel
-                    if brand_normalized and len(brand_normalized) > 2:
-                        # Check if brand appears in product name
-                        if brand_normalized in product_lower:
-                            # Get the original brand name from Excel data
-                            first_product = next(iter(certification_manager.data[brand].values()))
-                            original_brand = first_product.get("original_brand", brand.title())
-                            logger.info(
-                                f"Found brand '{original_brand}' directly in product name '{product_name}'"
-                            )
-                            return original_brand
-
-                        # Check for brand variations
-                        if brand in cls.BRAND_VARIATIONS:
-                            for variation in cls.BRAND_VARIATIONS[brand]:
-                                if variation in product_lower:
-                                    first_product = next(iter(certification_manager.data[brand].values()))
-                                    original_brand = first_product.get("original_brand", brand.title())
-                                    logger.info(
-                                        f"Found brand variation '{variation}' for '{brand}' in product name"
-                                    )
-                                    return original_brand
-
-            # Strategy 3: Extract likely brand from beginning of product name
-            words = product_name.split()
-            if len(words) > 1 and certification_manager.data is not None:
-                first_word = cls.normalize(words[0])
-                second_word = cls.normalize(words[1]) if len(words) > 1 else ""
-
-                # Check first word as potential brand
-                if first_word and len(first_word) > 2:
-                    for brand in certification_manager.data.keys():
-                        brand_normalized = brand  # Already normalized from Excel
-                        if brand_normalized == first_word or brand_normalized.startswith(first_word):
-                            first_product = next(iter(certification_manager.data[brand].values()))
-                            original_brand = first_product.get("original_brand", brand.title())
-                            logger.info(
-                                f"Extracted brand '{original_brand}' from first word of product name"
-                            )
-                            return original_brand
-
-                # Check first two words as potential brand
-                if second_word:
-                    first_two_words = f"{first_word} {second_word}"
-                    for brand in certification_manager.data.keys():
-                        brand_normalized = brand  # Already normalized from Excel
-                        if brand_normalized == first_two_words or brand_normalized.startswith(first_two_words):
-                            first_product = next(iter(certification_manager.data[brand].values()))
-                            original_brand = first_product.get("original_brand", brand.title())
-                            logger.info(
-                                f"Extracted brand '{original_brand}' from first two words of product name"
-                            )
-                            return original_brand
-
+        cls, product_name: str) -> Optional[str]:
+        """Enhanced brand extraction from product name using multiple strategies"""
+        if not product_name or product_name.lower() in [
+                "unknown", "generic product"]:
             return None
+
+        product_lower = product_name.lower()
+
+        # Strategy 1: Look for parent company mapping
+        parent_company = cls.find_parent_company(product_name)
+        if parent_company:
+            return parent_company.title()
+
+        # Strategy 2: Check for known brand patterns in product name (Excel data only)
+        # Use the global certification_manager instance.
+        #
+        # Candidates are filtered through is_brand_token() so that a
+        # single generic word in the sheet (which shouldn't exist, but
+        # might if the corpus changes) cannot match as a brand.
+        if certification_manager.data is not None:
+            for brand in certification_manager.data.keys():
+                if not is_brand_token(brand):
+                    continue
+
+                # Check if brand appears in product name
+                if brand in product_lower:
+                    # Get the original brand name from Excel data
+                    first_product = next(iter(certification_manager.data[brand].values()))
+                    original_brand = first_product.get("original_brand", brand.title())
+                    logger.info(
+                        f"Found brand '{original_brand}' directly in product name '{product_name}'"
+                    )
+                    return original_brand
+
+                # Check for brand variations
+                if brand in cls.BRAND_VARIATIONS:
+                    for variation in cls.BRAND_VARIATIONS[brand]:
+                        if variation in product_lower:
+                            first_product = next(iter(certification_manager.data[brand].values()))
+                            original_brand = first_product.get("original_brand", brand.title())
+                            logger.info(
+                                f"Found brand variation '{variation}' for '{brand}' in product name"
+                            )
+                            return original_brand
+
+        # Strategy 3: Extract likely brand from beginning of product name
+        words = product_name.split()
+        if len(words) > 1 and certification_manager.data is not None:
+            first_word = cls.normalize(words[0])
+            second_word = cls.normalize(words[1]) if len(words) > 1 else ""
+
+            # Check first word as potential brand
+            if is_brand_token(first_word):
+                for brand in certification_manager.data.keys():
+                    if not is_brand_token(brand):
+                        continue
+                    if brand == first_word or brand.startswith(first_word):
+                        first_product = next(iter(certification_manager.data[brand].values()))
+                        original_brand = first_product.get("original_brand", brand.title())
+                        logger.info(
+                            f"Extracted brand '{original_brand}' from first word of product name"
+                        )
+                        return original_brand
+
+            # Check first two words as potential brand
+            if second_word and is_brand_token(first_word):
+                first_two_words = f"{first_word} {second_word}"
+                for brand in certification_manager.data.keys():
+                    if not is_brand_token(brand):
+                        continue
+                    if brand == first_two_words or brand.startswith(first_two_words):
+                        first_product = next(iter(certification_manager.data[brand].values()))
+                        original_brand = first_product.get("original_brand", brand.title())
+                        logger.info(
+                            f"Extracted brand '{original_brand}' from first two words of product name"
+                        )
+                        return original_brand
+
+        return None
 
 # =====================================================================
 # GENERIC_WORDS
@@ -1247,7 +1260,7 @@ GENERIC_WORDS = frozenset({
     "bars", "gum", "mint", "mints", "pet", "pets", "dog", "dogs",
     "cat", "cats", "food", "foods", "beverage", "beverages", "drink",
     "drinks", "meal", "meals", "kitchen", "dinner", "lunch",
-    "breakfast", "recipe",
+    "breakfast", "recipe", "cafe", "caffe",
 
     # --- marketing / adjective words (positive-sounding, non-identifying) ---
     "natural", "naturals", "naturally", "organic", "organics",
@@ -1267,6 +1280,7 @@ GENERIC_WORDS = frozenset({
     "urban", "rural", "country", "coast", "coastal", "mountain",
     "river", "valley", "garden", "farm", "farmhouse", "homestead",
     "forest", "meadow", "field", "grove", "orchard", "ranch",
+    "aura", "beyond", "high", "pink",   # NEW: positive-sounding modifiers
 
     # --- geographic (too generic to identify a brand) ---
     "york", "california", "brooklyn", "paris", "london",
@@ -1278,6 +1292,25 @@ GENERIC_WORDS = frozenset({
     "france", "french", "spain", "spanish", "germany", "german",
     "japan", "japanese", "china", "chinese", "india", "indian",
     "korea", "korean", "thai", "vietnam", "vietnamese",
+
+    # --- natural-world nouns (things-in-the-world any brand might name itself after) ---
+    # NEW GROUP. Distinct from marketing words: these are concrete nouns,
+    # but they are common enough that many unrelated brands have adopted
+    # them. "Earth Breeze" and "Earth Mama" are unrelated; the shared
+    # word "earth" does not establish shared brand identity.
+    "earth", "mineral", "moon", "sea",
+
+    # --- venues and landmarks (physical locations a brand might name itself after) ---
+    # NEW GROUP. Same reasoning as natural-world nouns: common enough
+    # that many unrelated brands have adopted them.
+    "castle",
+
+    # --- titles and honorifics (attached to a distinctive token; not identifying alone) ---
+    # NEW GROUP. These behave like "mr", "mrs", "dr", "st" — they appear
+    # as the first token of many brand names, always followed by the
+    # distinctive part. "King" alone does not identify King Arthur
+    # Baking or King's Hawaiian.
+    "king",
 
     # --- business / corporate (survive normalization in some forms) ---
     "brand", "brands", "store", "stores", "market", "markets",
@@ -1294,7 +1327,43 @@ GENERIC_WORDS = frozenset({
     "day", "days", "daily", "night", "morning", "evening", "summer",
     "winter", "spring", "autumn", "fall", "week", "weekend", "sunday",
     "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
+
+    # --- common proper names (first names, surnames) ---
+    # NEW GROUP. A common name alone does not identify a brand:
+    # "Ella's Kitchen" is a brand, "Ella's" is not. The same
+    # distinction that applies to "Earth Mama" vs "Earth" applies here.
+    # This group exists so that future additions of this kind have an
+    # obvious home. Note the plural "ellas": BrandNormalizer strips the
+    # apostrophe from "Ella's", so the sheet key is "ellas kitchen".
+    "ella", "ellas",
 })
+
+
+def is_brand_token(word: str) -> bool:
+    """Return True if `word` could plausibly identify a brand on its own.
+
+    A token is a brand token if it is:
+      - non-empty
+      - at least 3 characters long (shorter tokens are almost always
+        function words, honorifics, or coincidental fragments)
+      - not in GENERIC_WORDS
+
+    This is the single point of truth for the classification. Every
+    matcher in this module that needs to decide "should this token be
+    treated as evidence of brand identity?" calls this function, so
+    that adding a word to GENERIC_WORDS automatically affects every
+    matcher at once.
+
+    Callers should not consult GENERIC_WORDS directly. If a caller
+    needs a different rule (e.g., a different minimum length), add a
+    parameter here rather than duplicating the membership test at the
+    call site.
+    """
+    if not word:
+        return False
+    if len(word) < 3:
+        return False
+    return word not in GENERIC_WORDS
 
 
 class CertificationManager:
@@ -1375,6 +1444,14 @@ class CertificationManager:
                 logger.info(f"Loaded {len(cert_data)} certification records")
                 logger.info(f"Loaded category index for {len(brand_categories)} brands")
 
+                # Sanity-check the alias and synonym maps. A key in either
+                # map that is itself a generic word would cause the map's
+                # canonical value to be substituted for the generic word
+                # at normalization time, producing false matches on
+                # queries for that word. Warn once at load time rather
+                # than discovering it via a user report.
+                self._check_alias_maps_for_generic_keys()
+
                 # ✅ ADD THIS: Verify data is ready
                 if self.data is not None and len(self.data) > 0:
                     logger.info(f"✅ Data verification: {len(self.data)} records ready")
@@ -1394,6 +1471,32 @@ class CertificationManager:
 
             logger.error(traceback.format_exc())
             return False
+
+    @staticmethod
+    def _check_alias_maps_for_generic_keys() -> None:
+        """Warn if any alias or synonym key is a generic word.
+
+        BrandNormalizer.normalize applies BRAND_ALIASES and
+        BRAND_SYNONYMS as text substitutions. If a key is itself a
+        generic word, then normalize("good") would replace "good" with
+        whatever canonical value the map points to, which is almost
+        certainly not the intent and will produce false matches at
+        query time. This check runs once at load time and logs a
+        warning for each offending key. It does not raise, so a bad
+        map does not prevent the app from starting.
+        """
+        for map_name, alias_map in (
+            ("BRAND_ALIASES", BrandNormalizer.BRAND_ALIASES),
+            ("BRAND_SYNONYMS", BrandNormalizer.BRAND_SYNONYMS),
+        ):
+            for key in alias_map.keys():
+                if key in GENERIC_WORDS:
+                    logger.warning(
+                        f"{map_name} contains generic word key {key!r} "
+                        f"-> {alias_map[key]!r}. This will cause normalize() "
+                        f"to substitute the canonical value for any occurrence "
+                        f"of {key!r}, producing false matches at query time."
+                    )
 
     def _extract_certifications(self, row, columns) -> Dict[str, bool]:
         """Extract certifications from a row"""
@@ -1657,13 +1760,51 @@ class CertificationManager:
             matched_brand = brand_normalized
             matched_products = self.data[brand_normalized]  # This is now a dict of products by category
         else:
-            # Check partial brand match
+            # Check partial brand match - gather ALL matches to detect ambiguity
+            partial_matches = []
             for stored_brand, products in self.data.items():
                 if self._improved_partial_match(brand_normalized, stored_brand):
-                    brand_exists = True
-                    matched_brand = stored_brand
-                    matched_products = products
-                    break
+                    partial_matches.append((stored_brand, products))
+
+            if len(partial_matches) == 1:
+                # Exactly one match - safe to use
+                matched_brand, matched_products = partial_matches[0]
+                brand_exists = True
+                logger.info(f"Single partial match found: '{brand_normalized}' -> '{matched_brand}'")
+            elif len(partial_matches) > 1:
+                # Multiple matches - try to narrow down by category
+                if category and category.strip():
+                    category_lower = category.strip().lower()
+                    category_matches = []
+                    for stored_brand, products in partial_matches:
+                        has_category = any(
+                            product_key != "_default" and product_key.lower() == category_lower
+                            for product_key in products.keys()
+                        )
+                        if has_category:
+                            category_matches.append((stored_brand, products))
+
+                    if len(category_matches) == 1:
+                        matched_brand, matched_products = category_matches[0]
+                        brand_exists = True
+                        logger.info(f"Category '{category}' narrowed partial match to: '{matched_brand}'")
+                    else:
+                        candidates = [m[0] for m in partial_matches]
+                        logger.info(f"Ambiguous brand match for '{brand_normalized}' with category '{category}': {candidates}")
+                        return self._get_default_response(
+                            found=False,
+                            match_type="ambiguous_brand",
+                            note=f"Multiple brands match '{brand}': {', '.join(sorted(candidates))}. Please be more specific."
+                        )
+                else:
+                    candidates = [m[0] for m in partial_matches]
+                    logger.info(f"Ambiguous brand match for '{brand_normalized}': {candidates}")
+                    return self._get_default_response(
+                        found=False,
+                        match_type="ambiguous_brand",
+                        note=f"Multiple brands match '{brand}': {', '.join(sorted(candidates))}. Please be more specific."
+                    )
+            # else: brand_exists remains False - fall through to parent company handling
 
         if brand_exists and matched_products:
             # Get categories this brand appears in
