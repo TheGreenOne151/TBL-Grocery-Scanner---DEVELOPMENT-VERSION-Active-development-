@@ -1557,45 +1557,6 @@ class CertificationManager:
 
         return certifications
 
-    def _get_brand_categories(self, brand_normalized: str) -> List[str]:
-        """Get all categories a brand appears in"""
-        categories = set()
-
-        # Check exact match
-        if brand_normalized in self.data:
-            for product_key, product_data in self.data[brand_normalized].items():
-                if product_key != "_default":
-                    categories.add(product_key)
-
-        # Also check partial matches
-        for stored_brand, products in self.data.items():
-            if stored_brand != brand_normalized and self._improved_partial_match(brand_normalized, stored_brand):
-                for product_key, product_data in products.items():
-                    if product_key != "_default":
-                        categories.add(product_key)
-
-        return sorted(list(categories))
-
-    def _find_exact_brand_category_match(self, brand_normalized: str, category: str) -> Optional[Dict]:
-        """Find exact brand + category match in stored data"""
-        category_normalized = category.strip().lower()
-
-        # Check exact brand match
-        if brand_normalized in self.data:
-            # Look for exact category match in this brand's products
-            for product_key, product_data in self.data[brand_normalized].items():
-                if product_key.lower() == category_normalized:
-                    return product_data
-
-        # Check partial brand matches
-        for stored_brand, products in self.data.items():
-            if self._improved_partial_match(brand_normalized, stored_brand):
-                for product_key, product_data in products.items():
-                    if product_key.lower() == category_normalized:
-                        return product_data
-
-        return None
-
     def _find_best_category_match(self, brand_normalized: str, category: str) -> Optional[Dict]:
         """Find best category match for barcode scans when exact match fails"""
         category_lower = category.strip().lower()
@@ -1738,16 +1699,50 @@ class CertificationManager:
         logger.info(f"Looking for certifications for brand: '{brand_normalized}', category: '{category}', source: '{source}'")
 
         # ===== STEP 1: Try exact brand + category match if category provided =====
+        #
+        # Gather ALL matching (stored_brand, product_data) pairs for the
+        # requested category, not just the first. If exactly one match,
+        # return it as exact_product. If more than one, the user's search
+        # is a parent brand name that spans multiple products in the same
+        # category (e.g., "Chobani" with en:dairies when both Chobani
+        # Yogurt and Chobani Oat Milk exist). Return ambiguous_brand with
+        # the candidate list, mirroring STEP 2's behavior for the
+        # no-category case.
         if category and category.strip():
-            exact_match = self._find_exact_brand_category_match(brand_normalized, category)
-            if exact_match:
-                logger.info(f"Found exact match: brand='{brand_normalized}', category='{category}'")
+            category_lower = category.strip().lower()
+            category_matches = []
+            for stored_brand, products in self.data.items():
+                if not self._improved_partial_match(brand_normalized, stored_brand):
+                    continue
+                for product_key, product_data in products.items():
+                    if product_key != "_default" and product_key.lower() == category_lower:
+                        category_matches.append((stored_brand, product_data))
+                        break  # only one row per brand/category pair
+
+            if len(category_matches) == 1:
+                stored_brand, product_data = category_matches[0]
+                logger.info(
+                    f"Found exact brand+category match: "
+                    f"brand='{stored_brand}', category='{category}'"
+                )
                 return self._format_response(
                     found=True,
-                    data=exact_match,
+                    data=product_data,
                     search_brand=brand,
                     match_type="exact_product"
                 )
+            elif len(category_matches) > 1:
+                candidates = [m[0] for m in category_matches]
+                logger.info(
+                    f"Ambiguous brand+category match for '{brand_normalized}' "
+                    f"with category '{category}': {candidates}"
+                )
+                return self._get_default_response(
+                    found=False,
+                    match_type="ambiguous_brand",
+                    note=f"Multiple brands match '{brand}' in {category}: {', '.join(sorted(candidates))}. Please be more specific."
+                )
+            # else: zero matches; fall through to STEP 2
 
         # ===== STEP 2: Check if brand exists in our data =====
         brand_exists = False

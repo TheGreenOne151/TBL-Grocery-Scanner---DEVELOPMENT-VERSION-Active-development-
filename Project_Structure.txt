@@ -1,12 +1,12 @@
 tbl-grocery-app/
-├── elegant_app.py                          # Main FastAPI application (UPDATED for Redis + Html5Qrcode + unified generic-word filtering)
+├── elegant_app.py                          # Main FastAPI application (UPDATED for Redis + Html5Qrcode + unified generic-word filtering + STEP 1 ambiguity fix)
 ├── requirements.txt                        # Python dependencies (UPDATED: added redis>=5.0.0)
 ├── runtime.txt                            # python-3.10.0
 ├── Procfile                               # Gunicorn with 2 workers
 ├── .gitignore                             # Git ignore rules
 ├── render.yaml                            # Render deployment config
 ├── index.html                             # Frontend HTML interface (UPDATED with Html5Qrcode scanner + anti-glare)
-├── comprehensive_grocery_certifications_COMPLETE.xlsx  # Certification database (3,930 brands)
+├── comprehensive_grocery_certifications_COMPLETE.xlsx  # Certification database (3,927 brands)
 ├── brand_maintenance.py                    # Brand consistency checker
 ├── MAINTENANCE.md                          # Brand maintenance guide
 ├── Project_Structure.txt                   # This file (UPDATED: unified generic-word filtering)
@@ -68,24 +68,30 @@ tbl-grocery-app/
 # ├── Center Pixel Diagnostics              # Real-time RGB monitoring for debugging
 # └── Brand Matching Comments               # Documentation for complex brand matching logic
 
-# 🆕 Brand-Prefix Ambiguity Fix + Unified Generic-Word Filtering (October 2026):
-# ├── get_certifications ambiguity guard    # Gathers ALL partial matches, not just the first
-# ├── match_type="ambiguous_brand"          # New response when multiple brands share a prefix
-# ├── is_brand_token() helper               # Single source of truth for generic-vs-identifying
-# ├── _improved_partial_match()             # Routes shared-word filter through is_brand_token
-# ├── find_parent_company()                 # Pass 2 first-word anchor respects is_brand_token
-# ├── extract_brand_from_product_text()     # Candidate keys filtered through is_brand_token
-# ├── GENERIC_WORDS extended                # +22 words, grouped by kind (marketing, natural-world, venues, titles, proper names)
-# ├── Plural variants added                 # "ellas", "caffe" — sheet uses plural/foreign forms
-# ├── _check_alias_maps_for_generic_keys()  # Startup warning if BRAND_ALIASES/BRAND_SYNONYMS keys are generic
-# ├── Frontend: searchProduct() handler     # Shows ambiguous_brand note as error banner
-# ├── Frontend: displayResults() guard      # Early return for ambiguous_brand before rendering
-# └── Frontend: success-banner exclusion    # Success banner skipped on ambiguous_brand and category_required
+# # 🆕 Brand-Prefix Ambiguity Fix + Unified Generic-Word Filtering (October 2026):
+# ├── get_certifications STEP 2 guard        # Gathers ALL partial matches when no category is given
+# ├── get_certifications STEP 1 guard        # Now gathers ALL brand+category matches, not just the first
+# ├── match_type="ambiguous_brand"           # Response when multiple brands share a prefix, with or without category
+# ├── Removed _find_exact_brand_category_match()  # Its only caller (STEP 1) now inlines the gather-then-decide logic
+# ├── is_brand_token() helper                # Single source of truth for generic-vs-identifying
+# ├── _improved_partial_match()              # Routes shared-word filter through is_brand_token
+# ├── find_parent_company()                  # Pass 2 first-word anchor respects is_brand_token
+# ├── extract_brand_from_product_text()      # Candidate keys filtered through is_brand_token
+# ├── GENERIC_WORDS extended                 # +22 words, grouped by kind (marketing, natural-world, venues, titles, proper names)
+# ├── Plural variants added                  # "ellas", "caffe" — sheet uses plural/foreign forms
+# ├── _check_alias_maps_for_generic_keys()   # Startup warning if BRAND_ALIASES/BRAND_SYNONYMS keys are generic
+# ├── Frontend: searchProduct() handler      # Shows ambiguous_brand note as error banner
+# ├── Frontend: displayResults() guard       # Early return for ambiguous_brand before rendering
+# └── Frontend: success-banner exclusion     # Success banner skipped on ambiguous_brand and category_required
 #
 # What this fixes:
 # - Searching "Chobani" returned "Chobani Oat" certifications silently.
 #   Now returns: "Multiple brands match 'Chobani': chobani oat,
 #   chobani yogurt. Please be more specific."
+# - Parent brand with two products in the same category no longer
+#   silently resolves to the first: "Chobani" + en:dairies with both
+#   Chobani Yogurt and Chobani Oat Milk in the sheet now returns
+#   ambiguous_brand listing both.
 # - Generic words like "earth", "love", "ella", "cafe" no longer
 #   anchor to a parent company or brand key just because they appear
 #   as the first word of an unrelated multi-word brand.
@@ -93,7 +99,14 @@ tbl-grocery-app/
 # Design: every prefix-based matcher now consults the same
 # generic-word boundary via is_brand_token(). Adding a word to
 # GENERIC_WORDS affects all matchers at once. No matcher reads
-# GENERIC_WORDS directly except the helper.
+# GENERIC_WORDS directly except the helper. STEP 1 and STEP 2 of
+# get_certifications use the same gather-then-decide pattern, so the
+# response shape is consistent whether the caller supplied a
+# category or not.
+#
+# Data changes in this cycle:
+# ├── Removed "Chobani Oat" row       # Product discontinued; sheet now has only Chobani Yogurt
+# └── Sheet row count: 3,927          # Down from 3,930
 
 # 🗄️ Cache Performance Improvements:
 # ├── 99% reduction in OFF API calls        # Products served from Redis instead of API
