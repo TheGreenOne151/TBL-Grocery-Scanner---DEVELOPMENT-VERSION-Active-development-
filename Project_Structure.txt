@@ -1,19 +1,20 @@
 tbl-grocery-app/
-├── elegant_app.py                          # Main FastAPI application (UPDATED for Redis + Html5Qrcode + unified generic-word filtering + STEP 1 ambiguity fix)
+├── elegant_app.py                          # Main FastAPI application (UPDATED: normalizer keeps "the"; suffix strip guarded by content-word count; two-content-word partial match)
 ├── requirements.txt                        # Python dependencies (UPDATED: added redis>=5.0.0)
 ├── runtime.txt                            # python-3.10.0
 ├── Procfile                               # Gunicorn with 2 workers
 ├── .gitignore                             # Git ignore rules
 ├── render.yaml                            # Render deployment config
 ├── index.html                             # Frontend HTML interface (UPDATED with Html5Qrcode scanner + anti-glare)
-├── comprehensive_grocery_certifications_COMPLETE.xlsx  # Certification database (3,927 brands)
+├── comprehensive_grocery_certifications_COMPLETE.xlsx  # Certification database (3,959 rows, clean)
+├── comprehensive_grocery_certifications_COMPLETE.csv   # Working artifact for sheet edits; not tracked in git
 ├── brand_maintenance.py                    # Brand consistency checker
 ├── MAINTENANCE.md                          # Brand maintenance guide
-├── Project_Structure.txt                   # This file (UPDATED: unified generic-word filtering)
+├── Project_Structure.txt                   # This file
 ├── README.md                               # Project documentation
 └── create_excel.py                         # Excel creation script (optional)
 
-# 🗄️ Caching System (NEW):
+# 🗄️ Caching System:
 ├── Redis Cache (Oregon)                    # Persistent caching service
 │   ├── 30-day TTL                         # Auto-expiration for cached products
 │   ├── Internal URL connection            # Secure, region-matched networking
@@ -22,10 +23,10 @@ tbl-grocery-app/
 
 # 📊 API Endpoints:
 ├── GET  /                              # Frontend interface
-├── GET  /health                        # Health check (UPDATED: shows Redis status)
-├── GET  /scanner/health                # Scanner system health (UPDATED: shows Redis status)
-├── GET  /cache/stats                   # 🆕 Redis cache statistics
-├── POST /cache/clear                   # 🆕 Clear all caches (Redis + in-memory)
+├── GET  /health                        # Health check (shows Redis status)
+├── GET  /scanner/health                # Scanner system health (shows Redis status)
+├── GET  /cache/stats                   # Redis cache statistics
+├── POST /cache/clear                   # Clear all caches (Redis + in-memory)
 ├── GET  /scoring-methodology           # Scoring methodology explanation
 ├── GET  /data-sources                  # Data sources information
 ├── GET  /excel/verify                  # Verify Excel data stats & health
@@ -68,13 +69,13 @@ tbl-grocery-app/
 # ├── Center Pixel Diagnostics              # Real-time RGB monitoring for debugging
 # └── Brand Matching Comments               # Documentation for complex brand matching logic
 
-# # 🆕 Brand-Prefix Ambiguity Fix + Unified Generic-Word Filtering (October 2026):
+# 🆕 Brand-Prefix Ambiguity Fix + Unified Generic-Word Filtering (October 2026):
 # ├── get_certifications STEP 2 guard        # Gathers ALL partial matches when no category is given
 # ├── get_certifications STEP 1 guard        # Now gathers ALL brand+category matches, not just the first
 # ├── match_type="ambiguous_brand"           # Response when multiple brands share a prefix, with or without category
 # ├── Removed _find_exact_brand_category_match()  # Its only caller (STEP 1) now inlines the gather-then-decide logic
 # ├── is_brand_token() helper                # Single source of truth for generic-vs-identifying
-# ├── _improved_partial_match()              # Routes shared-word filter through is_brand_token
+# ├── _improved_partial_match()              # Two-content-word rule (see below)
 # ├── find_parent_company()                  # Pass 2 first-word anchor respects is_brand_token
 # ├── extract_brand_from_product_text()      # Candidate keys filtered through is_brand_token
 # ├── GENERIC_WORDS extended                 # +22 words, grouped by kind (marketing, natural-world, venues, titles, proper names)
@@ -103,10 +104,57 @@ tbl-grocery-app/
 # get_certifications use the same gather-then-decide pattern, so the
 # response shape is consistent whether the caller supplied a
 # category or not.
+
+# 🆕 Sheet Cleanup + Normalizer Refactor (October 2026, second cycle):
+# ├── Sheet dedup                             # Collapsed ~330 exact-duplicate and same-cert rows
+# ├── Sheet conflict resolution               # 21 manually-reviewed (brand, category) conflicts resolved to chosen cert values
+# ├── Corporate suffix strip                  # "Inc", "LLC", "Ltd", "Limited", "Corporation", "Corp" removed from Product_Brand across 348 rows
+# ├── Uncertified brand removal               # Cha? Organics, C&H deleted (no official certifications)
+# ├── Placeholder row removal                 # A-Z and # deleted (27 single-character rows)
+# ├── Sheet row count: 4,346 → 3,959          # Workbook / CSV after cleanup
+# ├── Loaded record count: 3,898              # Distinct normalized brand keys after load
+# │
+# ├── BrandNormalizer.normalize(): "the" preserved          # The article is part of the brand name ("The Honest Company")
+# ├── BrandNormalizer.normalize(): suffix strip guarded     # Refuses any strip that would reduce a multi-word name to a single content word
+# │                                                          # "The Honest Company" stays "the honest company"
+# │                                                          # "Best Foods" stays "best foods"
+# │                                                          # "Candy Co, LLC" stays "candy co"
+# ├── Replacement order: punctuation first, then strips     # So the content-word guard sees the final word form
+# ├── Longest-phrase-first iteration                         # " company" tried before " co"
+# ├── FUNCTION_WORDS set added                               # Articles, conjunctions, prepositions, pronouns
+# │                                                          # Distinct from GENERIC_WORDS content words (honest, best, candy, company, foods)
+# ├── _content_word_count() helper                          # Counts non-function words
+# ├── _improved_partial_match(): two-content-word rule      # Two shared content words → match, even if both are in GENERIC_WORDS
+# │                                                          # "Honest Company" matches "the honest company"
+# │                                                          # Single generic word → still requires category pairing
+# └── "bare" added to GENERIC_WORDS                         # "Bare" does not match "The Bare Home" alone
+#
+# What this fixes:
+# - 47 non-brand-token keys down to 12. All remaining offenders are
+#   real brands whose names are single generic words, or single-word
+#   brands: Bare, CL, Freshly, KIND, LU, Naturally, O?, Premium,
+#   V8, Wellness, Wise, Zo?.
+# - Brands like "The Honest Company", "Best Foods", "Candy Co",
+#   "Grove Co", "Co North", "Tea Group", "International Coffee Co."
+#   now normalize to multi-content-word keys instead of single
+#   generic-word keys.
+# - A user typing "Honest Company" (without "The") matches the key
+#   "the honest company" via the two-content-word rule. The response
+#   carries brand_was_corrected: true and canonical_brand.
+# - A user typing "The Honest Company" exact-matches the key.
+#
+# Design: GENERIC_WORDS describes words that cannot identify a brand
+# alone. FUNCTION_WORDS is the narrower subset — articles,
+# conjunctions, prepositions, pronouns — that carry no brand
+# meaning at all, even in combination. The normalizer uses
+# content-word counts (total words minus function words) to decide
+# when a suffix strip would destroy a distinctive pairing.
 #
 # Data changes in this cycle:
-# ├── Removed "Chobani Oat" row       # Product discontinued; sheet now has only Chobani Yogurt
-# └── Sheet row count: 3,927          # Down from 3,930
+# ├── Sheet cleanup                            # See above
+# ├── Removed "Cha? Organics" rows             # Company self-attests Fair Trade but holds no official cert
+# ├── Removed "C&H" rows                       # No official certs
+# └── Removed single-letter placeholder rows   # A-Z, #
 
 # 🗄️ Cache Performance Improvements:
 # ├── 99% reduction in OFF API calls        # Products served from Redis instead of API
@@ -127,4 +175,4 @@ tbl-grocery-app/
 # Development folders (excluded by .gitignore):
 # ├── venv/                                 # Virtual environment
 # ├── __pycache__/                          # Python cache
-# └── .vs/                                   # Visual Studio cache
+└── .vs/                                   # Visual Studio cache

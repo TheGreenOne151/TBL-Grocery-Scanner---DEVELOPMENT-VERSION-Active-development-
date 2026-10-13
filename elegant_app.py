@@ -975,51 +975,8 @@ class BrandNormalizer:
 
         normalized = brand.strip().lower()
 
-        # Remove common prefixes and suffixes
-        remove_phrases = [
-            " the ",
-            " inc",
-            " llc",
-            " co",
-            "co ",
-            " corp",
-            " corporation",
-            " company",
-            " ltd",
-            " limited",
-            " plc",
-            " group",
-            " holdings",
-            " foods",
-            " products",
-            " brands",
-            " international",
-            " usa",
-            " us",
-            " uk",
-            " canada",
-            " europe",
-            "Â®",
-            "â„¢",
-            "Â©",
-            "(",
-            ")",
-            "[",
-            "]",
-            "{",
-            "}",
-            "|",
-            "\\",
-            "/",
-        ]
-
-        for phrase in remove_phrases:
-            phrase = phrase.strip()
-            if not phrase:
-                continue
-            normalized = re.sub(r"\b" + re.escape(phrase) + r"\b", "", normalized)
-
-        # Replace common symbols and special characters
+        # Replace common symbols and special characters FIRST,
+        # so the word-count guard below sees the final word form.
         replacements = {
             "'": "",
             "&": "and",
@@ -1044,6 +1001,63 @@ class BrandNormalizer:
 
         for old, new in replacements.items():
             normalized = normalized.replace(old, new)
+
+        # Remove common prefixes and suffixes.
+        #
+        # Applied with a guard: refuse any strip that would reduce a
+        # multi-word name to a single content word. "The Honest
+        # Company" must not become "honest". "Best Foods" must not
+        # become "best". The pairing of two content words is what
+        # makes many brand names distinctive.
+        #
+        # Process longest phrases first, so " company" is tried
+        # before " co".
+        remove_phrases = [
+            " inc",
+            " llc",
+            " co",
+            "co ",
+            " corp",
+            " corporation",
+            " company",
+            " ltd",
+            " limited",
+            " plc",
+            " group",
+            " holdings",
+            " foods",
+            " products",
+            " brands",
+            " international",
+            " usa",
+            " us",
+            " uk",
+            " canada",
+            " europe",
+            "®",
+            "™",
+            "©",
+            "(",
+            ")",
+            "[",
+            "]",
+            "{",
+            "}",
+            "|",
+            "\\",
+            "/",
+        ]
+
+        ordered_phrases = sorted(remove_phrases, key=lambda p: -len(p.strip()))
+        for phrase in ordered_phrases:
+            phrase_clean = phrase.strip()
+            if not phrase_clean:
+                continue
+            pattern = r"\b" + re.escape(phrase_clean) + r"\b"
+            candidate = re.sub(pattern, "", normalized).strip()
+            if _content_word_count(normalized) >= 2 and _content_word_count(candidate) < 2:
+                continue
+            normalized = candidate
 
         # Handle brand aliases
         for alias, canonical in cls.BRAND_ALIASES.items():
@@ -1263,7 +1277,7 @@ GENERIC_WORDS = frozenset({
     "breakfast", "recipe", "cafe", "caffe",
 
     # --- marketing / adjective words (positive-sounding, non-identifying) ---
-    "natural", "naturals", "naturally", "organic", "organics",
+    "natural", "bare", "naturals", "naturally", "organic", "organics",
     "fresh", "freshly", "pure", "purely", "simple", "simply",
     "clean", "cleaner", "cleaning", "clear", "bright", "bold",
     "good", "better", "best", "great", "grand", "green", "happy",
@@ -1338,6 +1352,47 @@ GENERIC_WORDS = frozenset({
     "ella", "ellas",
 })
 
+# =====================================================================
+# FUNCTION_WORDS
+#
+# The subset of GENERIC_WORDS that consists of function words:
+# articles, conjunctions, prepositions, pronouns, and short linking
+# words. These never carry meaning about a brand's identity.
+#
+# Everything else in GENERIC_WORDS is a "content word that is
+# generic in isolation" — like "honest", "best", "candy", "company",
+# "foods". Those words are not distinctive on their own (one generic
+# word is not a brand) but ARE distinctive in combination (two
+# generic words together can be a brand name, e.g. "Honest Company").
+#
+# This distinction drives two things:
+#   - The normalizer refuses to strip a suffix if doing so would
+#     reduce a multi-word name to a single content word.
+#   - The partial matcher treats two shared content words as
+#     sufficient evidence of a match, even if both are generic.
+# =====================================================================
+FUNCTION_WORDS = frozenset({
+    "a", "an", "the",
+    "and", "or",
+    "of", "for", "with", "by", "to", "at", "in", "on", "as",
+    "is", "it", "its",
+    "my", "your", "our",
+    "we", "us", "you",
+    "they", "them",
+    "this", "that", "these", "those",
+})
+
+
+def _content_word_count(text: str) -> int:
+    """Count words in `text` that are not function words.
+
+    Function words (articles, conjunctions, prepositions, pronouns)
+    carry no brand-identifying information. Content words — even
+    generic ones like "honest" or "company" — can.
+    """
+    if not text:
+        return 0
+    return sum(1 for w in text.split() if w not in FUNCTION_WORDS)
 
 def is_brand_token(word: str) -> bool:
     """Return True if `word` could plausibly identify a brand on its own.
@@ -1622,22 +1677,23 @@ class CertificationManager:
 
     @staticmethod
     def _improved_partial_match(search_brand: str, stored_brand: str) -> bool:
-        """Improved brand matching that refuses single-word matches on
-        generic words.
+        """Partial brand match honoring the "two content words"
+        principle.
+
+        A single generic word is not an identifier, but two content
+        words together are — even if both are generic. "Honest
+        Company" matches "The Honest Company" because they share the
+        content words "honest" and "company". "Honest" alone does
+        not match, because it shares only one content word with the
+        stored name and that word is generic.
 
         Rule:
-          1. Exact match                                    -> True
-          2. Two or more non-generic shared words           -> True
-          3. Exactly one non-generic shared word            -> True only if the
-             two full strings are near-identical or one is a
-             contiguous substring of the other
-          4. Zero non-generic shared words (only generic)   -> False
-
-        The single-word branch deliberately does NOT use an allowlist of
-        "distinctive" brand names. Such a list cannot be comprehensive.
-        Instead it relies on substring containment and string similarity,
-        which are properties of the two strings being compared, not of a
-        hardcoded vocabulary.
+          1. Exact match                                -> True
+          2. Two or more shared content words           -> True
+          3. One shared content word, non-generic       -> True only if
+             substring containment or similarity >= 0.85
+          4. One shared content word, generic           -> False
+          5. Zero shared content words                  -> False
         """
         if search_brand == stored_brand:
             return True
@@ -1645,21 +1701,29 @@ class CertificationManager:
         search_words = set(search_brand.split())
         stored_words = set(stored_brand.split())
         common = search_words & stored_words
-        meaningful = {w for w in common if w not in GENERIC_WORDS}
 
-        # Two or more non-generic words in common -> match.
-        if len(meaningful) >= 2:
+        # Content words are words that aren't function words
+        # (articles, conjunctions, prepositions, pronouns).
+        content_common = {w for w in common if w not in FUNCTION_WORDS}
+
+        # Two or more content words shared -> match.
+        # This handles "honest company" vs "the honest company".
+        if len(content_common) >= 2:
             return True
 
-        # Exactly one non-generic word in common -> require near-identity
-        # or substring containment.
-        if len(meaningful) == 1:
+        # Exactly one content word shared.
+        if len(content_common) == 1:
+            shared = next(iter(content_common))
+            # A single generic word is not distinctive.
+            if shared in GENERIC_WORDS:
+                return False
+            # Otherwise require near-identity or substring containment.
             if search_brand in stored_brand or stored_brand in search_brand:
                 return True
             similarity = SequenceMatcher(None, search_brand, stored_brand).ratio()
             return similarity >= 0.85
 
-        # All shared words are generic -> no match.
+        # No content words shared -> no match.
         return False
 
     def get_certifications(self, brand: str, category: str = None, source: str = "manual") -> Dict[str, Any]:
