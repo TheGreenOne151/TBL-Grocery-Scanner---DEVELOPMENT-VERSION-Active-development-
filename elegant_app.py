@@ -1426,9 +1426,15 @@ class CertificationManager:
 
     def __init__(self):
         self.data = None
-        self.brand_categories = None  # NEW: Track categories per brand
+        self.brand_categories = None  # Track categories per brand
         self.last_loaded = None
         self._lock = threading.Lock()
+        # Inverted indices for the /sheet-search endpoints.
+        # Built at the end of load_certification_data().
+        # Both map token -> list of (brand_key, product_key) refs
+        # into self.data.
+        self.category_index = {}   # Column B (en: taxonomy codes)
+        self.cert_cat_index = {}   # Column H (product-form tokens)
 
     def load_certification_data(self) -> bool:
         """Load certification data from Excel file and build category index"""
@@ -1498,6 +1504,11 @@ class CertificationManager:
 
                 logger.info(f"Loaded {len(cert_data)} certification records")
                 logger.info(f"Loaded category index for {len(brand_categories)} brands")
+
+                # Build inverted indices for /sheet-search endpoints
+                self._build_search_indices()
+
+                self._check_alias_maps_for_generic_keys()
 
                 # Sanity-check the alias and synonym maps. A key in either
                 # map that is itself a generic word would cause the map's
@@ -1611,6 +1622,65 @@ class CertificationManager:
             certifications[cert_type] = value
 
         return certifications
+
+    def _build_search_indices(self) -> None:
+        """Build inverted indices for /sheet-search endpoints.
+
+        category_index: token -> [(brand_key, product_key), ...]
+            Tokens from Column B (Category). One per row. Uses the
+            en: taxonomy code verbatim, lowercased. Serves the
+            researcher-mode /sheet-search/taxonomy endpoint.
+
+        cert_cat_index: token -> [(brand_key, product_key), ...]
+            Tokens from Column H (Certification_Categories). Split on
+            comma, trimmed, lowercased. Column H is now clean plain
+            text (no parentheticals, no en: prefix, no hyphens, no
+            uppercase). Serves the shopper-mode /sheet-search
+            endpoint.
+
+        Both indices point into self.data, so they stay consistent
+        with it by construction. Rebuilt on every load; never mutated
+        incrementally.
+        """
+        self.category_index = {}
+        self.cert_cat_index = {}
+
+        if self.data is None:
+            return
+
+        for brand_key, products in self.data.items():
+            for product_key, product_data in products.items():
+                if product_key == "_default":
+                    continue
+                ref = (brand_key, product_key)
+
+                # Column B token (one per row)
+                cat_token = product_key.strip().lower()
+                if cat_token:
+                    self.category_index.setdefault(cat_token, []).append(ref)
+
+                # Column H tokens (many per row)
+                row = product_data.get("row_data") or {}
+                raw_h = row.get("Certification_Categories")
+                if raw_h is None:
+                    continue
+                try:
+                    if raw_h != raw_h:  # NaN check without importing pandas
+                        continue
+                except Exception:
+                    pass
+                h_str = str(raw_h).strip().lower()
+                if not h_str:
+                    continue
+                for token in h_str.split(","):
+                    token = token.strip()
+                    if token:
+                        self.cert_cat_index.setdefault(token, []).append(ref)
+
+        logger.info(
+            f"Search indices built: {len(self.category_index)} taxonomy tokens, "
+            f"{len(self.cert_cat_index)} product-form tokens"
+        )
 
     def _find_best_category_match(self, brand_normalized: str, category: str) -> Optional[Dict]:
         """Find best category match for barcode scans when exact match fails"""
@@ -4291,6 +4361,295 @@ async def search_brand(q: str = Query(...), category: str = Query(None)):
         content={
             "success": False,
             "message": "No matching brands found locally or on the web."})
+
+# ==================== SHEET SEARCH ENDPOINTS ====================
+
+_VALID_CERT_KEYS = frozenset({
+    "b_corp", "fair_trade", "rainforest_alliance", "leaping_bunny",
+})
+
+
+def _parse_cert_filter(certs: str) -> set:
+    """Parse the certs query param into a validated set."""
+    cert_filter = {c.strip() for c in (certs or "").split(",") if c.strip()}
+    unknown = cert_filter - _VALID_CERT_KEYS
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown cert key(s): {sorted(unknown)}. "
+                   f"Valid: {sorted(_VALID_CERT_KEYS)}",
+        )
+    return cert_filter
+
+
+def _score_and_format_sheet_row(
+    brand_key: str,
+    product_key: str,
+    pd_data: dict,
+    matched_term: Optional[str] = None,
+) -> dict:
+    """Score one row via the shared scoring path and build a result dict.
+
+    Reuses certification_manager._format_response and
+    scoring_manager.calculate_brand_scores so the browse tab's
+    numbers match every other tab.
+    """
+    cert_result = certification_manager._format_response(
+        found=True, data=pd_data, match_type="sheet_search"
+    )
+    scores = scoring_manager.calculate_brand_scores(
+        pd_data.get("original_brand", brand_key),
+        product_key,
+        cert_result,
+    )
+    tbl = calculate_overall_score(
+        scores.social, scores.environmental, scores.economic
+    )
+    return {
+        "brand": pd_data.get("original_brand", brand_key),
+        "category": product_key,
+        "certifications": scores.certifications,
+        "overall_tbl_score": tbl["overall_score"],
+        "grade": tbl["grade"],
+        "social_score": scores.social,
+        "environmental_score": scores.environmental,
+        "economic_score": scores.economic,
+        "matched_term": matched_term,
+    }
+
+
+def _run_sheet_search(
+    refs: list,
+    matched_terms: dict,
+    cert_filter: set,
+    certified_only: bool,
+    limit: int,
+    offset: int,
+    q: str,
+    source: str,
+) -> dict:
+    """Common logic for /sheet-search and /sheet-search/taxonomy.
+
+    refs: list of (brand_key, product_key) to consider
+    matched_terms: (brand_key, product_key) -> token that matched
+    """
+    results = []
+    for ref in refs:
+        brand_key, product_key = ref
+        pd_data = certification_manager.data[brand_key][product_key]
+        certs_bool = pd_data.get("certifications") or {}
+
+        if cert_filter:
+            if not all(certs_bool.get(c) for c in cert_filter):
+                continue
+        elif certified_only:
+            if not any(certs_bool.get(k) for k in _VALID_CERT_KEYS):
+                continue
+
+        results.append(_score_and_format_sheet_row(
+            brand_key, product_key, pd_data,
+            matched_term=matched_terms.get(ref),
+        ))
+
+    # Sort BEFORE slice: desc by score, then ascending brand for
+    # stable pagination.
+    results.sort(key=lambda r: (-r["overall_tbl_score"], r["brand"]))
+
+    total = len(results)
+    page = results[offset:offset + limit]
+
+    return {
+        "query": q,
+        "source": source,
+        "certs": sorted(cert_filter),
+        "total_matches": total,
+        "showing": len(page),
+        "offset": offset,
+        "results": page,
+    }
+
+
+@app.get("/sheet-search")
+async def sheet_search(
+    q: str = Query("", max_length=100),
+    certs: str = Query(""),
+    certified_only: bool = True,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """Product-form search (Column H tokens). Shopper default.
+
+    q is an exact match against a Column H token, case-insensitive.
+    Results are all rows whose Column H contains that token, sorted
+    desc by overall TBL score, then ascending by brand.
+
+    When q is empty and no certs filter is given, returns 400 —
+    there's nothing useful to show.
+    """
+    if certification_manager.data is None:
+        certification_manager.load_certification_data()
+    if certification_manager.data is None:
+        raise HTTPException(status_code=503, detail="Certification data not loaded")
+
+    q_norm = q.strip().lower()
+    cert_filter = _parse_cert_filter(certs)
+
+    if not q_norm and not cert_filter:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide a product-form term (q) or at least one cert filter (certs).",
+        )
+
+    if q_norm:
+        refs = list(certification_manager.cert_cat_index.get(q_norm, []))
+        matched_terms = {r: q_norm for r in refs}
+    else:
+        # No q — scan everything, cert filter narrows it
+        refs = [
+            (bk, pk)
+            for bk, products in certification_manager.data.items()
+            for pk in products
+            if pk != "_default"
+        ]
+        matched_terms = {}
+
+    return _run_sheet_search(
+        refs=refs,
+        matched_terms=matched_terms,
+        cert_filter=cert_filter,
+        certified_only=certified_only,
+        limit=limit,
+        offset=offset,
+        q=q,
+        source="product-form",
+    )
+
+
+@app.get("/sheet-search/taxonomy")
+async def sheet_search_taxonomy(
+    q: str = Query("", max_length=100),
+    certs: str = Query(""),
+    certified_only: bool = True,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """Taxonomy search (Column B en: codes). Researcher path.
+
+    q is an exact match against a Column B value, case-insensitive.
+    The en: prefix is expected (e.g. "en:coffees"). Results are all
+    rows categorized under that taxonomy, sorted desc by overall TBL
+    score, then ascending by brand.
+
+    When q is empty and no certs filter is given, returns 400.
+    """
+    if certification_manager.data is None:
+        certification_manager.load_certification_data()
+    if certification_manager.data is None:
+        raise HTTPException(status_code=503, detail="Certification data not loaded")
+
+    q_norm = q.strip().lower()
+    cert_filter = _parse_cert_filter(certs)
+
+    if not q_norm and not cert_filter:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide a taxonomy code (q) or at least one cert filter (certs).",
+        )
+
+    if q_norm:
+        refs = list(certification_manager.category_index.get(q_norm, []))
+        matched_terms = {r: q_norm for r in refs}
+    else:
+        refs = [
+            (bk, pk)
+            for bk, products in certification_manager.data.items()
+            for pk in products
+            if pk != "_default"
+        ]
+        matched_terms = {}
+
+    return _run_sheet_search(
+        refs=refs,
+        matched_terms=matched_terms,
+        cert_filter=cert_filter,
+        certified_only=certified_only,
+        limit=limit,
+        offset=offset,
+        q=q,
+        source="taxonomy",
+    )
+
+
+@app.get("/sheet-search/tokens")
+async def sheet_search_tokens(
+    prefix: str = Query("", max_length=100),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """Autocomplete for /sheet-search (Column H product-form tokens).
+
+    prefix may be empty. Empty prefix returns the full list (up to
+    limit), sorted by brand count desc then alphabetically. Non-empty
+    prefix returns tokens that start with prefix, same sort.
+
+    Result items are { token, count } where count is the number of
+    rows carrying that token.
+    """
+    if certification_manager.data is None:
+        certification_manager.load_certification_data()
+    if certification_manager.data is None:
+        raise HTTPException(status_code=503, detail="Certification data not loaded")
+
+    p = prefix.strip().lower()
+    counts = {}
+    for token, refs in certification_manager.cert_cat_index.items():
+        if not p or token.startswith(p):
+            counts[token] = len(refs)
+
+    ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return {
+        "prefix": prefix,
+        "source": "product-form",
+        "tokens": [
+            {"token": t, "count": c}
+            for t, c in ordered[:limit]
+        ],
+    }
+
+
+@app.get("/sheet-search/taxonomies")
+async def sheet_search_taxonomies(
+    prefix: str = Query("", max_length=100),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """Autocomplete for /sheet-search/taxonomy (Column B en: codes).
+
+    prefix may be empty. Empty prefix returns the full list (up to
+    limit), sorted by row count desc then alphabetically. Non-empty
+    prefix returns taxonomy codes starting with prefix.
+
+    Result items are { token, count } where token is the en: code and
+    count is the number of rows in that taxonomy.
+    """
+    if certification_manager.data is None:
+        certification_manager.load_certification_data()
+    if certification_manager.data is None:
+        raise HTTPException(status_code=503, detail="Certification data not loaded")
+
+    p = prefix.strip().lower()
+    counts = {}
+    for token, refs in certification_manager.category_index.items():
+        if not p or token.startswith(p):
+            counts[token] = len(refs)
+
+    ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return {
+        "prefix": prefix,
+        "source": "taxonomy",
+        "tokens": [
+            {"token": t, "count": c}
+            for t, c in ordered[:limit]
+        ],
+    }
 
 # ==================== EXCEL MANAGEMENT ENDPOINTS ====================
 
