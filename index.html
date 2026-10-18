@@ -10,12 +10,12 @@
 
     <script>
       // Verify library loaded
-      window.onload = function() {
+      window.addEventListener('load', function() {
         console.log('Html5Qrcode loaded:', typeof Html5Qrcode !== 'undefined');
         if (typeof Html5Qrcode === 'undefined') {
               console.error('Html5Qrcode failed to load - check network tab');
             }
-        };
+        });
     </script>
 
     <style>
@@ -1110,15 +1110,19 @@
         let currentUser = null;
         let lastSearchResult = null;
         let compareList = JSON.parse(localStorage.getItem('compareList') || '[]');
+        // === BROWSE TAB STATE ===
+        let browseMode = 'product-form';
+        let browseSelectedCerts = [];
+        let browseDebounceTimer;
 
         // Initialize on load
-        window.onload = function() {
+        window.addEventListener('load', function() {
             checkLoginStatus();
             updateCompareDisplay();
 
             // Trigger the search type change handler to show/hide category dropdown
             document.getElementById('searchType').dispatchEvent(new Event('change'));
-        };
+        });
 
         // Tab switching
         function switchTab(tabName) {
@@ -1648,6 +1652,185 @@
             searchProduct();
         }
 
+        // ==================== BROWSE TAB ====================
+        // Independent of the Shop & Scan suggestion flow above.
+        // Do not share state or DOM nodes with #searchInput / #suggestions.
+
+        // --- Mode switch: clears everything ---
+        document.getElementById('browseMode').addEventListener('change', function () {
+            browseMode = this.value;
+
+            const label = document.getElementById('browseLabel');
+            const input = document.getElementById('browseInput');
+
+            if (browseMode === 'product-form') {
+                label.textContent = 'Product form:';
+                input.placeholder = 'e.g. coffees, cane sugar, shampoo';
+            } else {
+                label.textContent = 'Taxonomy:';
+                input.placeholder = 'e.g. en:dairies, en:cosmetics';
+            }
+
+            input.value = '';
+            document.getElementById('browseSuggestions').classList.remove('show');
+            document.getElementById('browseSuggestions').innerHTML = '';
+            document.getElementById('browseResults').innerHTML = '';
+            document.getElementById('browseResultsEmpty').style.display = 'block';
+        });
+
+        // --- Cert pill toggles (AND semantics on backend) ---
+        document.querySelectorAll('#browseCertPills .cert-pill').forEach(function (pill) {
+            pill.addEventListener('click', function () {
+                const cert = this.dataset.cert;
+                this.classList.toggle('active');
+
+                const idx = browseSelectedCerts.indexOf(cert);
+                if (idx === -1) {
+                    browseSelectedCerts.push(cert);
+                } else {
+                    browseSelectedCerts.splice(idx, 1);
+                }
+
+                // Re-run the current search so the new cert filter takes effect
+                const currentToken = document.getElementById('browseInput').value.trim();
+                if (currentToken && document.querySelector('#browseResults .compare-item')) {
+                    browseFetchResults(currentToken);
+                }
+            });
+        });
+
+        // --- Debounced input: fetch autocomplete suggestions ---
+        document.getElementById('browseInput').addEventListener('input', function () {
+            clearTimeout(browseDebounceTimer);
+            const q = this.value.trim();
+
+            if (!q) {
+                document.getElementById('browseSuggestions').classList.remove('show');
+                document.getElementById('browseSuggestions').innerHTML = '';
+                return;
+            }
+
+            browseDebounceTimer = setTimeout(function () {
+                browseFetchSuggestions(q);
+            }, 300);
+        });
+
+        async function browseFetchSuggestions(q) {
+            const endpoint = browseMode === 'product-form'
+                ? '/sheet-search/tokens'
+                : '/sheet-search/taxonomies';
+
+            try {
+                const response = await fetch(
+                    `${API_URL}${endpoint}?prefix=${encodeURIComponent(q)}&limit=20`
+                );
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+
+                const box = document.getElementById('browseSuggestions');
+                const tokens = data.tokens || [];
+
+                if (tokens.length === 0) {
+                    box.classList.remove('show');
+                    box.innerHTML = '';
+                    return;
+                }
+
+                box.innerHTML = tokens.map(function (t) {
+                    return `<div class="suggestion-item" data-token="${t.token}">${t.token} <small style="color: var(--text-secondary);">(${t.count})</small></div>`;
+                }).join('');
+                box.classList.add('show');
+            } catch (err) {
+                console.error('Browse suggestions error:', err);
+            }
+        }
+
+        // --- Suggestion click: fill input, hide box, fetch results ---
+        document.getElementById('browseSuggestions').addEventListener('click', function (e) {
+            const item = e.target.closest('.suggestion-item');
+            if (!item) return;
+            const token = item.dataset.token;
+            document.getElementById('browseInput').value = token;
+            document.getElementById('browseSuggestions').classList.remove('show');
+            document.getElementById('browseSuggestions').innerHTML = '';
+            browseFetchResults(token);
+        });
+
+        // --- Click-outside: hide suggestions ---
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#browseSuggestions') && !e.target.closest('#browseInput')) {
+                document.getElementById('browseSuggestions').classList.remove('show');
+            }
+        });
+
+        // --- Fetch ranked results for a token ---
+        async function browseFetchResults(token) {
+            const endpoint = browseMode === 'product-form'
+                ? '/sheet-search'
+                : '/sheet-search/taxonomy';
+
+            const certsParam = browseSelectedCerts.join(',');
+            const url = `${API_URL}${endpoint}?q=${encodeURIComponent(token)}&certs=${encodeURIComponent(certsParam)}&limit=50`;
+
+            const resultsDiv = document.getElementById('browseResults');
+            const emptyDiv = document.getElementById('browseResultsEmpty');
+            emptyDiv.style.display = 'none';
+            resultsDiv.innerHTML = '<p class="no-certs">Searching…</p>';
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                browseRenderResults(data, token);
+            } catch (err) {
+                console.error('Browse results error:', err);
+                resultsDiv.innerHTML = '<p class="no-certs">Search failed. Please try again.</p>';
+            }
+        }
+
+        // --- Render result rows ---
+        function browseRenderResults(data, token) {
+            const resultsDiv = document.getElementById('browseResults');
+            const results = data.results || [];
+
+            if (results.length === 0) {
+                resultsDiv.innerHTML = '<p class="no-certs">No certified brands found for this token.</p>';
+                return;
+            }
+
+            const header = `<p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">
+                Showing ${data.showing} of ${data.total_matches} certified brands for "<strong>${token}</strong>"
+            </p>`;
+
+            const rows = results.map(function (r) {
+                const gradeClass = 'grade-badge grade-' + (r.grade || 'good').toLowerCase();
+                const certBadges = (r.certifications || []).map(function (c) {
+                    return `<span class="cert-badge" style="font-size: 11px; padding: 4px 10px; margin: 2px;">${c}</span>`;
+                }).join('');
+
+                return `<div class="compare-item" data-brand="${r.brand}" style="cursor: pointer;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div class="compare-brand">${r.brand}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">${r.category || ''}</div>
+                        <div style="margin-top: 6px;">${certBadges || '<span style="font-size: 11px; color: var(--text-secondary); font-style: italic;">No certs</span>'}</div>
+                    </div>
+                    <div style="text-align: right; margin-left: 10px;">
+                        <div class="compare-score">${(r.overall_tbl_score || 0).toFixed(1)}</div>
+                        <span class="${gradeClass}" style="font-size: 10px; padding: 4px 10px; margin-top: 4px; display: inline-block;">${r.grade || ''}</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            resultsDiv.innerHTML = header + rows;
+
+            // Commit 2: rows are tappable but do nothing yet.
+            // Commit 3 will add the handoff to the Shop & Scan card.
+            resultsDiv.querySelectorAll('.compare-item').forEach(function (row) {
+                row.addEventListener('click', function () {
+                    console.log('browse row tapped:', this.dataset.brand);
+                });
+            });
+        }
         function selectAndSearchCategory(category) {
             console.log('🔍 Category selected:', category);
             const categorySelect = document.getElementById('categorySelect');
