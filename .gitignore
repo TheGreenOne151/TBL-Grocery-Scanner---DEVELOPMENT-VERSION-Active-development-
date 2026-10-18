@@ -126,3 +126,18 @@ elegant_app.py.bak.*
 *.py.bak.*
 brands.txt
 manual_review.csv
+
+# ============================================
+# ADDED: One-time migration/audit scripts
+# ============================================
+# Migration and diagnostic scripts that have already run and
+# should not ship with the app. If you need to rerun one,
+# copy it from backups/ or re-create it.
+audit_*.py
+migrate_*.py
+compare_*.py
+test_column_*.py
+*_test.txt
+
+# Backups directory (contains .bak, .pre-*, and old versions)
+backups/
