@@ -254,6 +254,49 @@
         .grade-good { background: var(--good); color: white; }
         .grade-poor { background: var(--poor); color: white; }
 
+        .cert-pill {
+            padding: 6px 14px;
+            border: 2px solid var(--border);
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .cert-pill:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .cert-pill.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        #browseSuggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            margin-top: 4px;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        #browseSuggestions.show {
+            display: block !important;
+        }
+
         .pillars {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -673,15 +716,56 @@
     </div>
 
     <div class="container">
-        <div class="nav-tabs">
-            <button class="nav-tab active" onclick="switchTab('scan')">🔍 Scan</button>
-            <button class="nav-tab" onclick="switchTab('compare')">⚖️ Compare</button>
-            <button class="nav-tab" onclick="switchTab('history')">📊 History</button>
-            <button class="nav-tab" onclick="switchTab('account')">👤 Account</button>
+      <div class="nav-tabs">
+          <button class="nav-tab active" onclick="switchTab('browse')">📚 Browse</button>
+          <button class="nav-tab" onclick="switchTab('scan')">🛒 Shop &amp; Scan</button>
+          <button class="nav-tab" onclick="switchTab('compare')">⚖️ Compare</button>
+          <button class="nav-tab" onclick="switchTab('history')">📊 History</button>
+          <button class="nav-tab" onclick="switchTab('account')">👤 Account</button>
+      </div>
+
+      <!-- BROWSE TAB -->
+      <div id="browseTab" class="tab-content active">
+            <div class="card">
+                <h2 style="margin-bottom: 15px;">📚 Browse Certified Products</h2>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+                    Search the certification workbook by product form or taxonomy. All results are certified brands, sorted by TBL score.
+                </p>
+
+                <div class="input-group">
+                    <label for="browseMode">Browse by:</label>
+                    <select id="browseMode">
+                        <option value="product-form">Product form</option>
+                        <option value="taxonomy">Taxonomy</option>
+                    </select>
+                </div>
+
+                <div class="input-group" style="position: relative;">
+                    <label for="browseInput" id="browseLabel">Product form:</label>
+                    <input type="text" id="browseInput" placeholder="e.g. coffees, cane sugar, shampoo" autocomplete="off">
+                    <div id="browseSuggestions" class="suggestions" style="display: none;"></div>
+                </div>
+
+                <div class="input-group">
+                    <label style="font-size: 13px; margin-bottom: 6px;">Certifications (optional, all checked must be present):</label>
+                    <div id="browseCertPills" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button type="button" class="cert-pill" data-cert="b_corp">B Corp</button>
+                        <button type="button" class="cert-pill" data-cert="fair_trade">Fair Trade</button>
+                        <button type="button" class="cert-pill" data-cert="rainforest_alliance">Rainforest Alliance</button>
+                        <button type="button" class="cert-pill" data-cert="leaping_bunny">Leaping Bunny</button>
+                    </div>
+                </div>
+
+                <div id="browseResultsEmpty" style="padding: 15px; background: #f8f9fa; border-radius: 10px; color: var(--text-secondary); font-size: 13px; text-align: center;">
+                    Type in the box above to see suggested product forms from the workbook.
+                </div>
+
+                <div id="browseResults"></div>
+            </div>
         </div>
 
         <!-- SCAN TAB -->
-        <div id="scanTab" class="tab-content active">
+        <div id="scanTab" class="tab-content">
             <div class="card search-section">
                 <div class="input-group">
                     <label for="searchType">Search By:</label>
@@ -757,6 +841,12 @@
             </div>
 
             <div class="error" id="error"></div>
+
+            <div id="browseReturnBar" style="display: none; margin-bottom: 15px;">
+                <button onclick="returnToBrowse()" style="background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer; padding: 8px 0; font-size: 14px;">
+                    ← Back to browse results
+                </button>
+            </div>
 
             <div class="results" id="results">
                 <div class="card">
