@@ -563,21 +563,6 @@
             }
         }
 
-        .suggestions-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.3);
-            z-index: 9999;
-        }
-
-        .suggestions.show + .suggestions-overlay {
-            display: block;
-        }
-
         .user-section {
             background: rgba(46, 125, 50, 0.1);
             padding: 15px;
@@ -823,7 +808,6 @@
                         </button>
                     </div>
                     <div class="suggestions" id="suggestions"></div>
-                    <div class="suggestions-overlay" onclick="document.getElementById('suggestions').classList.remove('show')"></div>
                 </div>
 
                 <button class="btn btn-primary" onclick="searchProduct()">
