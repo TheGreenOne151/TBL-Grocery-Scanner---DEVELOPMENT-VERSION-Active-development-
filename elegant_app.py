@@ -290,7 +290,26 @@ def calculate_overall_score(
 # ==================== FASTAPI APP ====================
 
 
-app = FastAPI(title="TBL Grocery Scanner", version="2.4.0")
+from fastapi.responses import JSONResponse
+
+class UTF8JSONResponse(JSONResponse):
+    """JSONResponse that always declares charset=utf-8.
+
+    FastAPI's default JSONResponse sends `Content-Type: application/json`
+    without a charset. RFC 8259 says JSON is UTF-8 by default, so compliant
+    clients decode it correctly. But Windows PowerShell 5.1's
+    Invoke-RestMethod falls back to Latin-1 when charset is absent, which
+    renders 'Nestlé' as 'NestlÃ©' in the terminal. Declaring the charset
+    explicitly fixes PS 5.1 without changing behavior for any other client.
+    """
+    media_type = "application/json; charset=utf-8"
+
+
+app = FastAPI(
+    title="TBL Grocery Scanner",
+    version="2.4.0",
+    default_response_class=UTF8JSONResponse,
+)
 
 # Add CORS middleware
 app.add_middleware(
@@ -4356,7 +4375,7 @@ async def search_brand(q: str = Query(...), category: str = Query(None)):
             "success": True
         }
 
-    return JSONResponse(
+    return UTF8JSONResponse(
         status_code=404,
         content={
             "success": False,
@@ -4766,7 +4785,7 @@ async def export_certifications():
         raise HTTPException(status_code=404,
                             detail="No certification data available")
 
-    return JSONResponse(content=certification_manager.data)
+    return UTF8JSONResponse(content=certification_manager.data)
 
 
 @app.get("/excel/verify")
