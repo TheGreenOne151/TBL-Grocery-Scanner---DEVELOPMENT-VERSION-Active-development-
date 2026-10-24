@@ -4456,6 +4456,27 @@ def _run_sheet_search(
         pd_data = certification_manager.data[brand_key][product_key]
         certs_bool = pd_data.get("certifications") or {}
 
+        # Strict filtering by the exact product form searched.
+        # Without this, /sheet-search falls back to "any row whose
+        # brand matches any brand in the cert_cat_index prefix
+        # match," which returns rows that never had the searched
+        # form in Column H. Example: searching "baby food jars"
+        # was returning an en:nutritional-supplements row because
+        # the same brand also sells baby food jars.
+        if q:
+            row = pd_data.get("row_data") or {}
+            raw_h = row.get("Certification_Categories")
+            if raw_h is None:
+                continue
+            try:
+                if raw_h != raw_h:  # NaN check without importing pandas
+                    continue
+            except Exception:
+                pass
+            categories_list = [c.strip().lower() for c in str(raw_h).split(",")]
+            if q.strip().lower() not in categories_list:
+                continue
+
         if cert_filter:
             if not all(certs_bool.get(c) for c in cert_filter):
                 continue
