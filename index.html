@@ -1821,7 +1821,7 @@
             }
 
             const header = `<p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">
-                Showing ${data.showing} of ${data.total_matches} certified brands for "<strong>${token}</strong>"
+                Showing ${data.showing} certified brand${data.showing === 1 ? '' : 's'} for "<strong>${token}</strong>" (from ${data.total_matches} database ${data.total_matches === 1 ? 'row' : 'rows'})
             </p>`;
 
             const rows = results.map(function (r) {

@@ -4489,6 +4489,17 @@ def _run_sheet_search(
             matched_term=matched_terms.get(ref),
         ))
 
+    # Deduplicate: keep only the highest-scoring row per brand.
+    # A brand can have multiple rows in the Excel (different en: categories
+    # that share a product form). Showing the same brand twice in the
+    # results is confusing even when the data is accurate.
+    seen_brands = {}
+    for r in results:
+        brand_name = r["brand"]
+        if brand_name not in seen_brands or r["overall_tbl_score"] > seen_brands[brand_name]["overall_tbl_score"]:
+            seen_brands[brand_name] = r
+    results = list(seen_brands.values())
+
     # Sort BEFORE slice: desc by score, then ascending brand for
     # stable pagination.
     results.sort(key=lambda r: (-r["overall_tbl_score"], r["brand"]))
