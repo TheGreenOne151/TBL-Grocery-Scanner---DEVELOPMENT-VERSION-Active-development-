@@ -1306,7 +1306,7 @@ GENERIC_WORDS = frozenset({
     "love", "lovely", "joy", "peace", "free", "freedom", "golden",
     "gold", "silver", "silky", "smooth", "soft", "warm", "cool",
     "white", "black", "red", "blue", "yellow", "orange", "brown",
-    "artisan", "artisanal", "craft", "crafted", "handmade", "homemade",
+    "artisan", "artisanal", "craft", "crafted", "handmade", "homemade", "old",
     "premium", "classic", "traditional", "vintage", "retro",
     "essential", "essentials", "quality", "value", "select",
     "choice", "signature", "reserve", "heritage",
