@@ -278,7 +278,7 @@
             border-color: var(--primary);
         }
 
-        #browseSuggestions {
+        .browse-suggestions {
             position: absolute;
             top: 100%;
             left: 0;
@@ -291,10 +291,11 @@
             max-height: 300px;
             overflow-y: auto;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none;
         }
 
-        #browseSuggestions.show {
-            display: block !important;
+        .browse-suggestions.show {
+            display: block;
         }
 
         .pillars {
@@ -728,8 +729,9 @@
                 <div class="input-group" style="position: relative;">
                     <label for="browseInput" id="browseLabel">Product form:</label>
                     <input type="text" id="browseInput" placeholder="e.g. coffees, cane sugar, shampoo" autocomplete="off">
-                    <div id="browseSuggestions" class="suggestions" style="display: none;"></div>
+                    <div id="browseSuggestions" class="browse-suggestions"></div>
                 </div>
+                <div id="browseDebugError" style="display: none; background: red; color: white; padding: 10px; border-radius: 5px; margin-top: 10px; font-weight: bold; font-size: 14px;"></div>
 
                 <div class="input-group">
                     <label style="font-size: 13px; margin-bottom: 6px;">Certifications (optional, all checked must be present):</label>
@@ -1720,12 +1722,20 @@
                 ? '/sheet-search/tokens'
                 : '/sheet-search/taxonomies';
 
+            const errorBox = document.getElementById('browseDebugError');
+            errorBox.style.display = 'none'; // Hide old errors
+
             try {
                 const response = await fetch(
                     `${API_URL}${endpoint}?prefix=${encodeURIComponent(q)}&limit=20`
                 );
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
+
+                // --- DEBUG: Show if fetch succeeded ---
+                errorBox.style.display = 'block';
+                errorBox.style.background = '#4CAF50'; // Green
+                errorBox.textContent = "DEBUG SUCCESS: Found " + (data.tokens ? data.tokens.length : 0) + " tokens.";
 
                 const box = document.getElementById('browseSuggestions');
                 const tokens = data.tokens || [];
@@ -1740,21 +1750,46 @@
                     return `<div class="suggestion-item" data-token="${t.token}">${t.token} <small style="color: var(--text-secondary);">(${t.count})</small></div>`;
                 }).join('');
                 box.classList.add('show');
-            } catch (err) {
-                console.error('Browse suggestions error:', err);
-            }
-        }
+              } catch (err) {
+                  console.error('Browse suggestions error:', err);
+                  // --- DEBUG: Show the actual error on the screen ---
+                  errorBox.style.display = 'block';
+                  errorBox.style.background = 'red';
+                  errorBox.textContent = "DEBUG ERROR: " + err.message;
+              }
+          }
 
-        // --- Suggestion click: fill input, hide box, fetch results ---
-        document.getElementById('browseSuggestions').addEventListener('click', function (e) {
-            const item = e.target.closest('.suggestion-item');
-            if (!item) return;
-            const token = item.dataset.token;
-            document.getElementById('browseInput').value = token;
-            document.getElementById('browseSuggestions').classList.remove('show');
-            document.getElementById('browseSuggestions').innerHTML = '';
-            browseFetchResults(token);
-        });
+        // --- Suggestion pick: fill input, hide box, fetch results ---
+        //
+        // Uses pointerdown instead of click so the pick wins the race
+        // against the input's blur and the document-level click-outside
+        // handler. On Android, click fires ~300ms after touchend, by
+        // which point the dropdown may already have been hidden. The
+        // pointerdown handler fires synchronously on the initial touch.
+        //
+        // touchstart fallback covers browsers without Pointer Events.
+        // Not required for any browser from the last several years, but
+        // costs two lines and avoids a silent failure mode on old Android
+        // WebViews.
+        (function () {
+            const box = document.getElementById('browseSuggestions');
+
+            function handlePick(e) {
+                const item = e.target.closest('.suggestion-item');
+                if (!item) return;
+                e.preventDefault();
+                const token = item.dataset.token;
+                document.getElementById('browseInput').value = token;
+                box.classList.remove('show');
+                box.innerHTML = '';
+                browseFetchResults(token);
+            }
+
+            box.addEventListener('pointerdown', handlePick);
+            if (!window.PointerEvent) {
+                box.addEventListener('touchstart', handlePick, { passive: false });
+            }
+        })();
 
         // --- Click-outside: hide suggestions ---
         document.addEventListener('click', function (e) {
