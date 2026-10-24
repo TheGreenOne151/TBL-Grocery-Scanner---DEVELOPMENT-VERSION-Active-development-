@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -118,7 +118,7 @@ user_data.json
 # The workbook (.xlsx) is the tracked source of truth that the
 # app loads at startup. The CSV is a working artifact for sheet
 # editing; it drifts from the workbook during cleanup passes.
-comprehensive_grocery_certifications_COMPLETE.csv
+comprehensive_grocery_certifications_COMPLETE*.csv
 comprehensive_grocery_certifications_COMPLETE.csv.*
 
 # Dated source backups and one-off analysis files
