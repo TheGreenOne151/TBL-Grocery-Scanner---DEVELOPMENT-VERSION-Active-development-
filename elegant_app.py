@@ -1527,8 +1527,6 @@ class CertificationManager:
                 # Build inverted indices for /sheet-search endpoints
                 self._build_search_indices()
 
-                self._check_alias_maps_for_generic_keys()
-
                 # Sanity-check the alias and synonym maps. A key in either
                 # map that is itself a generic word would cause the map's
                 # canonical value to be substituted for the generic word
