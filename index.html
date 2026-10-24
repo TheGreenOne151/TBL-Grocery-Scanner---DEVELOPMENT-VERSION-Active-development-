@@ -1868,12 +1868,21 @@
                     document.getElementById('searchType').dispatchEvent(new Event('change'));
                     document.getElementById('searchInput').value = brand;
 
-                    // 3. Set the category dropdown if it exists
+                    // 3. Set the category dropdown
                     const categorySelect = document.getElementById('categorySelect');
-                    for (let opt of categorySelect.options) {
-                        if (opt.value.toLowerCase() === category.toLowerCase()) {
-                            categorySelect.value = opt.value;
-                            break;
+
+                    // First, clear any previous category selection
+                    categorySelect.value = '';
+
+                    // Now, loop through the dropdown options to find a match
+                    if (category) {
+                        for (let opt of categorySelect.options) {
+                            // Check if the option value matches the exact category (e.g., "en:confectioneries")
+                            // OR if the text matches (e.g., "Confectioneries")
+                            if (opt.value.toLowerCase() === category.toLowerCase() || opt.text.toLowerCase().includes(category.toLowerCase().replace('en:', ''))) {
+                                categorySelect.value = opt.value;
+                                break;
+                            }
                         }
                     }
 
