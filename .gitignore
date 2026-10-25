@@ -121,11 +121,10 @@ user_data.json
 comprehensive_grocery_certifications_COMPLETE*.csv
 comprehensive_grocery_certifications_COMPLETE.csv.*
 
-# Dated source backups and one-off analysis files
-elegant_app.py.bak.*
-*.py.bak.*
-brands.txt
-manual_review.csv
+# Audit artifact from category-mismatch scan. Kept locally for
+# future review; regenerated each time the scan runs, so it
+# should not be committed.
+suspicious_pairings.csv
 
 # ============================================
 # ADDED: One-time migration/audit scripts
