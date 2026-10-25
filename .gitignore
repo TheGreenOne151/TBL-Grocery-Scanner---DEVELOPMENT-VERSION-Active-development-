@@ -126,6 +126,12 @@ comprehensive_grocery_certifications_COMPLETE.csv.*
 # should not be committed.
 suspicious_pairings.csv
 
+# Dated source backups and one-off analysis files
+elegant_app.py.bak.*
+*.py.bak.*
+brands.txt
+manual_review.csv
+
 # ============================================
 # ADDED: One-time migration/audit scripts
 # ============================================
