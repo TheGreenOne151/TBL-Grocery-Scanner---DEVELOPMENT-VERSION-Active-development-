@@ -3,6 +3,7 @@ import redis
 import os
 import re
 import io
+import csv
 import json
 import math
 import time
@@ -1370,7 +1371,13 @@ GENERIC_WORDS = frozenset({
     # apostrophe from "Ella's", so the sheet key is "ellas kitchen".
     "ella", "ellas",
 })
-
+# Hardcoded ambiguous forms used as a fallback if the CSV is missing.
+# The CSV is the primary source; this set only matters when
+# product_form_categories.csv can't be loaded.
+FALLBACK_AMBIGUOUS_FORMS = frozenset({
+    "soap", "oil", "cream", "lotion", "spray", "powder",
+    "snacks", "candy", "chocolate", "cookies",
+})
 # =====================================================================
 # FUNCTION_WORDS
 #
@@ -1454,6 +1461,12 @@ class CertificationManager:
         # into self.data.
         self.category_index = {}   # Column B (en: taxonomy codes)
         self.cert_cat_index = {}   # Column H (product-form tokens)
+        # Product-form → en: category lookup.
+        # Loaded from product_form_categories.csv at startup.
+        # See load_product_form_categories() below.
+        self.product_form_categories = {}   # form -> en: category
+        self.product_form_notes = {}        # form -> notes
+        self.product_form_suggestions = {}  # form -> comma-joined sub-forms
 
     def load_certification_data(self) -> bool:
         """Load certification data from Excel file and build category index"""
@@ -1534,6 +1547,7 @@ class CertificationManager:
                 # queries for that word. Warn once at load time rather
                 # than discovering it via a user report.
                 self._check_alias_maps_for_generic_keys()
+                self.load_product_form_categories()
 
                 # ✅ ADD THIS: Verify data is ready
                 if self.data is not None and len(self.data) > 0:
@@ -1698,6 +1712,43 @@ class CertificationManager:
             f"Search indices built: {len(self.category_index)} taxonomy tokens, "
             f"{len(self.cert_cat_index)} product-form tokens"
         )
+    def load_product_form_categories(self) -> None:
+        """Load product_form_categories.csv into the three dicts.
+
+        The CSV is generated once by extract_product_forms.py and
+        reviewed by a human before commit. Missing file is not fatal;
+        the Browse tab's ambiguous handling falls through to the
+        free-form fallback in that case.
+        """
+        path = "product_form_categories.csv"
+        if not os.path.exists(path):
+            logger.warning(
+                "product_form_categories.csv not found; "
+                "ambiguous-form handling will use the free-form fallback"
+            )
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                reader = csv.DictReader(fh)
+                for row in reader:
+                    form = (row.get("product_form") or "").strip().lower()
+                    if not form:
+                        continue
+                    self.product_form_categories[form] = (
+                        row.get("category") or ""
+                    ).strip()
+                    self.product_form_notes[form] = (
+                        row.get("notes") or ""
+                    ).strip()
+                    self.product_form_suggestions[form] = (
+                        row.get("suggestions") or ""
+                    ).strip()
+            logger.info(
+                "Loaded product_form_categories.csv: %d forms",
+                len(self.product_form_categories),
+            )
+        except Exception as e:
+            logger.error("Error loading product_form_categories.csv: %s", e)
 
     def _find_best_category_match(self, brand_normalized: str, category: str) -> Optional[Dict]:
         """Find best category match for barcode scans when exact match fails"""
@@ -4422,6 +4473,9 @@ def _score_and_format_sheet_row(
     tbl = calculate_overall_score(
         scores.social, scores.environmental, scores.economic
     )
+    true_category = certification_manager.product_form_categories.get(
+        (matched_term or "").strip().lower()
+    )
     return {
         "brand": pd_data.get("original_brand", brand_key),
         "category": product_key,
@@ -4432,6 +4486,7 @@ def _score_and_format_sheet_row(
         "environmental_score": scores.environmental,
         "economic_score": scores.economic,
         "matched_term": matched_term,
+        "true_category": true_category,
     }
 
 
@@ -4542,7 +4597,31 @@ async def sheet_search(
 
     q_norm = q.strip().lower()
     cert_filter = _parse_cert_filter(certs)
-
+    # Ambiguous-form handling cascade (guaranteed no dead end).
+    ambiguous_fallback = False
+    ambiguous_notes = ""
+    if q_norm in certification_manager.product_form_categories:
+        cat = certification_manager.product_form_categories[q_norm]
+        if cat == "":
+            # Steps 1 and 2: auto-detected + manually listed sub-forms,
+            # both stored in product_form_suggestions.
+            sugg_raw = certification_manager.product_form_suggestions.get(q_norm, "")
+            suggestions = [s.strip() for s in sugg_raw.split(",") if s.strip()]
+            if suggestions:
+                return {
+                    "ambiguous_form": True,
+                    "input": q_norm,
+                    "notes": certification_manager.product_form_notes.get(q_norm, "")
+                             or f"{q_norm} is too generic. Pick a specific type.",
+                    "suggestions": suggestions,
+                }
+            # Steps 3 and 4: no suggestions; fall through to the normal
+            # search with a warning banner.
+            ambiguous_fallback = True
+            ambiguous_notes = (
+                certification_manager.product_form_notes.get(q_norm, "")
+                or f"{q_norm} may span multiple categories."
+            )
     if not q_norm and not cert_filter:
         raise HTTPException(
             status_code=400,
@@ -4562,7 +4641,7 @@ async def sheet_search(
         ]
         matched_terms = {}
 
-    return _run_sheet_search(
+    result = _run_sheet_search(
         refs=refs,
         matched_terms=matched_terms,
         cert_filter=cert_filter,
@@ -4572,6 +4651,11 @@ async def sheet_search(
         q=q,
         source="product-form",
     )
+    if ambiguous_fallback:
+        result["ambiguous_fallback"] = True
+        result["ambiguous_notes"] = ambiguous_notes
+
+    return result
 
 
 @app.get("/sheet-search/taxonomy")
@@ -4653,6 +4737,13 @@ async def sheet_search_tokens(
     for token, refs in certification_manager.cert_cat_index.items():
         if not p or token.startswith(p):
             counts[token] = len(refs)
+    # Fallback: if prefix match returned nothing, retry as word-boundary
+    # prefix. Catches "oil" matching "cooking oils" (via oils.startswith
+    # ("oil")) but not "toilet paper" (via paper.startswith("oil") = False).
+    if p and not counts:
+        for token, refs in certification_manager.cert_cat_index.items():
+            if any(word.startswith(p) for word in token.split()):
+                counts[token] = len(refs)
 
     ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
     return {

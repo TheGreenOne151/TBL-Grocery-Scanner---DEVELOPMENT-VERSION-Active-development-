@@ -1803,11 +1803,15 @@
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
-                browseRenderResults(data, token);
+                if (data.ambiguous_form) {
+                    browseRenderAmbiguous(data, token);
+                } else if (data.ambiguous_fallback) {
+                    browseRenderResults(data, token);
+                    browseShowAmbiguousBanner(data.ambiguous_notes);
+                } else {
+                    browseRenderResults(data, token);
+                }
             } catch (err) {
-                console.error('Browse results error:', err);
-                resultsDiv.innerHTML = '<p class="no-certs">Search failed. Please try again.</p>';
-            }
         }
 
         // --- Render result rows ---
@@ -1833,7 +1837,9 @@
                 return `<div class="compare-item" data-brand="${r.brand}" style="cursor: pointer;">
                     <div style="flex: 1; min-width: 0;">
                         <div class="compare-brand">${r.brand}</div>
-                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">${r.category || ''}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                            Certified for <strong>${r.matched_term || ''}</strong>${r.true_category ? ' (' + r.true_category + ')' : ''}
+                        </div>
                         <div style="margin-top: 6px;">${certBadges || '<span style="font-size: 11px; color: var(--text-secondary); font-style: italic;">No certs</span>'}</div>
                     </div>
                     <div style="text-align: right; margin-left: 10px;">
@@ -1891,6 +1897,32 @@
                 });
             });
         }
+        function browseRenderAmbiguous(data, token) {
+            const resultsDiv = document.getElementById('browseResults');
+            const sugg = data.suggestions || [];
+            const buttons = sugg.map(function (s) {
+                const escaped = s.replace(/'/g, "\\'");
+                return '<button class="btn btn-small btn-secondary" style="margin: 3px;" onclick="browseFetchResults(\'' + escaped + '\')">' + s + '</button>';
+            }).join('');
+            resultsDiv.innerHTML =
+                '<div style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 10px; padding: 16px;">' +
+                    '<div style="font-weight: 600; color: #e65100; margin-bottom: 8px;">' +
+                        '"' + token + '" is too generic' +
+                    '</div>' +
+                    '<div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">' +
+                        (data.notes || 'Pick a more specific type.') +
+                    '</div>' +
+                    '<div>' + buttons + '</div>' +
+                '</div>';
+        }
+
+        function browseShowAmbiguousBanner(notes) {
+            const resultsDiv = document.getElementById('browseResults');
+            const banner = document.createElement('div');
+            banner.style.cssText = 'background: #fff3e0; border: 2px solid #ff9800; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; font-size: 13px; color: #e65100;';
+            banner.textContent = notes || 'These results may span multiple categories.';
+            resultsDiv.insertBefore(banner, resultsDiv.firstChild);
+        }        
         function selectAndSearchCategory(category) {
             console.log('🔍 Category selected:', category);
             const categorySelect = document.getElementById('categorySelect');
