@@ -785,9 +785,12 @@
                         <option value="en:frozen-foods">Frozen Foods</option>
                         <option value="en:household-products">Cleaning & Household</option>
                         <option value="en:meals">Meals</option>
+                        <option value="en:meats">Meats</option>
                         <option value="en:nut-butters">Nut Butters</option>
                         <option value="en:nutritional-supplements">Health & Nutrition</option>
+                        <option value="en:organic">Organic</option>
                         <option value="en:paper-products">Paper Products</option>
+                        <option value="en:pet-care">Pet Care</option>
                         <option value="en:pet-foods">Pet Food</option>
                         <option value="en:snacks">Snacks</option>
                         <option value="en:vegetables">Vegetables</option>
@@ -1107,6 +1110,40 @@
     <!-- ==================== JAVASCRIPT ==================== -->
     <script>
         const API_URL = 'https://tbl-grocery-scanner.onrender.com';
+        function humanizeCategory(cat) {
+            if (!cat) return '';
+            const map = {
+                'Baby': 'Baby',
+                'en:baby-foods': 'Baby Foods',
+                'en:baking-ingredients': 'Baking & Cooking',
+                'en:beverages': 'Beverages',
+                'en:biscuits': 'Biscuits',
+                'en:breads': 'Breads',
+                'en:breakfast-cereals': 'Breakfast Cereals',
+                'en:canned-foods': 'Canned & Packaged Goods',
+                'en:coffee': 'Coffee, Tea and Cocoa',
+                'en:condiments': 'Condiments & Sauces',
+                'en:confectioneries': 'Candy & Chocolate',
+                'en:cosmetics': 'Cosmetics & Personal Care',
+                'en:dairies': 'Dairy & Eggs',
+                'en:doughnuts': 'Doughnuts',
+                'en:feminine-hygiene': 'Feminine Hygiene Products',
+                'en:foods': 'Foods',
+                'en:frozen-foods': 'Frozen Foods',
+                'en:household-products': 'Cleaning & Household',
+                'en:meals': 'Meals',
+                'en:meats': 'Meats',
+                'en:nut-butters': 'Nut Butters',
+                'en:nutritional-supplements': 'Health & Nutrition',
+                'en:organic': 'Organic',
+                'en:paper-products': 'Paper Products',
+                'en:pet-care': 'Pet Care',
+                'en:pet-foods': 'Pet Food',
+                'en:snacks': 'Snacks',
+                'en:vegetables': 'Vegetables'
+            };
+            return map[cat] || cat;
+        }
         let debounceTimer;
         let currentUser = null;
         let lastSearchResult = null;
@@ -1846,7 +1883,7 @@
                     return `<span class="cert-badge" style="font-size: 11px; padding: 4px 10px; margin: 2px;">${c}</span>`;
                 }).join('');
 
-                return `<div class="compare-item" data-brand="${r.brand}" style="cursor: pointer;">
+                return `<div class="compare-item" data-brand="${r.brand}" data-category="${r.true_category || r.category || ''}" style="cursor: pointer;">
                     <div style="flex: 1; min-width: 0;">
                         <div class="compare-brand">${r.brand}</div>
                         <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
@@ -1870,10 +1907,7 @@
                     e.preventDefault();
 
                     const brand = this.dataset.brand;
-
-                    // Try to grab the category (e.g., 'en:supplements')
-                    const categoryDiv = this.querySelector('div[style*="font-size: 12px"]');
-                    const category = categoryDiv ? categoryDiv.textContent.trim() : '';
+                    const category = this.dataset.category || '';
 
                     // 1. Switch to the Scan tab
                     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -2158,7 +2192,7 @@
 
             const brand = data.brand || 'Unknown';
             const category = data.category || data.matched_category || '';
-            const brandDisplay = category ? `${brand} — ${category}` : brand;
+            const brandDisplay = category ? `${brand} — ${humanizeCategory(category)}` : brand;
             document.getElementById('brandName').textContent = brandDisplay || 'Unknown';
 
             const productName = data.name || data.product_name || 'Unknown Product';
