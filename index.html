@@ -1838,7 +1838,7 @@
                 : '/sheet-search/taxonomy';
 
             const certsParam = browseSelectedCerts.join(',');
-            const url = `${API_URL}${endpoint}?q=${encodeURIComponent(token)}&certs=${encodeURIComponent(certsParam)}&limit=50`;
+            const url = `${API_URL}${endpoint}?q=${encodeURIComponent(token)}&certs=${encodeURIComponent(certsParam)}&limit=200`;
 
             const resultsDiv = document.getElementById('browseResults');
             const emptyDiv = document.getElementById('browseResultsEmpty');
@@ -2195,8 +2195,13 @@
             const brandDisplay = category ? `${brand} — ${humanizeCategory(category)}` : brand;
             document.getElementById('brandName').textContent = brandDisplay || 'Unknown';
 
-            const productName = data.name || data.product_name || 'Unknown Product';
-            document.getElementById('productName').textContent = productName;
+            const productName = data.name || data.product_name || '';
+            const productNameEl = document.getElementById('productName');
+            if (productName && productName !== brand && productName !== 'Unknown Product') {
+                productNameEl.textContent = productName;
+            } else {
+                productNameEl.textContent = '';
+            }
 
             document.getElementById('overallScore').textContent = (data.overall_tbl_score || 5.0).toFixed(1);
 
