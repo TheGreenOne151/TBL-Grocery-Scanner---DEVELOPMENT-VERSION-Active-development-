@@ -1054,6 +1054,18 @@ class BrandNormalizer:
             " uk",
             " canada",
             " europe",
+            # Legal-form suffixes that the US/UK-centric list missed.
+            # "L.P." and "S.p.A." have their dots removed during
+            # normalization, so they arrive here as single tokens
+            # 'lp' and 'spa'.
+            " lp",
+            " pbc",
+            " srl",
+            " srls",
+            " spa",
+            " societa",
+            " benefit",
+            " societa benefit",
             "®",
             "™",
             "©",
@@ -1844,9 +1856,14 @@ class CertificationManager:
         # (articles, conjunctions, prepositions, pronouns).
         content_common = {w for w in common if w not in FUNCTION_WORDS}
 
-        # Two or more content words shared -> match.
-        # This handles "honest company" vs "the honest company".
-        if len(content_common) >= 2:
+        # Three or more content words shared -> match.
+        # Two-word overlap is too weak: 604 brand pairs in the
+        # current corpus share exactly two content words (usually
+        # category nouns like {bath, body} or {organic, skin}) and
+        # are unrelated. Three-word overlap is strong enough to
+        # indicate the same brand or a genuine sub-brand (e.g.
+        # 'Once Upon a Farm' vs 'Once Upon a Farm PBC').
+        if len(content_common) >= 3:
             return True
 
         # Exactly one content word shared.
