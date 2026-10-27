@@ -1838,7 +1838,7 @@
                 : '/sheet-search/taxonomy';
 
             const certsParam = browseSelectedCerts.join(',');
-            const url = `${API_URL}${endpoint}?q=${encodeURIComponent(token)}&certs=${encodeURIComponent(certsParam)}&limit=200`;
+            const url = `${API_URL}${endpoint}?q=${encodeURIComponent(token)}&certs=${encodeURIComponent(certsParam)}&limit=100`;
 
             const resultsDiv = document.getElementById('browseResults');
             const emptyDiv = document.getElementById('browseResultsEmpty');
