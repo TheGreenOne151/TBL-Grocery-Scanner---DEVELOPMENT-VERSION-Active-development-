@@ -1823,6 +1823,7 @@
             } catch (err) {
                 console.error('Browse results error:', err);
                 resultsDiv.innerHTML = '<p class="no-certs">Search failed: ' + (err && err.message ? err.message : err) + '</p>';
+            }
         }
 
         // --- Render result rows ---
