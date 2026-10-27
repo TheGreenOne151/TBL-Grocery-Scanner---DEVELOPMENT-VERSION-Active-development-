@@ -2187,9 +2187,8 @@ class ScoringManager:
         cert_result: Dict[str, Any] = None,
     ) -> BrandData:
         """
-        Calculate scores for a brand using priority order:
-        1. Parent company identification (for product search)
-        2. Dynamic calculation from certifications (Excel)
+        Calculate scores for a brand using dynamic calculation from
+        certifications (Excel).
 
         If cert_result is provided, it is reused instead of performing
         a second certification lookup inside the scoring path. Callers
@@ -2210,23 +2209,7 @@ class ScoringManager:
 
         brand_normalized = BrandNormalizer.normalize(brand)
 
-        # Step 1: Check if this is a product that should inherit parent company scores
-        parent_company = BrandNormalizer.find_parent_company(brand)
-        if parent_company:
-            parent_normalized = BrandNormalizer.normalize(parent_company)
-
-            # Only skip inheritance for specific brands that should NOT inherit
-            # (like Digiorno, which has its own empty entry)
-            non_inheriting_brands = ["digiorno", "bai", "nestle pure life", "pure life"]
-
-            if brand_normalized in non_inheriting_brands:
-                logger.info(f"Brand {brand} in non-inheriting list, skipping parent inheritance")
-                # Fall through to dynamic calculation
-            else:
-                logger.info(f"Found parent company '{parent_company}' for '{brand}' - will use dynamic calculation")
-                # Fall through to dynamic calculation
-
-        # Step 2: Dynamic calculation from certifications - PASS THE CATEGORY
+        # Dynamic calculation from certifications
         logger.info(
             f"Brand '{brand_normalized}' calculating dynamically"
         )
