@@ -96,6 +96,8 @@ comprehensive_grocery_certifications_COMPLETE.csv.backup
 # ============================================
 # One-off scripts written during data cleanup / investigation.
 # These are not part of the app and should not be committed.
+# One-shot data migration scripts
+fix_research_complete.py
 dedup_csv.py
 preview_*.py
 read_*.py
@@ -106,6 +108,7 @@ inspect_*.py
 find_*.py
 verify_*.py
 test_brand_rules*.py
+
 
 # ============================================
 # ADDED: User runtime data
