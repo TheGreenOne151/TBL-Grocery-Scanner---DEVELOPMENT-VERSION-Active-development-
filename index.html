@@ -1922,18 +1922,30 @@
 
                     // 3. Set the category dropdown
                     const categorySelect = document.getElementById('categorySelect');
-
-                    // First, clear any previous category selection
                     categorySelect.value = '';
 
-                    // Now, loop through the dropdown options to find a match
                     if (category) {
-                        for (let opt of categorySelect.options) {
-                            // Check if the option value matches the exact category (e.g., "en:confectioneries")
-                            // OR if the text matches (e.g., "Confectioneries")
-                            if (opt.value.toLowerCase() === category.toLowerCase() || opt.text.toLowerCase().includes(category.toLowerCase().replace('en:', ''))) {
-                                categorySelect.value = opt.value;
+                        // Exact-value match first. The Browse card carries the
+                        // en: code from Column B (e.g. "en:coffee"). Passing that
+                        // exact value to the Scan tab lets the backend resolve the
+                        // brand inside that category without partial-match guessing.
+                        let matched = false;
+                        for (let i = 0; i < categorySelect.options.length; i++) {
+                            if (categorySelect.options[i].value === category) {
+                                categorySelect.selectedIndex = i;
+                                matched = true;
                                 break;
+                            }
+                        }
+                        // Fallback to fuzzy match for the rare case where the
+                        // category is not one of the preset dropdown options.
+                        if (!matched) {
+                            for (let opt of categorySelect.options) {
+                                if (opt.value.toLowerCase() === category.toLowerCase() ||
+                                    opt.text.toLowerCase().includes(category.toLowerCase().replace('en:', ''))) {
+                                    categorySelect.value = opt.value;
+                                    break;
+                                }
                             }
                         }
                     }

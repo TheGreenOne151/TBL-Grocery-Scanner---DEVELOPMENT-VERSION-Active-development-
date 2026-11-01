@@ -156,6 +156,31 @@ tbl-grocery-app/
 # ├── Removed "C&H" rows                       # No official certs
 # └── Removed single-letter placeholder rows   # A-Z, #
 
+# 🆕 Coffee Taxonomy Fix + Strict Category-Scoped Brand Match (Nov 2026):
+# ├── product_form_categories.csv: coffees → en:coffee    # Was en:beverages
+# ├── Frontend: exact-value match on category dropdown     # Browse-to-Scan handoff passes the exact en: code
+# ├── Backend STEP 1: exact brand key match               # _improved_partial_match removed from category-scoped path
+# │                                                      # Partial match still used in STEP 2 (no-category path)
+# │
+# Why:
+# ├── "coffees" in Column H: 52 rows in en:coffee, 5 in en:beverages
+# ├── The 5 en:beverages rows are duplicates of brands that
+# │   also appear in en:coffee (Folgers, Keurig, Maxwell House,
+# │   Peet's) plus Solevita (beverages-only).
+# ├── en:coffee is the correct dominant category for the form.
+# ├── Rows 87-89 (coffee, coffee arabica, coffee iced) verified
+# │   and left as en:beverages — they are industrial/factory forms
+# │   that span multiple categories, not consumer retail coffee.
+# │
+# Why the backend change is needed:
+# ├── Keurig has 1 row in en:coffee, 5 rows in en:beverages
+# │   (Keurig + 4 factory locations, all filed under en:beverages)
+# ├── With _improved_partial_match, all 5 en:beverages rows match
+# │   "keurig" because they share the content word "keurig"
+# ├── STEP 1 returned ambiguous_brand on a category-scoped query
+# │   where the answer was unambiguous
+# └── Strict key match inside a category constraint resolves it
+
 # 🗄️ Cache Performance Improvements:
 # ├── 99% reduction in OFF API calls        # Products served from Redis instead of API
 # ├── 93% faster repeat scans               # 1.8s → 0.1s response times

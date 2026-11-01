@@ -1929,6 +1929,43 @@ class CertificationManager:
         # no-category case.
         if category and category.strip():
             category_lower = category.strip().lower()
+
+            # STEP 1 matches on the exact normalized brand key.
+            # Partial matching is deliberately excluded here.
+            #
+            # Why: the caller supplied a category, which is a strong
+            # constraint. Inside that constraint, the brand must be
+            # the brand the user meant, not a brand whose name shares
+            # a word with it.
+            #
+            # Concrete failure this prevents: "Keurig" in en:beverages.
+            # The workbook has one row for the brand "Keurig" and four
+            # rows for factory locations (Keurig Green Mountain-Essex,
+            # -Spartanburg, -Summer, -Knoxville), all filed under
+            # en:beverages. With _improved_partial_match, all five
+            # match "keurig" (they share the content word "keurig"),
+            # and STEP 1 returns ambiguous_brand. With an exact-key
+            # match, only the "keurig" row matches, and the caller
+            # gets the one product it asked for.
+            #
+            # The no-category path (STEP 2) keeps partial matching,
+            # because there the user is exploring and a prefix match
+            # is the only way to resolve a truncated input.
+            if brand_normalized in self.data:
+                products = self.data[brand_normalized]
+                for product_key, product_data in products.items():
+                    if product_key != "_default" and product_key.lower() == category_lower:
+                        logger.info(
+                            f"Found exact brand+category match: "
+                            f"brand='{brand_normalized}', category='{category}'"
+                        )
+                        return self._format_response(
+                            found=True,
+                            data=product_data,
+                            search_brand=brand,
+                            match_type="exact_product"
+                        )
+
             category_matches = []
             for stored_brand, products in self.data.items():
                 if not self._improved_partial_match(brand_normalized, stored_brand):
