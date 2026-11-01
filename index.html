@@ -1766,18 +1766,6 @@
           }
       });
 
-        // --- Keypress: force search on Enter ---
-        document.getElementById('browseInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const q = this.value.trim();
-                if (q) {
-                    document.getElementById('browseSuggestions').classList.remove('show');
-                    document.getElementById('browseSuggestions').innerHTML = '';
-                    browseFetchResults(q);
-                }
-            }
-        });
 
         async function browseFetchSuggestions(q) {
             const endpoint = browseMode === 'product-form'
