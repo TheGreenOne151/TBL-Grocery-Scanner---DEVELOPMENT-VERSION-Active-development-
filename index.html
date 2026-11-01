@@ -1753,6 +1753,19 @@
             }, 300);
         });
 
+        // --- Keypress: allow "Enter"/"Go" to force a search immediately ---
+      document.getElementById('browseInput').addEventListener('keypress', function (e) {
+          if (e.key === 'Enter') {
+              e.preventDefault(); // Prevent form submission if wrapped in a form
+              const q = this.value.trim();
+              if (q) {
+                  document.getElementById('browseSuggestions').classList.remove('show');
+                  document.getElementById('browseSuggestions').innerHTML = '';
+                  browseFetchResults(q);
+              }
+          }
+      });
+
         // --- Keypress: force search on Enter ---
         document.getElementById('browseInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
