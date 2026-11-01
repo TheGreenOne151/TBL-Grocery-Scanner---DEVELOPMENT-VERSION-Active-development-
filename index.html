@@ -1883,11 +1883,11 @@
                     return `<span class="cert-badge" style="font-size: 11px; padding: 4px 10px; margin: 2px;">${c}</span>`;
                 }).join('');
 
-                return `<div class="compare-item" data-brand="${r.brand}" data-category="${r.true_category || r.category || ''}" style="cursor: pointer;">
+                return `<div class="compare-item" data-brand="${r.brand}" data-category="${r.category || ''}" style="cursor: pointer;">
                     <div style="flex: 1; min-width: 0;">
                         <div class="compare-brand">${r.brand}</div>
                         <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-                            Certified for <strong>${r.matched_term || ''}</strong>${r.true_category ? ' (' + r.true_category + ')' : ''}
+                            Certified for <strong>${r.matched_term || ''}</strong>${r.category ? ' (' + r.category + ')' : ''}
                         </div>
                         <div style="margin-top: 6px;">${certBadges || '<span style="font-size: 11px; color: var(--text-secondary); font-style: italic;">No certs</span>'}</div>
                     </div>
