@@ -4536,6 +4536,7 @@ def _run_sheet_search(
     offset: int,
     q: str,
     source: str,
+    search_type: str = "product-form",
 ) -> dict:
     """Common logic for /sheet-search and /sheet-search/taxonomy.
 
@@ -4548,14 +4549,20 @@ def _run_sheet_search(
         pd_data = certification_manager.data[brand_key][product_key]
         certs_bool = pd_data.get("certifications") or {}
 
-        # Strict filtering by the exact product form searched.
-        # Without this, /sheet-search falls back to "any row whose
-        # brand matches any brand in the cert_cat_index prefix
-        # match," which returns rows that never had the searched
-        # form in Column H. Example: searching "baby food jars"
-        # was returning an en:nutritional-supplements row because
-        # the same brand also sells baby food jars.
-        if q:
+        # Strict filtering by the exact product form searched (Column H).
+        #
+        # This ONLY applies to product-form searches. When searching by
+        # taxonomy (Column B), the taxonomy code will never appear in
+        # Column H, so applying this filter would incorrectly drop every
+        # single row.
+        #
+        # Without this guard for product-forms, /sheet-search falls back
+        # to "any row whose brand matches any brand in the
+        # cert_cat_index prefix match," which returns rows that never
+        # had the searched form in Column H. Example: searching "baby
+        # food jars" was returning an en:nutritional-supplements row
+        # because the same brand also sells baby food jars.
+        if q and search_type == "product-form":
             row = pd_data.get("row_data") or {}
             raw_h = row.get("Certification_Categories")
             if raw_h is None:
@@ -4687,7 +4694,9 @@ async def sheet_search(
         offset=offset,
         q=q,
         source="product-form",
+        search_type="product-form",  # <-- MUST BE HERE for Taxonomy Search to work in Browse Tab
     )
+
     if ambiguous_fallback:
         result["ambiguous_fallback"] = True
         result["ambiguous_notes"] = ambiguous_notes
@@ -4747,6 +4756,7 @@ async def sheet_search_taxonomy(
         offset=offset,
         q=q,
         source="taxonomy",
+        search_type="taxonomy",      # <-- MUST BE HERE for Taxonomy Search to work in Browse Tab
     )
 
 
