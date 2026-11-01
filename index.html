@@ -1753,6 +1753,19 @@
             }, 300);
         });
 
+        // --- Keypress: force search on Enter ---
+        document.getElementById('browseInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const q = this.value.trim();
+                if (q) {
+                    document.getElementById('browseSuggestions').classList.remove('show');
+                    document.getElementById('browseSuggestions').innerHTML = '';
+                    browseFetchResults(q);
+                }
+            }
+        });
+
         async function browseFetchSuggestions(q) {
             const endpoint = browseMode === 'product-form'
                 ? '/sheet-search/tokens'
@@ -1804,24 +1817,34 @@
         // Not required for any browser from the last several years, but
         // costs two lines and avoids a silent failure mode on old Android
         // WebViews.
+        // --- Suggestion pick: fill input, hide box, fetch results ---
+        // Mobile browsers aggressively blur inputs on tap, which hides
+        // the dropdown before the tap registers. We attach the listener
+        // to the document and use capture=true so we intercept the
+        // touch BEFORE the browser can blur the input, then call
+        // preventDefault() to stop the blur entirely.
         (function () {
-            const box = document.getElementById('browseSuggestions');
-
             function handlePick(e) {
-                const item = e.target.closest('.suggestion-item');
+                const item = e.target.closest('#browseSuggestions .suggestion-item');
                 if (!item) return;
+
+                // Prevent the input from blurring and the dropdown from closing early
                 e.preventDefault();
+                e.stopPropagation();
+
                 const token = item.dataset.token;
                 document.getElementById('browseInput').value = token;
+
+                const box = document.getElementById('browseSuggestions');
                 box.classList.remove('show');
                 box.innerHTML = '';
+
                 browseFetchResults(token);
             }
 
-            box.addEventListener('pointerdown', handlePick);
-            if (!window.PointerEvent) {
-                box.addEventListener('touchstart', handlePick, { passive: false });
-            }
+            // Use capture phase to intercept before default browser behavior
+            document.addEventListener('mousedown', handlePick, true);
+            document.addEventListener('touchstart', handlePick, { capture: true, passive: false });
         })();
 
         // --- Click-outside: hide suggestions ---
