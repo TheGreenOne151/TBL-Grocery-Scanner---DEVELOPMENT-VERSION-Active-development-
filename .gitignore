@@ -81,9 +81,10 @@ dev_notes/
 # ADDED: Sheet backup files
 # ============================================
 # Backups created during manual/scripted sheet edits. The primary
-# workbook (.xlsx) and working CSV are tracked; every backup copy
-# is not.
+# workbook (.xlsx) is tracked; the working CSV is a local-only
+# artifact (not tracked) and every backup copy is also ignored.
 comprehensive_grocery_certifications_COMPLETE.xlsx.*
+comprehensive_grocery_certifications_COMPLETE.csv
 comprehensive_grocery_certifications_COMPLETE.csv.*
 comprehensive_grocery_certifications_COMPLETE.xlsx.backup
 comprehensive_grocery_certifications_COMPLETE.csv.backup
