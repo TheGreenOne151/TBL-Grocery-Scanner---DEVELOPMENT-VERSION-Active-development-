@@ -1978,7 +1978,7 @@ class CertificationManager:
             if len(category_matches) == 1:
                 stored_brand, product_data = category_matches[0]
                 logger.info(
-                    f"Found exact brand+category match: "
+                    f"Found single partial brand+category match: "
                     f"brand='{stored_brand}', category='{category}'"
                 )
                 return self._format_response(
