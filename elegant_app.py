@@ -3289,6 +3289,49 @@ def _build_recommendations(
         )
     )
     return candidates
+def _resolve_scan_partners(
+    brand: str,
+    category: str,
+    cert_result: Dict[str, Any],
+) -> List[Dict[str, str]]:
+    """Return available_partners for the scanned product.
+
+    Returns [] when the affiliate catalog is not loaded (the normal
+    pre-Awin state). Returns [{partner, url, label}, ...] otherwise,
+    ordered per the category group's primary/secondary designation.
+    Kroger brand-search fallback is returned when neither feed
+    matched, per spec Part 1.
+    """
+    catalog = getattr(certification_manager, "affiliate_catalog", None)
+    if catalog is None:
+        return []
+
+    brand_key = BrandNormalizer.normalize(brand)
+    taxonomy = (category or "").strip().lower()
+
+    # Extract the scanned row's Column H tokens, in CSV order.
+    tokens: List[str] = []
+    details = cert_result.get("details") or {}
+    row_data = details.get("row_data") or {}
+    raw_h = row_data.get("Certification_Categories")
+    if raw_h is not None:
+        try:
+            if raw_h == raw_h:  # NaN guard
+                tokens = [
+                    t.strip().lower()
+                    for t in str(raw_h).split(",")
+                    if t.strip()
+                ]
+        except Exception:
+            pass
+
+    return catalog.get_partners(
+        brand_key,
+        tokens,
+        taxonomy,
+        include_kroger_fallback=True,
+        brand_display=brand,
+    )
 
 # ==================== AFFILIATE CATALOG ====================
 #
@@ -4695,7 +4738,12 @@ async def scan_product(product: Product) -> Dict[str, Any]:
             "brand_was_corrected": canonical_brand is not None,
             "brand_correction_note": f"Corrected to canonical brand: '{canonical_brand}'" if canonical_brand else "No brand correction needed",
             "success": True,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "available_partners": _resolve_scan_partners(
+                brand=brand,
+                category=category,
+                cert_result=cert_result,
+            ),
         }
 
         return sanitize_for_json(response_data)
@@ -6276,6 +6324,25 @@ async def startup_event():
         else:
             logger.warning(f"⚠️ Attempt {attempt + 1}/{max_retries} failed, retrying in 1 second...")
             time.sleep(1)
+
+    # Affiliate catalog is optional. Pre-Awin, affiliate_catalog.csv
+    # does not exist, load() returns False, and the attribute stays
+    # None. Both /scan and /recommendations probe it via getattr and
+    # degrade to empty available_partners. No request fails when the
+    # catalog is absent.
+    try:
+        _catalog = AffiliateCatalog()
+        if _catalog.load(workbook_data=certification_manager.data):
+            certification_manager.affiliate_catalog = _catalog
+            logger.info("✅ Affiliate catalog attached")
+        else:
+            certification_manager.affiliate_catalog = None
+            logger.info("ℹ️ Affiliate catalog not loaded; routing disabled")
+    except Exception as _e:
+        # A catalog load failure must never prevent startup. Log and
+        # continue with routing disabled.
+        logger.error(f"Affiliate catalog load raised: {_e}")
+        certification_manager.affiliate_catalog = None
 
     logger.warning("⚠️ Certification data did not load on startup. Will retry on first request.")
     logger.info("🚀 Application startup complete!")

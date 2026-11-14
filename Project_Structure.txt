@@ -1,5 +1,5 @@
 tbl-grocery-app/
-├── elegant_app.py                          # Main FastAPI application (UPDATED: /recommendations endpoint; AffiliateCatalog class; normalizer keeps "the"; suffix strip guarded by content-word count; two-content-word partial match)
+├── elegant_app.py                          # Main FastAPI application (UPDATED: /recommendations endpoint; AffiliateCatalog class; /scan available_partners wiring; normalizer keeps "the"; suffix strip guarded by content-word count; two-content-word partial match)
 ├── requirements.txt                        # Python dependencies (UPDATED: added redis>=5.0.0)
 ├── runtime.txt                            # python-3.10.0
 ├── Procfile                               # Gunicorn with 2 workers
@@ -182,6 +182,7 @@ tbl-grocery-app/
 # ├── STEP 1 returned ambiguous_brand on a category-scoped query
 # │   where the answer was unambiguous
 # └── Strict key match inside a category constraint resolves it
+#
 # 🆕 Affiliate Link Layer — Phase 1: Recommendation Query (Nov 2026):
 # ├── GET /recommendations                  # Certified alternatives in same taxonomy, strictly higher score
 # │                                        # Params: brand (required), category (required),
@@ -256,6 +257,40 @@ tbl-grocery-app/
 # │                                        # -> app works with or without feeds
 # └── Additive only                          # Only existing-code change: added Tuple to
 #                                          # the typing import line.
+#
+# 🆕 Affiliate Link Layer — Phase 2 Step 2.2: Wiring (Nov 2026):
+# ├── startup_event() catalog load          # Instantiates AffiliateCatalog after workbook load.
+# │                                        # Calls _catalog.load(workbook_data=certification_manager.data)
+# │                                        # to enforce the load-time cert assertion.
+# │                                        # On success: certification_manager.affiliate_catalog = instance
+# │                                        # On failure: certification_manager.affiliate_catalog = None
+# │                                        # Any exception during load is logged and swallowed;
+# │                                        # startup never fails because of the catalog.
+# ├── _resolve_scan_partners() helper       # New function. Reads the scanned row's Column H
+# │                                        # tokens, calls catalog.get_partners() with
+# │                                        # include_kroger_fallback=True, and returns the ordered
+# │                                        # list of {partner, url, label} dicts.
+# │                                        # Returns [] when catalog is None.
+# ├── /scan response: available_partners    # New key, placed after the existing closing fields.
+# │                                        # Value is [] when catalog is None (current pre-Awin state).
+# │                                        # Populated from _resolve_scan_partners() otherwise.
+# ├── _build_recommendations()              # No change needed. Already calls get_partners() with
+# │                                        # include_kroger_fallback=False per spec.
+# ├── Pre-Awin behavior                     # affiliate_catalog.csv absent -> load() returns False
+# │                                        # -> certification_manager.affiliate_catalog = None
+# │                                        # -> /scan returns available_partners: []
+# │                                        # -> /recommendations candidates have available_partners: []
+# │                                        # -> every response is byte-identical to pre-Step-2.2,
+# │                                        #    except for the new (empty) key on /scan
+# ├── Post-Awin behavior                    # affiliate_catalog.csv present -> load() succeeds
+# │                                        # -> /scan returns partner buttons or Kroger fallback
+# │                                        # -> /recommendations candidates get EarthHero/iHerb
+# │                                        #    partner dicts where matched, [] where not
+# └── Additive only                          # Only existing-code change: one new key in the /scan
+#                                          # response dict, plus the startup_event block.
+#                                          # No existing endpoint behavior changes when the
+#                                          # catalog is absent (which it is, today).
+#
 # 🗄️ Cache Performance Improvements:
 # ├── 99% reduction in OFF API calls        # Products served from Redis instead of API
 # ├── 93% faster repeat scans               # 1.8s → 0.1s response times
