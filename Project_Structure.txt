@@ -259,13 +259,21 @@ tbl-grocery-app/
 #                                          # the typing import line.
 #
 # 🆕 Affiliate Link Layer — Phase 2 Step 2.2: Wiring (Nov 2026):
-# ├── startup_event() catalog load          # Instantiates AffiliateCatalog after workbook load.
+# ├── startup_event() catalog load          # Instantiates AffiliateCatalog INSIDE the retry loop's
+# │                                        # success branch, immediately before the return.
+# │                                        # (Originally placed after the retry loop; the loop's
+# │                                        #  success branch ends with return, so the block was
+# │                                        #  unreachable on normal startup. Moved here in the
+# │                                        #  Phase 2 Step 2.2 fix commit.)
 # │                                        # Calls _catalog.load(workbook_data=certification_manager.data)
 # │                                        # to enforce the load-time cert assertion.
 # │                                        # On success: certification_manager.affiliate_catalog = instance
 # │                                        # On failure: certification_manager.affiliate_catalog = None
 # │                                        # Any exception during load is logged and swallowed;
 # │                                        # startup never fails because of the catalog.
+# │                                        # Failure path (all 5 retries exhausted) explicitly
+# │                                        # clears affiliate_catalog to None before its own
+# │                                        # "startup complete" log, defensive against stale state.
 # ├── _resolve_scan_partners() helper       # New function. Reads the scanned row's Column H
 # │                                        # tokens, calls catalog.get_partners() with
 # │                                        # include_kroger_fallback=True, and returns the ordered
@@ -290,6 +298,40 @@ tbl-grocery-app/
 #                                          # response dict, plus the startup_event block.
 #                                          # No existing endpoint behavior changes when the
 #                                          # catalog is absent (which it is, today).
+#
+# 🆕 Affiliate Link Layer — Phase 2 Step 2.2 fix: startup ordering (Nov 2026):
+# ├── Bug                                     # Step 2.2 placed the catalog load AFTER the retry
+# │                                          # loop. The loop's success branch ends with `return`,
+# │                                          # so on every normal startup (workbook loads on
+# │                                          # attempt 1) the block was unreachable. Catalog was
+# │                                          # never attached, and the two expected startup log
+# │                                          # lines ("affiliate_catalog.csv not found" /
+# │                                          # "Affiliate catalog not loaded") never appeared.
+# ├── Symptom                                 # Deploy log showed clean startup with no catalog
+# │                                          # lines and no traceback. available_partners
+# │                                          # remained [] everywhere, which looked like the
+# │                                          # correct pre-Awin state but was actually the
+# │                                          # unreachable-code state.
+# ├── Fix                                     # Catalog block moved INSIDE the success branch,
+# │                                          # between "Category index ready" and
+# │                                          # "Application startup complete!", before the return.
+# │                                          # Runs on every successful workbook load.
+# ├── Failure path (added)                    # After the retry loop, if all 5 attempts failed,
+# │                                          # affiliate_catalog explicitly set to None before the
+# │                                          # final "startup complete" log. Defensive against
+# │                                          # stale state; unreachable in normal operation.
+# ├── Verification                            # Expected startup log sequence post-fix:
+# │                                          #   ✅ Successfully loaded N certification records
+# │                                          #   ✅ Category index ready for N brands
+# │                                          #   affiliate_catalog.csv not found; ...
+# │                                          #   ℹ️ Affiliate catalog not loaded; routing disabled
+# │                                          #   🚀 Application startup complete!
+# └── No behavior change                      # Pre-Awin, /scan still returns available_partners: []
+#                                           # and /recommendations candidates still get [].
+#                                           # The fix makes the wiring reachable; the pre-Awin
+#                                           # output is unchanged.
+
+# 🗄️ Cache Performance Improvements:
 #
 # 🗄️ Cache Performance Improvements:
 # ├── 99% reduction in OFF API calls        # Products served from Redis instead of API

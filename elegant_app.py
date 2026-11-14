@@ -6319,30 +6319,40 @@ async def startup_event():
         if success and certification_manager.data is not None:
             logger.info(f"✅ Successfully loaded {len(certification_manager.data)} certification records")
             logger.info(f"✅ Category index ready for {len(certification_manager.brand_categories)} brands")
+
+            # Affiliate catalog is optional. Pre-Awin, affiliate_catalog.csv
+            # does not exist, load() returns False, and the attribute stays
+            # None. Both /scan and /recommendations probe it via getattr and
+            # degrade to empty available_partners. No request fails when the
+            # catalog is absent.
+            #
+            # This block runs on the success path (inside the retry loop),
+            # not after it — otherwise the `return` below skips it and the
+            # catalog is never attached on a normal startup.
+            try:
+                _catalog = AffiliateCatalog()
+                if _catalog.load(workbook_data=certification_manager.data):
+                    certification_manager.affiliate_catalog = _catalog
+                    logger.info("✅ Affiliate catalog attached")
+                else:
+                    certification_manager.affiliate_catalog = None
+                    logger.info("ℹ️ Affiliate catalog not loaded; routing disabled")
+            except Exception as _e:
+                # A catalog load failure must never prevent startup. Log and
+                # continue with routing disabled.
+                logger.error(f"Affiliate catalog load raised: {_e}")
+                certification_manager.affiliate_catalog = None
+
             logger.info("🚀 Application startup complete!")
             return
         else:
             logger.warning(f"⚠️ Attempt {attempt + 1}/{max_retries} failed, retrying in 1 second...")
             time.sleep(1)
 
-    # Affiliate catalog is optional. Pre-Awin, affiliate_catalog.csv
-    # does not exist, load() returns False, and the attribute stays
-    # None. Both /scan and /recommendations probe it via getattr and
-    # degrade to empty available_partners. No request fails when the
-    # catalog is absent.
-    try:
-        _catalog = AffiliateCatalog()
-        if _catalog.load(workbook_data=certification_manager.data):
-            certification_manager.affiliate_catalog = _catalog
-            logger.info("✅ Affiliate catalog attached")
-        else:
-            certification_manager.affiliate_catalog = None
-            logger.info("ℹ️ Affiliate catalog not loaded; routing disabled")
-    except Exception as _e:
-        # A catalog load failure must never prevent startup. Log and
-        # continue with routing disabled.
-        logger.error(f"Affiliate catalog load raised: {_e}")
-        certification_manager.affiliate_catalog = None
+    # Only reached if all retries failed. Catalog is intentionally not
+    # loaded here — with no workbook data, the load-time cert assertion
+    # cannot run, and any catalog entries would be unattached to certs.
+    certification_manager.affiliate_catalog = None
 
     logger.warning("⚠️ Certification data did not load on startup. Will retry on first request.")
     logger.info("🚀 Application startup complete!")
