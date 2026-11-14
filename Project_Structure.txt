@@ -1,5 +1,5 @@
 tbl-grocery-app/
-├── elegant_app.py                          # Main FastAPI application (UPDATED: normalizer keeps "the"; suffix strip guarded by content-word count; two-content-word partial match)
+├── elegant_app.py                          # Main FastAPI application (UPDATED: /recommendations endpoint; AffiliateCatalog class; normalizer keeps "the"; suffix strip guarded by content-word count; two-content-word partial match)
 ├── requirements.txt                        # Python dependencies (UPDATED: added redis>=5.0.0)
 ├── runtime.txt                            # python-3.10.0
 ├── Procfile                               # Gunicorn with 2 workers
@@ -12,7 +12,8 @@ tbl-grocery-app/
 ├── MAINTENANCE.md                          # Brand maintenance guide
 ├── Project_Structure.txt                   # This file
 ├── README.md                               # Project documentation
-└── create_excel.py                         # Excel creation script (optional)
+├── create_excel.py                         # Excel creation script (optional)
+└── product_form_categories.csv             # Product form -> taxonomy mapping (354 forms; loaded at startup)
 
 # 🗄️ Caching System:
 ├── Redis Cache (Oregon)                    # Persistent caching service
@@ -43,6 +44,7 @@ tbl-grocery-app/
 ├── POST /auth/login                    # User login
 ├── POST /purchase                      # Record purchase
 ├── GET  /history/{username}            # Purchase history
+├── GET  /recommendations               # Certified alternatives above scanned score (dormant; curl-only)
 ├── POST /compare                       # Compare brands
 ├── GET  /search-brand                  # Brand search with fuzzy matching (0.8 threshold)
 ├── POST /extract-brand                 # Extract brand from product name
@@ -180,7 +182,80 @@ tbl-grocery-app/
 # ├── STEP 1 returned ambiguous_brand on a category-scoped query
 # │   where the answer was unambiguous
 # └── Strict key match inside a category constraint resolves it
-
+# 🆕 Affiliate Link Layer — Phase 1: Recommendation Query (Nov 2026):
+# ├── GET /recommendations                  # Certified alternatives in same taxonomy, strictly higher score
+# │                                        # Params: brand (required), category (required),
+# │                                        #         source (default "manual"), barcode (optional)
+# │                                        # Returns: {scanned: {...}, recommendations: [...]}
+# ├── _build_recommendations()              # Helper: eligibility + sort logic
+# │                                        # Rules: same taxonomy (Column B), strictly higher TBL score,
+# │                                        #        at least one cert true, exclude self by
+# │                                        #        (brand_normalized, taxonomy),
+# │                                        #        product-form intersection when both sides have tokens
+# │                                        # Sort: score desc, cert count desc, brand asc
+# ├── Score single-source-of-truth           # /recommendations recomputes the scanned product's score
+# │                                        # via the exact same path /scan uses
+# │                                        # (get_cached_certifications -> calculate_brand_scores
+# │                                        #  -> calculate_overall_score). No frontend-supplied floor.
+# ├── Cold-start guard                       # Mirrors /product/{barcode}: load + retry loop,
+# │                                        # {loading: true, retry: true} payload on failure
+# ├── source=barcode validation              # 400 if source=barcode without non-empty barcode
+# │                                        # (prevents cache-key collision)
+# ├── Ceiling case                           # Product at 10.0 returns {recommendations: []}
+# │                                        # No "reason" field; empty list is normal
+# ├── Status: DORMANT                        # No frontend caller. Reachable by curl only.
+# │                                        # When recommendation list is later surfaced,
+# │                                        # the backend is ready and the work is frontend-only
+# ├── Tested against live data               # Starbucks (6.67) → 1 rec (Nescafe 10.0)
+# │                                        # Amavida (10.0) → 0 recs (ceiling case)
+# │                                        # Westrock (8.67) → 1 rec (Amavida)
+# │                                        # Product-form intersection verified: no tea-only
+# │                                        # candidates in a coffees scan
+# └── Additive only                          # No existing endpoint or function changed.
+#                                          # No new dependencies.
+#
+# 🆕 Affiliate Link Layer — Phase 2 Step 2.1: AffiliateCatalog class (Nov 2026):
+# ├── AffiliateCatalog class                 # Loads affiliate_catalog.csv; answers
+# │                                        # "which retail partners route a purchase for
+# │                                        # (brand, product_form_or_taxonomy)?"
+# ├── _CATEGORY_GROUPS dict                  # Taxonomy -> category group. Four groups:
+# │                                        # cosmetics_body_care, household, coffee_tea, cocoa.
+# │                                        # The eco/mainstream and specialty/mainstream
+# │                                        # sub-pairs from the spec's Part 1 order identically
+# │                                        # within each group, so they collapse without loss.
+# ├── _GROUP_ORDER dict                      # Button order per group. Order in these lists IS
+# │                                        # the order the frontend renders; the frontend
+# │                                        # does NOT reorder.
+# │                                        # cosmetics_body_care: [EarthHero, iHerb]
+# │                                        # household:           [EarthHero, iHerb]
+# │                                        # coffee_tea:          [iHerb, EarthHero]
+# │                                        # cocoa:               [iHerb, EarthHero]
+# ├── _PARTNER_LABELS dict                   # Display labels. "Check availability on Kroger"
+# │                                        # is the spec's exact label for the fallback.
+# ├── Two-level lookup                       # product_form key first, taxonomy fallback second
+# │                                        # Row with product_form claims form key ONLY
+# │                                        # Row with blank product_form claims taxonomy key ONLY
+# │                                        # No row claims both
+# ├── Load-time assertion                    # When workbook_data is passed, rows whose brand+
+# │                                        # taxonomy is not a certified workbook row are
+# │                                        # skipped with a warning. Workbook remains the single
+# │                                        # source of truth for certifications.
+# ├── Unmapped taxonomy handling             # Warning once per taxonomy (module-level set),
+# │                                        # EarthHero-first default order
+# ├── get_partners() method                  # Returns ordered list of {partner, url, label} dicts
+# │                                        # include_kroger_fallback controls whether the Kroger
+# │                                        # brand-search URL is returned when neither feed matches
+# │                                        # /scan will pass True; /recommendations passes False
+# ├── Status: DORMANT, UNWIRED               # Class defined but not instantiated.
+# │                                        # Step 2.2 wires it into startup_event() and
+# │                                        # the two response builders.
+# ├── Failure mode                           # affiliate_catalog.csv missing or malformed
+# │                                        # -> load() returns False
+# │                                        # -> certification_manager.affiliate_catalog = None
+# │                                        # -> every caller gets empty partners list
+# │                                        # -> app works with or without feeds
+# └── Additive only                          # Only existing-code change: added Tuple to
+#                                          # the typing import line.
 # 🗄️ Cache Performance Improvements:
 # ├── 99% reduction in OFF API calls        # Products served from Redis instead of API
 # ├── 93% faster repeat scans               # 1.8s → 0.1s response times
@@ -196,6 +271,15 @@ tbl-grocery-app/
 
 # Auto-created files:
 # └── user_data.json                       # Persistent user purchase data
+
+# Data files (present or planned):
+# ├── comprehensive_grocery_certifications_COMPLETE.xlsx  # Workbook (loaded at startup)
+# ├── comprehensive_grocery_certifications_COMPLETE.csv   # Working artifact (not in git)
+# ├── product_form_categories.csv                          # Product form -> taxonomy mapping (354 forms)
+# └── affiliate_catalog.csv                                # PLANNED (Phase 4, after Awin approval)
+#                                                        # Columns: product_id, brand, taxonomy,
+#                                                        #          product_form, product_name,
+#                                                        #          earthhero_url, iherb_url, last_verified
 
 # Development folders (excluded by .gitignore):
 # ├── venv/                                 # Virtual environment

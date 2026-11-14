@@ -12,7 +12,7 @@ import sqlite3
 import importlib.util
 import logging
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Set, ClassVar
+from typing import Optional, List, Dict, Any, Set, ClassVar, Tuple
 from urllib.parse import quote
 from collections import Counter
 from contextlib import contextmanager, redirect_stdout, redirect_stderr
@@ -3289,6 +3289,282 @@ def _build_recommendations(
         )
     )
     return candidates
+
+# ==================== AFFILIATE CATALOG ====================
+#
+# Loads affiliate_catalog.csv, joins it to the workbook on
+# (brand_normalized, product_form_or_taxonomy), and answers
+# "which retail partners can route a purchase for this
+# (brand, product form, taxonomy)?".
+#
+# Status: DORMANT. The class is defined here but no code
+# instantiates it yet. Step 2.2 wires it into startup_event() and
+# the two response builders. Until then, this code has no effect.
+#
+# Data model:
+#   - Catalog rows with a product_form claim a specific
+#     (brand_normalized, product_form) key ONLY.
+#   - Catalog rows with a blank product_form claim a
+#     (brand_normalized, taxonomy) fallback key ONLY.
+#   - A brand with both a product-form-specific link and a
+#     taxonomy-level link has two independent rows in the CSV.
+#
+# Consumers (added in Step 2.2):
+#   - /scan             -> scanned product's available_partners
+#   - /recommendations  -> per-candidate available_partners
+#
+# Both consumers read the same AffiliateCatalog instance.
+# Neither reimplements routing logic.
+#
+# Failure mode: if affiliate_catalog.csv is missing or malformed,
+# AffiliateCatalog.load() returns False and the caller leaves
+# certification_manager.affiliate_catalog as None. Both consumers
+# then see an empty partners list. The app works with or without
+# feeds, per the spec.
+
+
+# Taxonomy -> category group. Governs BUTTON ORDER only, per spec.
+# Four groups. The eco/mainstream and specialty/mainstream
+# sub-pairs from Part 1 of the ruleset order identically within
+# each group, so they collapse without loss.
+_CATEGORY_GROUPS: Dict[str, str] = {
+    "en:cosmetics":           "cosmetics_body_care",
+    "en:feminine-hygiene":    "cosmetics_body_care",
+    "en:household-products":  "household",
+    "en:paper-products":      "household",
+    "en:coffee":              "coffee_tea",
+    "en:beverages":           "coffee_tea",
+    "en:confectioneries":     "cocoa",
+}
+
+# Button order per category group. Order in these lists IS the
+# order the frontend renders. The frontend does NOT reorder.
+_GROUP_ORDER: Dict[str, List[str]] = {
+    "cosmetics_body_care": ["EarthHero", "iHerb"],
+    "household":           ["EarthHero", "iHerb"],
+    "coffee_tea":          ["iHerb", "EarthHero"],
+    "cocoa":               ["iHerb", "EarthHero"],
+}
+
+# Partner display labels. "Check availability on Kroger" is the
+# spec's exact label for the brand-search fallback.
+_PARTNER_LABELS: Dict[str, str] = {
+    "EarthHero": "Buy on EarthHero",
+    "iHerb":     "Buy on iHerb",
+    "Kroger":    "Check availability on Kroger",
+}
+
+# Tracks taxonomies already warned about missing a category group,
+# so the log gets one warning per taxonomy, not one per request.
+_WARNED_UNMAPPED_TAXONOMIES: Set[str] = set()
+
+
+class AffiliateCatalog:
+    """Loads affiliate_catalog.csv and resolves routing for
+    (brand_normalized, product_form_or_taxonomy) keys.
+
+    The catalog is purely additive to the workbook. It is joined
+    at load time using BrandNormalizer.normalize() on the brand
+    column, unmodified. Rows whose brand+taxonomy+form do not
+    exist in the workbook, or whose workbook row has no cert
+    flags, are skipped with a warning. The workbook remains the
+    single source of truth for certifications.
+    """
+
+    def __init__(self) -> None:
+        # (brand_normalized, product_form) -> {earthhero, iherb}
+        # Only for rows with a non-empty product_form.
+        self._form_index: Dict[
+            Tuple[str, str], Dict[str, Optional[str]]
+        ] = {}
+        # (brand_normalized, taxonomy) -> {earthhero, iherb}
+        # Only for rows with a blank product_form.
+        self._taxonomy_index: Dict[
+            Tuple[str, str], Dict[str, Optional[str]]
+        ] = {}
+
+    def load(
+        self,
+        path: str = "affiliate_catalog.csv",
+        workbook_data: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Load the CSV. Returns True on success, False on any
+        failure (including file-not-found, which is the normal
+        state before Awin approval).
+
+        `workbook_data` is certification_manager.data. When
+        provided, rows whose brand+taxonomy cannot be joined back
+        to a certified workbook row are skipped with a warning.
+        This enforces the spec rule: every catalog row must have
+        at least one certification flag true in the workbook.
+        """
+        if not os.path.exists(path):
+            logger.info(
+                "affiliate_catalog.csv not found; "
+                "affiliate routing disabled (expected pre-Awin)"
+            )
+            return False
+        try:
+            skipped_no_cert = 0
+            skipped_no_join = 0
+            loaded = 0
+
+            with open(path, "r", encoding="utf-8") as fh:
+                reader = csv.DictReader(fh)
+                for row in reader:
+                    brand = (row.get("brand") or "").strip()
+                    if not brand:
+                        continue
+                    brand_key = BrandNormalizer.normalize(brand)
+                    taxonomy = (row.get("taxonomy") or "").strip().lower()
+                    product_form = (row.get("product_form") or "").strip().lower()
+                    earthhero = (row.get("earthhero_url") or "").strip() or None
+                    iherb = (row.get("iherb_url") or "").strip() or None
+
+                    if not earthhero and not iherb:
+                        continue  # nothing to route
+
+                    # Join-time assertion: catalog rows must
+                    # correspond to a certified workbook row.
+                    # Enforced only when workbook_data is passed.
+                    if workbook_data is not None:
+                        joined = False
+                        for product_key, product_data in (
+                            workbook_data.get(brand_key, {}) or {}
+                        ).items():
+                            if product_key == "_default":
+                                continue
+                            if taxonomy and product_key.lower() != taxonomy:
+                                continue
+                            certs = product_data.get("certifications") or {}
+                            if any(
+                                certs.get(k)
+                                for k in (
+                                    "b_corp",
+                                    "fair_trade",
+                                    "rainforest_alliance",
+                                    "leaping_bunny",
+                                )
+                            ):
+                                joined = True
+                                break
+                        if not joined:
+                            if taxonomy and brand_key not in workbook_data:
+                                skipped_no_join += 1
+                            else:
+                                skipped_no_cert += 1
+                            continue
+
+                    entry = {"earthhero": earthhero, "iherb": iherb}
+
+                    if product_form:
+                        self._form_index[(brand_key, product_form)] = entry
+                    elif taxonomy:
+                        self._taxonomy_index[(brand_key, taxonomy)] = entry
+                    # else: row has neither form nor taxonomy; skip.
+                    loaded += 1
+
+            logger.info(
+                f"affiliate_catalog.csv loaded: {loaded} rows, "
+                f"{len(self._form_index)} product-form keys, "
+                f"{len(self._taxonomy_index)} taxonomy keys"
+            )
+            if skipped_no_cert:
+                logger.warning(
+                    f"affiliate_catalog.csv: skipped {skipped_no_cert} "
+                    f"rows whose workbook row has no certification flags "
+                    f"(spec requires at least one)"
+                )
+            if skipped_no_join:
+                logger.warning(
+                    f"affiliate_catalog.csv: skipped {skipped_no_join} "
+                    f"rows whose brand+taxonomy is not in the workbook"
+                )
+            return loaded > 0
+        except Exception as e:
+            logger.error(f"Error loading affiliate_catalog.csv: {e}")
+            return False
+
+    def _lookup(
+        self,
+        brand_normalized: str,
+        product_form_tokens: Optional[List[str]],
+        taxonomy: str,
+    ) -> Optional[Dict[str, Optional[str]]]:
+        """Two-level lookup: product-form keys first, taxonomy
+        fallback second."""
+        for token in (product_form_tokens or []):
+            hit = self._form_index.get((brand_normalized, token))
+            if hit:
+                return hit
+        if taxonomy:
+            return self._taxonomy_index.get((brand_normalized, taxonomy))
+        return None
+
+    def _order_for_taxonomy(self, taxonomy: str) -> List[str]:
+        """Return the partner order for a taxonomy, warning once
+        per taxonomy if no category group is mapped. Unmapped
+        taxonomies default to EarthHero-first."""
+        group = _CATEGORY_GROUPS.get((taxonomy or "").strip().lower())
+        if group is None:
+            if taxonomy and taxonomy not in _WARNED_UNMAPPED_TAXONOMIES:
+                _WARNED_UNMAPPED_TAXONOMIES.add(taxonomy)
+                logger.warning(
+                    f"Taxonomy '{taxonomy}' has no category group; "
+                    f"defaulting to EarthHero-first button order. "
+                    f"Add it to _CATEGORY_GROUPS to silence this warning."
+                )
+            return ["EarthHero", "iHerb"]
+        return _GROUP_ORDER[group]
+
+    def get_partners(
+        self,
+        brand_normalized: str,
+        product_form_tokens: Optional[List[str]],
+        taxonomy: str,
+        include_kroger_fallback: bool = True,
+        brand_display: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
+        """Resolve available partners for a scanned product.
+
+        Returns a list of {partner, url, label} dicts, in the order
+        the frontend should render them.
+
+        include_kroger_fallback controls whether the Kroger
+        brand-search link is returned when neither feed matches.
+        /scan passes True; /recommendations passes False (spec
+        Part 2: Kroger is not in the recommendation list).
+        """
+        hit = self._lookup(brand_normalized, product_form_tokens, taxonomy)
+
+        if hit:
+            order = self._order_for_taxonomy(taxonomy)
+            partners: List[Dict[str, str]] = []
+            for partner_name in order:
+                key = "earthhero" if partner_name == "EarthHero" else "iherb"
+                url = hit.get(key)
+                if url:
+                    partners.append({
+                        "partner": partner_name,
+                        "url": url,
+                        "label": _PARTNER_LABELS[partner_name],
+                    })
+            if partners:
+                return partners
+
+        # Neither feed matched.
+        if include_kroger_fallback and brand_display:
+            kroger_url = (
+                "https://www.kroger.com/search?query="
+                + quote(brand_display)
+            )
+            return [{
+                "partner": "Kroger",
+                "url": kroger_url,
+                "label": _PARTNER_LABELS["Kroger"],
+            }]
+
+        return []
 
 # ==================== BRAND EXTRACTION CACHE ====================
 BRAND_EXTRACTION_CACHE = {}
