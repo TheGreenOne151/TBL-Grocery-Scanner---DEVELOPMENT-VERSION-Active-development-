@@ -3125,6 +3125,171 @@ def get_cached_certifications(
 
     return result
 
+# ==================== RECOMMENDATION QUERY ====================
+#
+# Suggests certified alternatives in the same taxonomy that score
+# strictly higher than the scanned product. Eligibility is governed
+# by the workbook, NOT by the affiliate catalog. When the catalog is
+# empty (pre-Awin), this endpoint still returns correct results; the
+# affiliate annotation step is a no-op.
+#
+# Status: DORMANT. No frontend code calls this endpoint yet. It is
+# reachable by curl and by nothing else. When the recommendation
+# list is later surfaced in the UI, this endpoint is ready and the
+# work is frontend-only.
+#
+# Design notes:
+#   - The scanned product's score is recomputed via the same path
+#     /scan uses. One scoring path, no frontend-supplied floor.
+#   - Candidate refs come from certification_manager.category_index,
+#     rebuilt on every load_certification_data() call. No separate
+#     cache, no invalidation logic.
+#   - The scanned product is excluded by
+#     (brand_normalized, taxonomy), not by brand alone, so a
+#     different certified SKU from the same brand can legitimately
+#     appear as a recommendation.
+#   - Recommendation affiliate annotations read the catalog
+#     defensively: absent catalog -> empty available_partners list.
+
+
+def _build_recommendations(
+    scanned_brand: str,
+    scanned_taxonomy: str,
+    scanned_floor: float,
+    scanned_tokens: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    """Return certified alternatives in the same taxonomy that score
+    strictly higher than `scanned_floor`.
+
+    Eligibility (all must hold):
+      1. Same taxonomy (Column B, en: value) as the scanned product.
+      2. Strictly higher overall TBL score than scanned_floor.
+      3. At least one certification flag true (base-rate 5.0
+         products are excluded).
+      4. Not the scanned product itself, by
+         (brand_normalized, taxonomy) equality.
+      5. If the scanned row has Column H product-form tokens AND
+         the candidate row does too, they must share at least one.
+         Otherwise the intersection filter is skipped.
+    """
+    if certification_manager.data is None:
+        return []
+
+    scanned_brand_key = BrandNormalizer.normalize(scanned_brand)
+    scanned_taxonomy_norm = (scanned_taxonomy or "").strip().lower()
+    if not scanned_taxonomy_norm:
+        return []
+
+    scanned_token_set: Set[str] = {
+        t.strip().lower() for t in (scanned_tokens or []) if t.strip()
+    }
+
+    refs = certification_manager.category_index.get(scanned_taxonomy_norm, [])
+    if not refs:
+        return []
+
+    catalog = getattr(certification_manager, "affiliate_catalog", None)
+
+    candidates: List[Dict[str, Any]] = []
+    for brand_key, product_key in refs:
+        product_data = certification_manager.data.get(brand_key, {}).get(product_key)
+        if not product_data:
+            continue
+
+        # Rule 4: exclude the scanned product itself.
+        if (
+            brand_key == scanned_brand_key
+            and product_key.strip().lower() == scanned_taxonomy_norm
+        ):
+            continue
+
+        certs_bool = product_data.get("certifications") or {}
+
+        # Rule 3: at least one cert true.
+        if not any(
+            certs_bool.get(k)
+            for k in ("b_corp", "fair_trade", "rainforest_alliance", "leaping_bunny")
+        ):
+            continue
+
+        # Extract candidate's product-form tokens (Column H).
+        cand_row = product_data.get("row_data") or {}
+        cand_raw_h = cand_row.get("Certification_Categories")
+        cand_tokens: List[str] = []
+        if cand_raw_h is not None:
+            try:
+                if cand_raw_h == cand_raw_h:  # NaN guard
+                    cand_tokens = [
+                        t.strip().lower()
+                        for t in str(cand_raw_h).split(",")
+                        if t.strip()
+                    ]
+            except Exception:
+                pass
+
+        # Rule 5: product-form intersection when both sides have
+        # tokens. Skips when either side is blank.
+        if scanned_token_set and cand_tokens:
+            if not (set(cand_tokens) & scanned_token_set):
+                continue
+
+        # Score the candidate via the shared scoring path.
+        cert_result = {
+            "found": True,
+            "match_type": "recommendation",
+            "certifications": certs_bool,
+            "details": {
+                "original_brand": product_data.get("original_brand", brand_key)
+            },
+        }
+        scores = scoring_manager.calculate_brand_scores(
+            product_data.get("original_brand", brand_key),
+            product_key,
+            cert_result,
+        )
+        tbl = calculate_overall_score(
+            scores.social, scores.environmental, scores.economic
+        )
+
+        # Rule 2: strictly higher.
+        if tbl["overall_score"] <= scanned_floor:
+            continue
+
+        # Affiliate annotation. Empty until the catalog exists.
+        # Recommendations never carry Kroger (spec Part 2).
+        available_partners: List[Dict[str, str]] = []
+        if catalog is not None:
+            available_partners = catalog.get_partners(
+                brand_key,
+                cand_tokens,
+                product_key,
+                include_kroger_fallback=False,
+                brand_display=product_data.get("original_brand", brand_key),
+            )
+
+        candidates.append({
+            "brand": product_data.get("original_brand", brand_key),
+            "category": product_key,
+            "overall_tbl_score": tbl["overall_score"],
+            "grade": tbl["grade"],
+            "social_score": scores.social,
+            "environmental_score": scores.environmental,
+            "economic_score": scores.economic,
+            "certifications": list(scores.certifications),
+            "certification_count": len(scores.certifications),
+            "available_partners": available_partners,
+        })
+
+    # Sort: score desc, cert count desc, brand asc for determinism.
+    candidates.sort(
+        key=lambda c: (
+            -c["overall_tbl_score"],
+            -c["certification_count"],
+            c["brand"],
+        )
+    )
+    return candidates
+
 # ==================== BRAND EXTRACTION CACHE ====================
 BRAND_EXTRACTION_CACHE = {}
 
@@ -4837,6 +5002,91 @@ async def sheet_search_taxonomies(
             for t, c in ordered[:limit]
         ],
     }
+
+@app.get("/recommendations")
+async def get_recommendations(
+    brand: str = Query(..., min_length=1, max_length=200),
+    category: str = Query(..., min_length=1, max_length=100),
+    source: str = Query("manual"),
+    barcode: str = Query(""),
+) -> Dict[str, Any]:
+    """Return certified alternatives in the same taxonomy that score
+    strictly higher than the scanned product.
+
+    DORMANT: no frontend caller yet. Reachable by curl only.
+
+    The scanned product's score is recomputed server-side via the
+    same path /scan uses, so the recommendation list can never
+    disagree with the score card the user is looking at.
+    """
+    # Cold-start guard: mirrors /product/{barcode}.
+    if certification_manager.data is None:
+        certification_manager.load_certification_data()
+        retries = 3
+        while certification_manager.data is None and retries > 0:
+            time.sleep(1)
+            retries -= 1
+        if certification_manager.data is None:
+            return {
+                "scanned": {"brand": brand, "category": category, "score": 5.0},
+                "recommendations": [],
+                "loading": True,
+                "retry": True,
+            }
+
+    # source=barcode without barcode would collide cache keys.
+    if source == "barcode" and not barcode.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="source=barcode requires a non-empty barcode parameter.",
+        )
+
+    cert_result = get_cached_certifications(
+        brand, category, source=source, barcode=barcode or None,
+    )
+    effective_category = cert_result.get("matched_category") or category
+
+    scores = scoring_manager.calculate_brand_scores(
+        brand, effective_category, cert_result,
+    )
+    tbl = calculate_overall_score(
+        scores.social, scores.environmental, scores.economic,
+    )
+    scanned_floor = tbl["overall_score"]
+
+    # Scanned row's product-form tokens for the intersection filter.
+    scanned_tokens: List[str] = []
+    details = cert_result.get("details") or {}
+    row_data = details.get("row_data") or {}
+    raw_h = row_data.get("Certification_Categories")
+    if raw_h is not None:
+        try:
+            if raw_h == raw_h:  # NaN guard
+                scanned_tokens = [
+                    t.strip().lower()
+                    for t in str(raw_h).split(",")
+                    if t.strip()
+                ]
+        except Exception:
+            pass
+
+    recommendations = _build_recommendations(
+        scanned_brand=brand,
+        scanned_taxonomy=effective_category,
+        scanned_floor=scanned_floor,
+        scanned_tokens=scanned_tokens,
+    )
+
+    return sanitize_for_json({
+        "scanned": {
+            "brand": brand,
+            "category": effective_category,
+            "score": scanned_floor,
+            "grade": tbl["grade"],
+            "certifications": list(scores.certifications),
+        },
+        "recommendations": recommendations,
+    })
 
 # ==================== EXCEL MANAGEMENT ENDPOINTS ====================
 
