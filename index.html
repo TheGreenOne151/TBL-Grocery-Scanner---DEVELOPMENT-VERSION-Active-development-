@@ -298,6 +298,11 @@
             display: block;
         }
 
+        #browseResults {
+            touch-action: pan-y;
+            overscroll-behavior: contain;
+        }
+
         .pillars {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -1148,6 +1153,8 @@
         // === BROWSE TAB STATE ===
         let browseMode = 'product-form';
         let browseSelectedCerts = [];
+        let browseLastPointerDown = 0;
+        let browseLastPointerDelta = 0;
         let browseDebounceTimer;
 
         // Initialize on load
@@ -1852,6 +1859,23 @@
             }
         });
 
+        // --- Scroll suppression on results container ---
+        const browseResultsEl = document.getElementById('browseResults');
+        let browsePointerStartY = null;
+        browseResultsEl.addEventListener('pointerdown', function (e) {
+            browsePointerStartY = e.clientY;
+            browseLastPointerDown = Date.now();
+        });
+        browseResultsEl.addEventListener('pointerup', function (e) {
+            if (browsePointerStartY === null) return;
+            browseLastPointerDelta = Math.abs(browsePointerStartY - e.clientY);
+            browsePointerStartY = null;
+        });
+        browseResultsEl.addEventListener('pointercancel', function () {
+            browsePointerStartY = null;
+            browseLastPointerDelta = 0;
+        });
+
         // --- Fetch ranked results for a token ---
         async function browseFetchResults(token) {
             const endpoint = browseMode === 'product-form'
@@ -1904,7 +1928,7 @@
                     return `<span class="cert-badge" style="font-size: 11px; padding: 4px 10px; margin: 2px;">${c}</span>`;
                 }).join('');
 
-                return `<div class="compare-item" data-brand="${r.brand}" data-category="${r.category || ''}" style="cursor: pointer;">
+                return `<div class="compare-item" data-brand="${r.brand}" data-category="${r.category || ''}">
                     <div style="flex: 1; min-width: 0;">
                         <div class="compare-brand">${r.brand}</div>
                         <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
@@ -1915,66 +1939,66 @@
                     <div style="text-align: right; margin-left: 10px;">
                         <div class="compare-score">${(r.overall_tbl_score || 0).toFixed(1)}</div>
                         <span class="${gradeClass}" style="font-size: 10px; padding: 4px 10px; margin-top: 4px; display: inline-block;">${r.grade || ''}</span>
+                        <button class="browse-view-scorecard" type="button" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:none;background:var(--primary);color:white;border-radius:8px;font-size:16px;cursor:pointer;margin-top:6px;">▶</button>
                     </div>
                 </div>`;
             }).join('');
 
             resultsDiv.innerHTML = header + rows;
 
-            // Make each row clickable to search for that specific brand
-            resultsDiv.querySelectorAll('.compare-item').forEach(function (row) {
-                // Use pointerdown for mobile responsiveness
-                row.addEventListener('pointerdown', function (e) {
-                    e.preventDefault();
-
-                    const brand = this.dataset.brand;
-                    const category = this.dataset.category || '';
-
-                    // 1. Switch to the Scan tab
-                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-                    document.getElementById('scanTab').classList.add('active');
-                    document.querySelector('button[onclick="switchTab(\'scan\')"]').classList.add('active');
-
-                    // 2. Fill the search input
-                    document.getElementById('searchType').value = 'brand';
-                    document.getElementById('searchType').dispatchEvent(new Event('change'));
-                    document.getElementById('searchInput').value = brand;
-
-                    // 3. Set the category dropdown
-                    const categorySelect = document.getElementById('categorySelect');
-                    categorySelect.value = '';
-
-                    if (category) {
-                        // Exact-value match first. The Browse card carries the
-                        // en: code from Column B (e.g. "en:coffee"). Passing that
-                        // exact value to the Scan tab lets the backend resolve the
-                        // brand inside that category without partial-match guessing.
-                        let matched = false;
-                        for (let i = 0; i < categorySelect.options.length; i++) {
-                            if (categorySelect.options[i].value === category) {
-                                categorySelect.selectedIndex = i;
-                                matched = true;
-                                break;
-                            }
-                        }
-                        // Fallback to fuzzy match for the rare case where the
-                        // category is not one of the preset dropdown options.
-                        if (!matched) {
-                            for (let opt of categorySelect.options) {
-                                if (opt.value.toLowerCase() === category.toLowerCase() ||
-                                    opt.text.toLowerCase().includes(category.toLowerCase().replace('en:', ''))) {
-                                    categorySelect.value = opt.value;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    // 4. Trigger the search
-                    searchProduct();
+            resultsDiv.querySelectorAll('.browse-view-scorecard').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    if (browseLastPointerDelta > 10 && Date.now() - browseLastPointerDown < 300) return;
+                    const row = this.closest('.compare-item');
+                    navigateToBrandScorecard(row.dataset.brand, row.dataset.category || '');
                 });
             });
+        }
+
+        function navigateToBrandScorecard(brand, category) {
+            // 1. Switch to the Scan tab
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+            document.getElementById('scanTab').classList.add('active');
+            document.querySelector('button[onclick="switchTab(\'scan\')"]').classList.add('active');
+
+            // 2. Fill the search input
+            document.getElementById('searchType').value = 'brand';
+            document.getElementById('searchType').dispatchEvent(new Event('change'));
+            document.getElementById('searchInput').value = brand;
+
+            // 3. Set the category dropdown
+            const categorySelect = document.getElementById('categorySelect');
+            categorySelect.value = '';
+
+            if (category) {
+                // Exact-value match first. The Browse card carries the
+                // en: code from Column B (e.g. "en:coffee"). Passing that
+                // exact value to the Scan tab lets the backend resolve the
+                // brand inside that category without partial-match guessing.
+                let matched = false;
+                for (let i = 0; i < categorySelect.options.length; i++) {
+                    if (categorySelect.options[i].value === category) {
+                        categorySelect.selectedIndex = i;
+                        matched = true;
+                        break;
+                    }
+                }
+                // Fallback to fuzzy match for the rare case where the
+                // category is not one of the preset dropdown options.
+                if (!matched) {
+                    for (let opt of categorySelect.options) {
+                        if (opt.value.toLowerCase() === category.toLowerCase() ||
+                            opt.text.toLowerCase().includes(category.toLowerCase().replace('en:', ''))) {
+                            categorySelect.value = opt.value;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 4. Trigger the search
+            searchProduct();
         }
         function browseRenderAmbiguous(data, token) {
             const resultsDiv = document.getElementById('browseResults');
