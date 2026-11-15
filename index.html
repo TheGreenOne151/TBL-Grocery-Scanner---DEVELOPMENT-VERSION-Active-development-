@@ -2286,6 +2286,67 @@
             showResults();
         }
 
+        // ==================== AFFILIATE PARTNER BUTTONS ====================
+        //
+        // Renders the available_partners array from /scan into a container
+        // element. The backend has already applied the spec's button-order
+        // rules (category group primary/secondary) and produced the exact
+        // labels. This function does NOT reorder, relabel, or filter.
+        // It renders in the order the array specifies.
+        //
+        // Empty array -> container is emptied and nothing renders. That is
+        // the pre-Awin state, and it must remain invisible: no placeholder
+        // text, no "no partners" message, no visual change to the score card.
+        //
+        // The label field is the button text. "Buy on EarthHero", "Buy on
+        // iHerb", and "Check availability on Kroger" are all produced by
+        // the backend in _PARTNER_LABELS. If the label is ever missing or
+        // empty, the button falls back to the partner key so the button is
+        // still clickable and identifiable — degraded but not broken.
+        function renderPartnerButtons(partners, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            // No partners (pre-Awin, or brand has no feed match and
+            // include_kroger_fallback was false): leave container empty.
+            if (!Array.isArray(partners) || partners.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Render in the order the backend sent. Do not sort, do not
+            // filter, do not relabel.
+            const buttonsHtml = partners.map(function (p) {
+                const safeUrl = String(p.url || '');
+                const safeLabel = String(p.label || p.partner || 'View');
+
+                // Escape label for HTML text content (labels are authored
+                // server-side, but defense-in-depth: never trust a string
+                // being interpolated into innerHTML).
+                const escapedLabel = safeLabel
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+
+                // target="_blank" + rel="noopener noreferrer": affiliate
+                // links open in a new tab; noopener prevents the opened
+                // page from accessing window.opener; noreferrer strips the
+                // Referer header (minor privacy, harmless for affiliate
+                // attribution which uses URL params, not Referer).
+                return '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" ' +
+                       'class="partner-button" ' +
+                       'style="display:block;text-align:center;padding:14px;margin:8px 0;' +
+                       'background:linear-gradient(135deg,#2e7d32 0%,#1b5e20 100%);' +
+                       'color:white;text-decoration:none;border-radius:10px;font-weight:600;' +
+                       'font-size:16px;letter-spacing:0.5px;">' +
+                       escapedLabel +
+                       '</a>';
+            }).join('');
+
+            container.innerHTML = buttonsHtml;
+        }
+
         function showLoading() {
             document.getElementById('loading').classList.add('show');
         }
