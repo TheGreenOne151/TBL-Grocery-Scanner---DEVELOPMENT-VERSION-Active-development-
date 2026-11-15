@@ -879,6 +879,8 @@
                         </div>
                     </div>
 
+                    <div id="partnerButtons"></div>
+
                     <div id="loggedInActions" style="display: none;">
                         <button class="btn btn-primary" onclick="savePurchase()">
                             💾 Save to History
@@ -887,11 +889,6 @@
                             ➕ Add to Compare
                         </button>
                     </div>
-
-                    <button class="btn btn-secondary" onclick="resetSearch()">
-                        🔄 New Search
-                    </button>
-                </div>
             </div>
         </div>
 
@@ -2272,6 +2269,12 @@
             } else {
                 researchStatus.style.display = 'none';
             }
+
+            // Render affiliate purchase buttons. Empty array (pre-Awin,
+            // or brand has no feed match and include_kroger_fallback
+            // would have been false — but for /scan it's always true,
+            // so this only ends up empty pre-Awin) -> nothing renders.
+            renderPartnerButtons(data.available_partners || [], 'partnerButtons');
 
             const oldMatchInfo = document.getElementById('matchInfo');
             if (oldMatchInfo) {
